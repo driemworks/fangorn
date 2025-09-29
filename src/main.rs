@@ -33,14 +33,13 @@ use tonic::transport::Server;
 
 mod node;
 mod rpc;
+mod service;
 mod types;
 
-use crate::node::*;
-use crate::rpc::server::{
-    RpcClient, RpcServer, PartDecRequest, PreprocessRequest,
-};
-use crate::rpc::server::*;
-use crate::types::*;
+use node::*;
+use rpc::server::*;
+use service::{ServiceConfig, build_full_service};
+use types::*;
 
 // https://hackmd.io/3968Gr5hSSmef-nptg2GRw
 // https://hackmd.io/xqYBrigYQwyKM_0Sn5Xf4w
@@ -120,9 +119,7 @@ async fn main() -> Result<()> {
             // get the sys key
             let sys_key_request = tonic::Request::new(PreprocessRequest {});
             // from first node
-            let mut client = RpcClient::connect("http://127.0.0.1:30333")
-                .await
-                .unwrap();
+            let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
             let response = client.preprocess(sys_key_request).await.unwrap();
             let hex = response.into_inner().hex_serialized_sys_key;
             let bytes = hex::decode(&hex[..]).unwrap();
@@ -169,9 +166,7 @@ async fn main() -> Result<()> {
             // get the sys key
             let sys_key_request = tonic::Request::new(PreprocessRequest {});
             // from first node
-            let mut client = RpcClient::connect("http://127.0.0.1:30333")
-                .await
-                .unwrap();
+            let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
             let response = client.preprocess(sys_key_request).await.unwrap();
             let hex = response.into_inner().hex_serialized_sys_key;
             let bytes = hex::decode(&hex[..]).unwrap();
@@ -244,156 +239,23 @@ async fn main() -> Result<()> {
             is_bootstrap,
             ticket,
         }) => {
-            // build bootstrap nodeaddr if provided
-            let mut bootstrap: Option<Vec<NodeAddr>> = None;
-            let mut bootstrap_addrs: Vec<NodeAddr> = Vec::new();
-            if let Some(pubkey) = bootstrap_pubkey {
-                if let Some(ip) = bootstrap_ip {
-                    let pubkey = IrohPublicKey::from_str(pubkey).unwrap();
-                    let socket: SocketAddr = ip.parse().unwrap();
-                    bootstrap_addrs.push(NodeAddr::from((pubkey, None, vec![socket].as_slice())));
-
-                    if !bootstrap_addrs.is_empty() {
-                        bootstrap = Some(bootstrap_addrs);
-                    }
-                }
-            }
-
-            // a channel for sending and receiving doc announcements
-            let (tx, rx) = flume::unbounded();
-            let params = StartNodeParams::<E>::rand(*bind_port, *index);
-            // let sk = params.secret_key.clone();
-            // let mut test = Vec::new();
-            // sk.serialize_compressed(&mut test).unwrap();
-            // panic!("{:?}", test);
-
-            // a state for storing config and hints
-            let state = State::<E>::empty(params.secret_key.clone());
-            let arc_state = Arc::new(Mutex::new(state.clone()));
-            let arc_state_clone = Arc::clone(&arc_state.clone());
-            // build the node
-            let mut node = Node::build(params, rx, arc_state).await;
-            node.try_connect_peers(bootstrap).await.unwrap();
-
-            // get the document stream
-            let doc_stream = if *is_bootstrap {
-                // if you are a bootstrap node then you must generate the kzg params
-                // and build the initial 'ticket'
-                println!("Initial Startup: Generating new config");
-                let config_bytes: Vec<u8> = setup(MAX_COMMITTEE_SIZE);
-
-                let doc = node.docs().create().await.unwrap();
-                let ticket = doc
-                    .share(
-                        ShareMode::Write,
-                        iroh_docs::rpc::AddrInfoOptions::RelayAndAddresses,
-                    )
-                    .await
-                    .unwrap();
-
-                println!("Entry ticket: {}", ticket);
-
-                // load the doc
-                let doc_stream = node.docs().import(ticket.clone()).await.unwrap();
-
-                let config_announcement = Announcement {
-                    tag: Tag::Config,
-                    data: config_bytes,
-                };
-                let _ = doc_stream
-                    .set_bytes(
-                        node.docs().authors().default().await.unwrap(),
-                        CONFIG_KEY,
-                        config_announcement.encode(),
-                    )
-                    .await
-                    .unwrap();
-                doc_stream
-            } else {
-                let ticket = DocTicket::from_str(ticket).unwrap();
-                // load the doc
-                node.docs().import(ticket.clone()).await.unwrap()
+            let config = ServiceConfig {
+                bind_port: *bind_port,
+                rpc_port: *rpc_port,
+                index: *index,
+                is_bootstrap: *is_bootstrap,
+                ticket: if ticket.is_empty() {
+                    None
+                } else {
+                    Some(ticket.clone())
+                },
+                bootstrap_peers: ServiceConfig::build_bootstrap_peers(
+                    bootstrap_pubkey.clone(),
+                    bootstrap_ip.clone(),
+                ),
             };
-
-            // start the state sync loop
-            n0_future::task::spawn(run_state_sync(doc_stream.clone(), node.clone(), tx.clone()));
-            // wait a few secs for the doc to sync
-            thread::sleep(Duration::from_secs(2));
-
-            let config_query = QueryBuilder::<FlatQuery>::default()
-                .key_exact(CONFIG_KEY)
-                .limit(1);
-            // there must be a better way to do this, but I want to ignore author for now...
-            let cfg_entry = doc_stream.get_many(config_query.build()).await.unwrap();
-            let config = cfg_entry.collect::<Vec<_>>().await;
-            let hash = config[0].as_ref().unwrap().content_hash();
-            let content = node.blobs().read_to_bytes(hash).await.unwrap();
-            // try to decode an announcement (config accouncement)
-            let a = Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
-            // send it
-            tx.send(a).unwrap();
-
-            // now load all previously published hints if not bootstrap
-            // for now we can do this really simply by just looking at all indices less than our
-            if !*is_bootstrap {
-                for i in 1..(*index) as u32 {
-                    // get the entry and extract the announcement
-                    let hint_query = QueryBuilder::<FlatQuery>::default()
-                        .key_exact(i.to_string())
-                        .limit(1);
-                    let entry_list = doc_stream.get_many(hint_query.build()).await.unwrap();
-                    let entry = entry_list.collect::<Vec<_>>().await;
-                    let hash = entry[0].as_ref().unwrap().content_hash();
-                    let content = node.blobs().read_to_bytes(hash).await.unwrap();
-                    let announcement =
-                        Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
-                    tx.send(announcement).unwrap();
-                }
-            }
-
-            // make sure everything is synced
-            thread::sleep(Duration::from_secs(1));
-
-            // write your pubkey and hint and index
-            let pk = node.get_pk().await.unwrap();
-            println!("Computed the hint");
-            let mut pk_bytes = Vec::new();
-            pk.serialize_compressed(&mut pk_bytes).unwrap();
-            let hint_announcement = Announcement {
-                tag: Tag::Hint,
-                data: pk_bytes,
-            };
-
-            // send yourself your hint
-            tx.send(hint_announcement.clone()).unwrap();
-            // finally send the hint to peers
-            let _ = doc_stream
-                .set_bytes(
-                    node.docs().authors().default().await.unwrap(),
-                    index.to_string(),
-                    hint_announcement.encode(),
-                )
-                .await
-                .unwrap();
-
-            // setup the RPC server
-            let addr_str = format!("127.0.0.1:{}", rpc_port);
-            let addr = addr_str.parse().unwrap();
-            let world = NodeServer::<E> {
-                state: arc_state_clone,
-            };
-            // the handle to run the RPC server, runs forever
-            n0_future::task::spawn(async move {
-                Server::builder()
-                    .add_service(RpcServer::new(world))
-                    .serve(addr)
-                    .await
-                    .unwrap()
-            });
-
-            println!("> RPC listening on {}", addr);
-
-            loop {}
+            // start the service
+            build_full_service::<E>(config, MAX_COMMITTEE_SIZE).await?;
         }
         None => {
             // do nothing
@@ -401,62 +263,4 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-async fn run_state_sync<C: Pairing>(
-    doc_stream: Doc<FlumeConnector<Response, Request>>,
-    node: Node<C>,
-    tx: flume::Sender<Announcement>,
-) {
-    // to sync the doc with peers we need to read the state of the doc and load it
-    doc_stream.start_sync(vec![]).await.unwrap();
-
-    // subscribe to changes to the doc
-    let mut sub = doc_stream.subscribe().await.unwrap();
-    let blobs = node.blobs().clone();
-
-    while let Ok(event) = sub.try_next().await {
-        if let Some(evt) = event {
-            println!("{:?}", evt);
-            if let LiveEvent::InsertRemote { entry, .. } = evt {
-                let msg_body = blobs.read_to_bytes(entry.content_hash()).await;
-                match msg_body {
-                    Ok(msg) => {
-                        let bytes = msg.to_vec();
-                        let announcement = Announcement::decode(&mut &bytes[..]).unwrap();
-                        tx.send(announcement).unwrap();
-                    }
-                    Err(e) => {
-                        println!("{:?}", e);
-                        // may still be syncing so try again (3x)
-                        for _ in 0..3 {
-                            thread::sleep(Duration::from_secs(1));
-                            let message_content = blobs.read_to_bytes(entry.content_hash()).await;
-                            if let Ok(msg) = message_content {
-                                let bytes = msg.to_vec();
-                                let announcement = Announcement::decode(&mut &bytes[..]).unwrap();
-                                tx.send(announcement).unwrap();
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-fn setup(size: usize) -> Vec<u8> {
-    let config = Config::<E>::rand(size);
-    let mut bytes = Vec::new();
-    config.serialize_compressed(&mut bytes).unwrap();
-    let mut file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open("config.txt")
-        .unwrap();
-    write!(&mut file, "{}", hex::encode(bytes.clone())).unwrap();
-    println!("> saved to disk");
-    bytes
 }
