@@ -47,3 +47,43 @@ cargo run -- decrypt --ciphertext-dir ciphertext.txt --config-dir config.txt
   - [CID -> {CONDITION, OWNER}]
 - separate the 'worker' functionality from encrypt/decrypt
 - add wasm support for multi-language bindings (enc/dec in js for example)# iris
+
+
+### hackathon scope
+
+For participation in the Polkadot 2.0 Hackathon
+
+#### Project Name
+Iris: Intent-Bound Data on Polkadot
+
+Track: Track 1 - dApp Track
+Track: Track 3 - tinkerer track
+
+#### Description
+
+Intent-bound data is revolutionizes access control.
+
+Today, web3 is capable of handling cryptographically provably ownership and identity, yet it lacks clear access control mechanisms. 
+
+The social and economic impact: streaming services require subscriptions to entire databases and curated servcies rather, with actual artists and creators being unable to sell content for fair market prices. Instead, if creators are unable to license content through a studio, they are instead are restricted  to unreliable rewards through platforms like YouTube, Patreon, or even OnlyFans. Here,  their hard work may reward them, but the systems are inherently designed to reward the platform providers: they are, irrefutably and by design, *exractive* technologies. They monetize peoples' willingness to share and communicate with others by turning users into a product. No ads become 5 second ads become unskippable 10 seconds ads become you being a commodity. Services like Spotify, initially a godsend for digital artists, has since become exploitative, with musicians seeing pennies but illegitimate AI artists unduly profiting by pleasing the algorithm. With the latest sora2 launch, this kind of AI-generated rot, slop, or gold will obliterate the profits and revenue of real human creators. While this could initially be seen as easy wins for many -- generate slop and profit -- it ultimately aims to stagnate and diminish creative output. 
+
+Instead of relying on centralized systems to act as arbiters of data access, threshold encryption and zero knowledge cryptography can be leveraged to enable access by mathematical proof, not by permission. Iris uses breakthroughts in threshold cryptography that allow for the network to function in the absence of trusted setup via distributed key generation (DKG) while enabling internet-scale threshold encryption capabilities. Rather than rely on platforms and permissions to gate access to data, Iris is an open protocol where content owners can determine not only who, but *how* their data can be accessed. 
+
+##### Key Features
+- decentralized access control
+- censorship resistance
+- ransomware resistance
+
+The general idea:
+Access control in a smart contract
+
+1. Encrypt data under a policy P -> add to IPFS -> publish in Iris
+2. Satisfy policy (witness) -> build proof -> request data access
+3. verify proof -> provide partial decryption
+4. aggregate and decrypt
+
+e.g. a user flow could be...
+Seller:
+- I wrote a book and want to sell it. If you buy my NFT then you should get access.
+- I want to publish it once and then be able to go offline forever while still reaping benefit when copies are sold.
+Buyer: If I buy your book for $X, then I own it. I do not want to pay more fees to read it - I just pay one fee and am done forever.
