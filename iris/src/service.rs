@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use ark_ec::pairing::Pairing;
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_serialize::CanonicalSerialize;
 use codec::{Decode, Encode};
 use core::net::SocketAddr;
 use core::str::FromStr;
@@ -77,7 +77,6 @@ pub async fn build_full_service<C: Pairing>(
         config.is_bootstrap,
         config.ticket,
         max_committee_size,
-        &tx,
     )
     .await.unwrap();
 
@@ -114,7 +113,6 @@ async fn setup_document_stream<C: Pairing>(
     is_bootstrap: bool,
     ticket: Option<String>,
     max_committee_size: usize,
-    tx: &flume::Sender<Announcement>,
 ) -> Result<Doc<FlumeConnector<Response, Request>>> {
     if is_bootstrap {
         println!("Initial Startup: Generating new config");

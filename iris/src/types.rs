@@ -11,29 +11,29 @@ use silent_threshold_encryption::{
 
 use codec::{Decode, Encode};
 
-pub(crate) const CONFIG_KEY: &str = "config-key";
+pub const CONFIG_KEY: &str = "config-key";
 
-pub(crate) type E = ark_bls12_381::Bls12_381;
-pub(crate) type G2 = <E as Pairing>::G2;
-// pub(crate) type Fr = <E as Pairing>::ScalarField;
-// pub(crate) type UniPoly381<C> = DensePolynomial<<C as Pairing>::ScalarField>;
+/// the curve (bls12-381)
+pub type E = ark_bls12_381::Bls12_381;
+/// the g2 group
+pub type G2 = <E as Pairing>::G2;
 
 #[derive(Clone, Debug, Encode, Decode)]
-pub(crate) enum Tag {
+pub enum Tag {
     Config,
     Hint,
 }
 
 #[derive(Clone, Debug, Encode, Decode)]
-pub(crate) struct Announcement {
-    pub(crate) tag: Tag,
-    pub(crate) data: Vec<u8>,
+pub struct Announcement {
+    pub tag: Tag,
+    pub data: Vec<u8>,
 }
 
 pub struct StartNodeParams<C: Pairing> {
-    pub(crate) iroh_secret_key: IrohSecretKey,
-    pub(crate) secret_key: SecretKey<C>,
-    pub(crate) bind_port: u16,
+    pub iroh_secret_key: IrohSecretKey,
+    pub secret_key: SecretKey<C>,
+    pub bind_port: u16,
 }
 
 /// params to start a new node
@@ -48,7 +48,7 @@ impl<C: Pairing> StartNodeParams<C> {
 }
 
 #[derive(Clone, CanonicalDeserialize, CanonicalSerialize)]
-pub(crate) struct Config<C: Pairing> {
+pub struct Config<C: Pairing> {
     pub crs: CRS<C>,
     pub lag_polys: LagPolys<<C as Pairing>::ScalarField>,
     pub size: usize,

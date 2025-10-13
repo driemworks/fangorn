@@ -1,44 +1,8 @@
 use anyhow::Result;
-use ark_ec::pairing::Pairing;
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::{rand::rngs::OsRng, UniformRand};
-use clap::{Parser, Subcommand};
-use codec::{Decode, Encode};
-use core::net::SocketAddr;
-use core::str::FromStr;
-use futures::prelude::*;
-use iroh::{NodeAddr, PublicKey as IrohPublicKey};
-use iroh_docs::{
-    engine::LiveEvent,
-    rpc::{
-        client::docs::{Doc, ShareMode},
-        proto::{Request, Response},
-    },
-    store::{FlatQuery, QueryBuilder},
-    DocTicket,
-};
-use quic_rpc::transport::flume::FlumeConnector;
-use silent_threshold_encryption::{
-    aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
-    setup::PartialDecryption, types::Ciphertext,
-};
-use std::io::prelude::*;
-use std::sync::Arc;
-use std::{fs, fs::OpenOptions, thread, time::Duration};
-use tokio::sync::Mutex;
-use tonic::transport::Server;
-
-mod cli;
-pub mod node;
-pub mod rpc;
-pub mod service;
-pub mod types;
-
-use cli::{IrisNodeCli as Cli, IrisNodeCommands as Commands};
-use node::*;
-use rpc::server::*;
-use service::{ServiceConfig, build_full_service};
-use types::*;
+use clap::Parser;
+use iris::cli::{IrisNodeCli as Cli, IrisNodeCommands as Commands};
+use iris::service::{ServiceConfig, build_full_service};
+use iris::types::*;
 
 // https://hackmd.io/3968Gr5hSSmef-nptg2GRw
 // https://hackmd.io/xqYBrigYQwyKM_0Sn5Xf4w
