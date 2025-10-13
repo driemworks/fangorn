@@ -51,6 +51,7 @@ members = [
 # zero-prefixed-literal = { level = "allow", priority = 2 }            # 00_1000_000
 
 [workspace.dependencies]
+async-trait = "0.1.89"
 anyhow = "1.0.98"
 iroh = { version = "0.34.1", default-features = false, features = [
     "discovery-local-network",
