@@ -26,6 +26,7 @@ pub struct NodeServer<C: Pairing> {
 #[tonic::async_trait]
 impl<C: Pairing> Rpc for NodeServer<C> {
     /// preprocess with best known hints to get encryption and aggregate keys
+    /// For the hackathon, we can assume this is going to effectively output a static value
     async fn preprocess(
         &self,
         _request: Request<PreprocessRequest>,

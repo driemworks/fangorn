@@ -29,10 +29,10 @@ use tokio::sync::Mutex;
 use tonic::transport::Server;
 
 mod cli;
-mod node;
-mod rpc;
-mod service;
-mod types;
+pub mod node;
+pub mod rpc;
+pub mod service;
+pub mod types;
 
 use cli::{IrisNodeCli as Cli, IrisNodeCommands as Commands};
 use node::*;

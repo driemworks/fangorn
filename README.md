@@ -49,19 +49,17 @@ cargo run -- decrypt --ciphertext-dir ciphertext.txt --config-dir config.txt
 - add wasm support for multi-language bindings (enc/dec in js for example)# iris
 
 
-### hackathon scope
-
-For participation in the Polkadot 2.0 Hackathon
+### Hackathon Scope
 
 #### Project Name
 Iris: Intent-Bound Data on Polkadot
 
-Track: Track 1 - dApp Track
-Track: Track 3 - tinkerer track
+Track: Track 1 - dApp Track?
+Track: Track 3 - tinkerer track?
 
 #### Description
 
-Intent-bound data is revolutionizes access control.
+Intent-bound data is revolutionizes access control for web3.
 
 Today, web3 is capable of handling cryptographically provably ownership and identity, yet it lacks clear access control mechanisms. 
 

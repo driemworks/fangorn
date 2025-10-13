@@ -18,9 +18,11 @@ use quic_rpc::transport::flume::FlumeConnector;
 pub(crate) type BlobsClient = iroh_blobs::rpc::client::blobs::Client<
     FlumeConnector<iroh_blobs::rpc::proto::Response, iroh_blobs::rpc::proto::Request>,
 >;
+
 pub(crate) type DocsClient = iroh_docs::rpc::client::docs::Client<
     FlumeConnector<iroh_docs::rpc::proto::Response, iroh_docs::rpc::proto::Request>,
 >;
+
 pub(crate) type GossipClient = iroh_gossip::rpc::client::Client<
     FlumeConnector<iroh_gossip::rpc::proto::Response, iroh_gossip::rpc::proto::Request>,
 >;
