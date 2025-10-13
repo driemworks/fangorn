@@ -2510,6 +2510,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "469fb0b9cefa57e3ef31275ee7cacb78f2fdca44e4765491884a2b119d4eb130"
 
 [[package]]
+name = "iris"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ark-bls12-381",
+ "ark-ec",
+ "ark-poly",
+ "ark-serialize",
+ "ark-std",
+ "axum 0.8.4",
+ "bytes",
+ "clap",
+ "flume",
+ "futures",
+ "hex",
+ "iroh",
+ "iroh-blobs",
+ "iroh-docs",
+ "iroh-gossip",
+ "n0-future",
+ "parity-scale-codec",
+ "postcard",
+ "prost",
+ "quic-rpc",
+ "rand 0.9.1",
+ "rand_core 0.9.3",
+ "serde",
+ "silent-threshold-encryption",
+ "tarpc",
+ "tokio",
+ "tokio-serde",
+ "tonic",
+ "tonic-build",
+ "tonic-reflection",
+]
+
+[[package]]
 name = "iroh"
 version = "0.34.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5302,43 +5339,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "ste"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ark-bls12-381",
- "ark-ec",
- "ark-poly",
- "ark-serialize",
- "ark-std",
- "axum 0.8.4",
- "bytes",
- "clap",
- "flume",
- "futures",
- "hex",
- "iroh",
- "iroh-blobs",
- "iroh-docs",
- "iroh-gossip",
- "n0-future",
- "parity-scale-codec",
- "postcard",
- "prost",
- "quic-rpc",
- "rand 0.9.1",
- "rand_core 0.9.3",
- "serde",
- "silent-threshold-encryption",
- "tarpc",
- "tokio",
- "tokio-serde",
- "tonic",
- "tonic-build",
- "tonic-reflection",
-]
 
 [[package]]
 name = "strsim"

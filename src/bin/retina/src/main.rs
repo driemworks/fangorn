@@ -7,9 +7,6 @@ use codec::{Decode, Encode};
 use core::net::SocketAddr;
 use core::str::FromStr;
 use futures::prelude::*;
-// use hello::{
-//     world_client::WorldClient, world_server::WorldServer, PartDecRequest, PreprocessRequest,
-// };
 use iroh::{NodeAddr, PublicKey as IrohPublicKey};
 use iroh_docs::{
     engine::LiveEvent,

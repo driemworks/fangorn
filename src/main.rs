@@ -7,9 +7,6 @@ use codec::{Decode, Encode};
 use core::net::SocketAddr;
 use core::str::FromStr;
 use futures::prelude::*;
-// use hello::{
-//     world_client::WorldClient, world_server::WorldServer, PartDecRequest, PreprocessRequest,
-// };
 use iroh::{NodeAddr, PublicKey as IrohPublicKey};
 use iroh_docs::{
     engine::LiveEvent,
@@ -37,7 +34,7 @@ mod rpc;
 mod service;
 mod types;
 
-use cli::{IrisNodeCli as Cli, IrisNodeCommands as Commands}
+use cli::{IrisNodeCli as Cli, IrisNodeCommands as Commands};
 use node::*;
 use rpc::server::*;
 use service::{ServiceConfig, build_full_service};
@@ -47,58 +44,6 @@ use types::*;
 // https://hackmd.io/xqYBrigYQwyKM_0Sn5Xf4w
 // https://eprint.iacr.org/2024/263.pdf
 const MAX_COMMITTEE_SIZE: usize = 2;
-
-#[derive(Parser, Debug)]
-#[command(name = "STE", version = "1.0")]
-struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
-}
-
-// /// Define available subcommands
-// #[derive(Subcommand, Debug)]
-// enum Commands {
-//     Setup {
-//         /// The output directory (relative path)
-//         #[arg(long)]
-//         out_dir: String,
-//     },
-//     Run {
-//         /// Port to bind for incoming connections
-//         #[arg(long)]
-//         bind_port: u16,
-//         /// Port for the RPC interface
-//         #[arg(long)]
-//         rpc_port: u16,
-
-//         #[arg(long)]
-//         index: usize,
-
-//         #[arg(long)]
-//         is_bootstrap: bool,
-
-//         #[arg(long, default_value = "")]
-//         ticket: String,
-
-//         #[arg(long, default_value=None)]
-//         bootstrap_pubkey: Option<String>,
-
-//         #[arg(long, default_value=None)]
-//         bootstrap_ip: Option<String>,
-//     },
-//     Encrypt {
-//         #[arg(long)]
-//         message: String,
-//         #[arg(long)]
-//         config_dir: String,
-//     },
-//     Decrypt {
-//         #[arg(long)]
-//         config_dir: String,
-//         #[arg(long)]
-//         ciphertext_dir: String,
-//     },
-// }
 
 #[tokio::main]
 async fn main() -> Result<()> {

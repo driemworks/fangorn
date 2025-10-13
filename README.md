@@ -87,3 +87,15 @@ Seller:
 - I wrote a book and want to sell it. If you buy my NFT then you should get access.
 - I want to publish it once and then be able to go offline forever while still reaping benefit when copies are sold.
 Buyer: If I buy your book for $X, then I own it. I do not want to pay more fees to read it - I just pay one fee and am done forever.
+
+#### TODOs
+
+- RPC
+- Merkle Verifier - maybe not for hackathon, future work
+- IPFS integration (or polkastorage or something to give more oomph?) - also future work? can use firebase for now if need be, though will try to stretch. 
+
+- [ ] migrate 'retina' cli and test it out
+- [ ] design smart contract, deploy on IDN? Asset Hub? 
+- [ ] Gossipsub for requesting partial decryptions
+- [ ] masking partial decryptions and unmasking 
+- [ ] user interface design
