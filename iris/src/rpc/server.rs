@@ -62,9 +62,10 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         &self,
         request: Request<PartDecRequest>,
     ) -> Result<Response<PartDecResponse>, Status> {
-        //  1. verify proof/signature here
-        //  2. verify NFT ownership
-        // really this should be a merkle proof, but let's keep it simple for now
+
+        // build the statement (acct controlled by PK owns NFT id = X)
+        // build the witness (signature checks out)
+        // then verify it and proceed
 
         let ciphertext_bytes = hex::decode(request.get_ref().ciphertext_hex.clone()).unwrap();
         let ciphertext = Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
