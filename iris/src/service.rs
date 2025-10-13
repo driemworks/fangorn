@@ -314,7 +314,8 @@ async fn spawn_rpc_service<C: Pairing>(
     let addr_str = format!("127.0.0.1:{}", rpc_port);
     let addr = addr_str.parse().unwrap();
     
-    let server = NodeServer::<C> { state };
+    let verifier = Arc::new(crate::verifier::PolkadotVerifier::new());
+    let server = NodeServer::<C> { state, verifier };
     
     n0_future::task::spawn(async move {
         if let Err(e) = Server::builder()

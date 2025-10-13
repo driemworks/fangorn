@@ -4,7 +4,7 @@ use ark_ec::pairing::Pairing;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext};
 
-use crate::types::*;
+use crate::{types::*, verifier::*};
 
 use tonic::{Request, Response, Status};
 
@@ -21,6 +21,7 @@ pub use rpc::{PartDecRequest, PartDecResponse, PreprocessRequest, PreprocessResp
 
 pub struct NodeServer<C: Pairing> {
     pub state: Arc<Mutex<State<C>>>,
+    pub verifier: Arc<dyn Verifier>,
 }
 
 #[tonic::async_trait]
