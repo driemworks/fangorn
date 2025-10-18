@@ -2,6 +2,7 @@ use anyhow::Result;
 
 use ark_ec::pairing::Pairing;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use codec::Encode;
 use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext};
 
 use crate::{types::*, verifier::*};
@@ -62,19 +63,34 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         &self,
         request: Request<PartDecRequest>,
     ) -> Result<Response<PartDecResponse>, Status> {
-
-        // build the statement (acct controlled by PK owns NFT id = X)
         // build the witness (signature checks out)
+        let req_ref = request.get_ref();
+
+        // convert hex encoded inputs to bytes
+        let sig_bytes = hex::decode(req_ref.signature.clone()).unwrap();
+        let pk_bytes = hex::decode(req_ref.public_key.clone()).unwrap();
+
+        let witness_bytes = Witness((sig_bytes, pk_bytes, req_ref.asset_id).encode());
+        // build the statement (acct controlled by PK owns NFT id = X)
+        let statement_bytes = Statement(b"".to_vec());
         // then verify it and proceed
-
-        let ciphertext_bytes = hex::decode(request.get_ref().ciphertext_hex.clone()).unwrap();
-        let ciphertext = Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
-
-        let state = self.state.lock().await;
-        let partial_decryption = state.sk.partial_decryption(&ciphertext);
+        let is_valid = &self
+            .verifier
+            .verify_witness(witness_bytes, statement_bytes)
+            .await
+            .unwrap();
 
         let mut bytes = Vec::new();
-        partial_decryption.serialize_compressed(&mut bytes).unwrap();
+
+        if *is_valid {
+            let ciphertext_bytes = hex::decode(req_ref.ciphertext_hex.clone()).unwrap();
+            let ciphertext = Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
+
+            let state = self.state.lock().await;
+            let partial_decryption = state.sk.partial_decryption(&ciphertext);
+
+            partial_decryption.serialize_compressed(&mut bytes).unwrap();
+        }
 
         Ok(Response::new(PartDecResponse {
             hex_serialized_decryption: hex::encode(bytes),

@@ -4,8 +4,8 @@ use async_trait::async_trait;
 
 // for now, we assume it is only asset ownership
 
-pub struct Witness(Vec<u8>);
-pub struct Statement(Vec<u8>);
+pub struct Witness(pub Vec<u8>);
+pub struct Statement(pub Vec<u8>);
 
 #[async_trait]
 pub trait Verifier: Send + Sync {
@@ -16,6 +16,7 @@ pub trait Verifier: Send + Sync {
 
 // pub type Block = ();
 
+#[derive(Debug)]
 pub enum VerificationError {
     Other,
 }

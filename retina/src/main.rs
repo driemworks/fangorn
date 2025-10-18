@@ -90,6 +90,7 @@ async fn main() -> Result<()> {
             config_dir,
             ciphertext_dir,
         }) => {
+
             // read the config
             let config_hex =
                 fs::read_to_string(config_dir).expect("you must provide a valid config file.");
@@ -102,8 +103,11 @@ async fn main() -> Result<()> {
             let ciphertext =
                 Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
 
-            // get the sys key
+            //  get the sys key (TODO: send this as a cli param instead)
             let sys_key_request = tonic::Request::new(PreprocessRequest {});
+
+            // TODO: generate the witness
+
             // from first node
             let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
             let response = client.preprocess(sys_key_request).await.unwrap();
@@ -117,6 +121,9 @@ async fn main() -> Result<()> {
             // get a partial decryption
             let request = tonic::Request::new(PartDecRequest {
                 ciphertext_hex: ciphertext_hex.clone(),
+                public_key: "".to_string(),
+                signature: "".to_string(),
+                asset_id: 0, 
             });
 
             let mut partial_decryptions = vec![PartialDecryption::zero(); MAX_COMMITTEE_SIZE];
@@ -124,8 +131,6 @@ async fn main() -> Result<()> {
             let response = client.partdec(request).await.unwrap();
             let part_dec_0_hex = response.into_inner().hex_serialized_decryption;
             let part_dec_0_bytes = hex::decode(&part_dec_0_hex[..]).unwrap();
-
-            // panic!("{:?}", part_dec_0_bytes);
 
             let part_dec_0 =
                 PartialDecryption::<E>::deserialize_compressed(&part_dec_0_bytes[..]).unwrap();

@@ -15,14 +15,12 @@ message PreprocessResponse {
 
 message PartDecRequest {
     string ciphertext_hex = 1;
-    // Hex-encoded account (32 bytes)
-    string account = 2;
+    // Hex-encoded public key (32 bytes)
+    string public_key = 2;
     // Hex-encoded signature (64 bytes)
     string signature = 3;
-    // Hex-encoded public key (32 bytes)
-    string public_key = 4;
     // Asset to verify ownership of
-    uint32 asset_id = 5;
+    uint32 asset_id = 4;
 }
 
 message PartDecResponse {
