@@ -1,5 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+/// content identifier
+pub struct CID(pub Vec<u8>);
+
 #[ink::contract]
 mod iris {
 
@@ -7,9 +10,9 @@ mod iris {
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
     #[ink(storage)]
-    pub struct Iris {
+    pub struct IrisPolicyStore {
         /// Stores a single `bool` value on the storage.
-        value: bool,
+        conditions: 
     }
 
     impl Iris {

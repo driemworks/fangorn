@@ -14,13 +14,10 @@ message PreprocessResponse {
 }
 
 message PartDecRequest {
-    string ciphertext_hex = 1;
-    // Hex-encoded public key (32 bytes)
-    string public_key = 2;
-    // Hex-encoded signature (64 bytes)
-    string signature = 3;
-    // Asset to verify ownership of
-    uint32 asset_id = 4;
+  // TODO: remove this
+  string ciphertext_hex = 1;
+  string content_id = 2;
+  string witness_hex = 3;
 }
 
 message PartDecResponse {

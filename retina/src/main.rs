@@ -121,9 +121,8 @@ async fn main() -> Result<()> {
             // get a partial decryption
             let request = tonic::Request::new(PartDecRequest {
                 ciphertext_hex: ciphertext_hex.clone(),
-                public_key: "".to_string(),
-                signature: "".to_string(),
-                asset_id: 0, 
+                content_id: "".to_string(),
+                witness_hex: "".to_string(),
             });
 
             let mut partial_decryptions = vec![PartialDecryption::zero(); MAX_COMMITTEE_SIZE];

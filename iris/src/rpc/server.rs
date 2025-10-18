@@ -67,12 +67,10 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let req_ref = request.get_ref();
 
         // convert hex encoded inputs to bytes
-        let sig_bytes = hex::decode(req_ref.signature.clone()).unwrap();
-        let pk_bytes = hex::decode(req_ref.public_key.clone()).unwrap();
-
-        let witness_bytes = Witness((sig_bytes, pk_bytes, req_ref.asset_id).encode());
+        let witness_bytes = Witness(hex::decode(req_ref.witness_hex.clone()).unwrap());
         // build the statement (acct controlled by PK owns NFT id = X)
         let statement_bytes = Statement(b"".to_vec());
+
         // then verify it and proceed
         let is_valid = &self
             .verifier
@@ -83,6 +81,7 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let mut bytes = Vec::new();
 
         if *is_valid {
+
             let ciphertext_bytes = hex::decode(req_ref.ciphertext_hex.clone()).unwrap();
             let ciphertext = Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
 

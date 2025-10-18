@@ -72,6 +72,11 @@ rand = "0.9.1"
 ark-bls12-381 = "0.5.0"
 rand_core = "0.9.3"
 
+# substrate
+sp-core = "38.1.0"
+sp-weights = "33.1.0"
+subxt = "0.44.0"
+
 postcard = "1.1.1"
 clap = { version = "4.5.37", default-features = false, features = ["derive"] }
 tokio = "1.44.2"
