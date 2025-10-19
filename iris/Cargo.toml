@@ -27,6 +27,8 @@ axum.workspace = true
 tonic.workspace = true
 prost.workspace = true
 serde.workspace = true
+serde_json.workspace = true
+
 tonic-reflection.workspace = true
 ark-serialize.workspace = true
 codec.workspace = true

@@ -46,7 +46,11 @@ impl ServiceConfig {
         if let (Some(pubkey_str), Some(ip_str)) = (pubkey, ip) {
             let pubkey = IrohPublicKey::from_str(&pubkey_str).ok().unwrap();
             let socket: SocketAddr = ip_str.parse().ok().unwrap();
-            Some(vec![NodeAddr::from((pubkey, None, vec![socket].as_slice()))])
+            Some(vec![NodeAddr::from((
+                pubkey,
+                None,
+                vec![socket].as_slice(),
+            ))])
         } else {
             None
         }
@@ -68,7 +72,9 @@ pub async fn build_full_service<C: Pairing>(
     let arc_state_clone = Arc::clone(&arc_state);
 
     let mut node = Node::build(params, rx, arc_state).await;
-    node.try_connect_peers(config.bootstrap_peers).await.unwrap();
+    node.try_connect_peers(config.bootstrap_peers)
+        .await
+        .unwrap();
 
     let doc_stream = setup_document_stream(
         &node,
@@ -76,25 +82,34 @@ pub async fn build_full_service<C: Pairing>(
         config.ticket,
         max_committee_size,
     )
-    .await.unwrap();
+    .await
+    .unwrap();
 
     spawn_state_sync_service(doc_stream.clone(), node.clone(), tx.clone());
 
     // wait for initial sync
     thread::sleep(Duration::from_secs(2));
     // sync: load and distribute config
-    load_and_distribute_config(&node, &doc_stream, &tx).await.unwrap();
+    load_and_distribute_config(&node, &doc_stream, &tx)
+        .await
+        .unwrap();
     // sync: load previous hints (if not bootstrap)
     if !config.is_bootstrap {
-        load_previous_hints(&node, &doc_stream, config.index, &tx).await.unwrap();
+        load_previous_hints(&node, &doc_stream, config.index, &tx)
+            .await
+            .unwrap();
     }
 
     // ensure everything is synced
     thread::sleep(Duration::from_secs(1));
 
     // publish our own hint
-    publish_node_hint(&node, &doc_stream, config.index, &tx).await.unwrap();
-    spawn_rpc_service(arc_state_clone, config.rpc_port).await.unwrap();
+    publish_node_hint(&node, &doc_stream, config.index, &tx)
+        .await
+        .unwrap();
+    spawn_rpc_service(arc_state_clone, config.rpc_port)
+        .await
+        .unwrap();
 
     // 10. Main service loop
     run_service_loop().await
@@ -109,42 +124,46 @@ async fn setup_document_stream<C: Pairing>(
 ) -> Result<Doc<FlumeConnector<Response, Request>>> {
     if is_bootstrap {
         println!("Initial Startup: Generating new config");
-        
+
         // Generate config and create document
         let config_bytes = generate_config(max_committee_size).unwrap();
         let doc = node.docs().create().await.unwrap();
-        
+
         // Create and share ticket
         let ticket = doc
             .share(
                 ShareMode::Write,
                 iroh_docs::rpc::AddrInfoOptions::RelayAndAddresses,
             )
-            .await.unwrap();
-        
+            .await
+            .unwrap();
+
         println!("Entry ticket: {}", ticket);
-        
+
         // Import the document
         let doc_stream = node.docs().import(ticket).await.unwrap();
-        
+
         // Publish config to document
         let config_announcement = Announcement {
             tag: Tag::Config,
             data: config_bytes,
         };
-        
+
         doc_stream
             .set_bytes(
                 node.docs().authors().default().await?,
                 CONFIG_KEY,
                 config_announcement.encode(),
             )
-            .await.unwrap();
-        
+            .await
+            .unwrap();
+
         Ok(doc_stream)
     } else {
         // Join existing network
-        let ticket_str = ticket.ok_or_else(|| anyhow::anyhow!("Ticket required for non-bootstrap nodes")).unwrap();
+        let ticket_str = ticket
+            .ok_or_else(|| anyhow::anyhow!("Ticket required for non-bootstrap nodes"))
+            .unwrap();
         let doc_ticket = DocTicket::from_str(&ticket_str).unwrap();
         let doc_stream = node.docs().import(doc_ticket).await.unwrap();
         Ok(doc_stream)
@@ -160,16 +179,16 @@ async fn load_and_distribute_config<C: Pairing>(
     let config_query = QueryBuilder::<FlatQuery>::default()
         .key_exact(CONFIG_KEY)
         .limit(1);
-    
+
     let cfg_entry = doc_stream.get_many(config_query.build()).await.unwrap();
     let config = cfg_entry.collect::<Vec<_>>().await;
-    
+
     let hash = config[0].as_ref().unwrap().content_hash();
     let content = node.blobs().read_to_bytes(hash).await.unwrap();
     let announcement = Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
-    
+
     tx.send(announcement).unwrap();
-    
+
     Ok(())
 }
 
@@ -181,23 +200,24 @@ async fn load_previous_hints<C: Pairing>(
     tx: &flume::Sender<Announcement>,
 ) -> Result<()> {
     println!("Loading hints from previous nodes...");
-    
+
     for i in 1..(our_index as u32) {
         let hint_query = QueryBuilder::<FlatQuery>::default()
             .key_exact(i.to_string())
             .limit(1);
-        
+
         let entry_list = doc_stream.get_many(hint_query.build()).await.unwrap();
         let entry = entry_list.collect::<Vec<_>>().await;
-        
+
         if let Some(Ok(entry)) = entry.first() {
             let hash = entry.content_hash();
             let content = node.blobs().read_to_bytes(hash).await.unwrap();
-            let announcement = Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
+            let announcement =
+                Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
             tx.send(announcement).unwrap();
         }
     }
-    
+
     println!("Loaded {} previous hints", our_index - 1);
     Ok(())
 }
@@ -209,22 +229,25 @@ async fn publish_node_hint<C: Pairing>(
     index: usize,
     tx: &flume::Sender<Announcement>,
 ) -> Result<()> {
-    let pk = node.get_pk().await
-        .ok_or_else(|| anyhow::anyhow!("Failed to compute public key")).unwrap();
-    
+    let pk = node
+        .get_pk()
+        .await
+        .ok_or_else(|| anyhow::anyhow!("Failed to compute public key"))
+        .unwrap();
+
     println!("Computed the hint");
-    
+
     let mut pk_bytes = Vec::new();
     pk.serialize_compressed(&mut pk_bytes).unwrap();
-    
+
     let hint_announcement = Announcement {
         tag: Tag::Hint,
         data: pk_bytes,
     };
-    
+
     // Send to ourselves first
     tx.send(hint_announcement.clone()).unwrap();
-    
+
     // Publish to network
     doc_stream
         .set_bytes(
@@ -232,8 +255,9 @@ async fn publish_node_hint<C: Pairing>(
             index.to_string(),
             hint_announcement.encode(),
         )
-        .await.unwrap();
-    
+        .await
+        .unwrap();
+
     println!("Published hint to network");
     Ok(())
 }
@@ -259,18 +283,18 @@ async fn run_state_sync<C: Pairing>(
 ) -> Result<()> {
     // Start syncing with peers
     doc_stream.start_sync(vec![]).await.unwrap();
-    
+
     // Subscribe to document changes
     let mut sub = doc_stream.subscribe().await.unwrap();
     let blobs = node.blobs().clone();
-    
+
     while let Ok(Some(evt)) = sub.try_next().await {
         println!("{:?}", evt);
-        
+
         if let LiveEvent::InsertRemote { entry, .. } = evt {
             // Try to read the blob content
             let msg_body = blobs.read_to_bytes(entry.content_hash()).await;
-            
+
             match msg_body {
                 Ok(msg) => {
                     let bytes = msg.to_vec();
@@ -295,21 +319,26 @@ async fn run_state_sync<C: Pairing>(
             }
         }
     }
-    
+
     Ok(())
 }
 
 /// Spawn the RPC server
-async fn spawn_rpc_service<C: Pairing>(
-    state: Arc<Mutex<State<C>>>,
-    rpc_port: u16,
-) -> Result<()> {
+async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u16) -> Result<()> {
     let addr_str = format!("127.0.0.1:{}", rpc_port);
     let addr = addr_str.parse().unwrap();
-    
+
+    // a dummy 'polkadot verifier' for now, always returns true
+    let policy_store = Arc::new(crate::storage::local_policy_store::LocalPolicyStore::new(
+        "/tmp".to_string(),
+    ));
     let verifier = Arc::new(crate::verifier::PolkadotVerifier::new());
-    let server = NodeServer::<C> { state, verifier };
-    
+    let server = NodeServer::<C> {
+        policy_store,
+        state,
+        verifier,
+    };
+
     n0_future::task::spawn(async move {
         if let Err(e) = Server::builder()
             .add_service(RpcServer::new(server))
@@ -319,7 +348,7 @@ async fn spawn_rpc_service<C: Pairing>(
             eprintln!("RPC server error: {:?}", e);
         }
     });
-    
+
     println!("> RPC listening on {}", addr);
     Ok(())
 }
@@ -336,20 +365,21 @@ async fn run_service_loop() -> Result<()> {
 /// Generate the initial config (for bootstrap nodes)
 fn generate_config(size: usize) -> Result<Vec<u8>> {
     use ark_serialize::CanonicalSerialize;
-    
+
     let config = Config::<E>::rand(size);
     let mut bytes = Vec::new();
     config.serialize_compressed(&mut bytes).unwrap();
-    
+
     // Save to disk for debugging
     let mut file = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(true)
-        .open("config.txt").unwrap();
-    
+        .open("config.txt")
+        .unwrap();
+
     write!(&mut file, "{}", hex::encode(&bytes)).unwrap();
     println!("> Saved config to disk");
-    
+
     Ok(bytes)
 }

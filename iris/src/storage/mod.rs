@@ -11,7 +11,7 @@ pub mod local_policy_store;
 // a generic content identifier
 pub struct CID(pub Vec<u8>);
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Policy {
     pub policy_type: PolicyType,
     pub parameters: Vec<u8>,

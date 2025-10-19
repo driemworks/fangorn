@@ -5,7 +5,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use codec::Encode;
 use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext};
 
-use crate::{types::*, verifier::*};
+use crate::{storage::*, types::*, verifier::*};
 
 use tonic::{Request, Response, Status};
 
@@ -21,6 +21,7 @@ pub use rpc::rpc_server::{Rpc, RpcServer};
 pub use rpc::{PartDecRequest, PartDecResponse, PreprocessRequest, PreprocessResponse};
 
 pub struct NodeServer<C: Pairing> {
+    pub policy_store: Arc<dyn PolicyStore>,
     pub state: Arc<Mutex<State<C>>>,
     pub verifier: Arc<dyn Verifier>,
 }
