@@ -58,20 +58,18 @@ pub async fn build_full_service<C: Pairing>(
     config: ServiceConfig,
     max_committee_size: usize,
 ) -> Result<()> {
-    // 1. Setup channels for state synchronization
+    // setup channels for state synchronization
     let (tx, rx) = flume::unbounded();
 
-    // 2. Initialize node parameters and state
+    // initialize node parameters and state
     let params = StartNodeParams::<C>::rand(config.bind_port, config.index);
     let state = State::<C>::empty(params.secret_key.clone());
     let arc_state = Arc::new(Mutex::new(state));
     let arc_state_clone = Arc::clone(&arc_state);
 
-    // 3. Build and start the node
     let mut node = Node::build(params, rx, arc_state).await;
     node.try_connect_peers(config.bootstrap_peers).await.unwrap();
 
-    // 4. Setup document stream (bootstrap vs follower)
     let doc_stream = setup_document_stream(
         &node,
         config.is_bootstrap,
@@ -80,27 +78,22 @@ pub async fn build_full_service<C: Pairing>(
     )
     .await.unwrap();
 
-    // 5. Start background state sync service
     spawn_state_sync_service(doc_stream.clone(), node.clone(), tx.clone());
 
-    // Wait for initial sync
+    // wait for initial sync
     thread::sleep(Duration::from_secs(2));
-
-    // 6. Load and distribute config
+    // sync: load and distribute config
     load_and_distribute_config(&node, &doc_stream, &tx).await.unwrap();
-
-    // 7. Load previous hints (if not bootstrap)
+    // sync: load previous hints (if not bootstrap)
     if !config.is_bootstrap {
         load_previous_hints(&node, &doc_stream, config.index, &tx).await.unwrap();
     }
 
-    // Ensure everything is synced
+    // ensure everything is synced
     thread::sleep(Duration::from_secs(1));
 
-    // 8. Publish our own hint
+    // publish our own hint
     publish_node_hint(&node, &doc_stream, config.index, &tx).await.unwrap();
-
-    // 9. Start RPC server
     spawn_rpc_service(arc_state_clone, config.rpc_port).await.unwrap();
 
     // 10. Main service loop

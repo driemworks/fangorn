@@ -1,6 +1,7 @@
 use super::*;
 use async_trait::async_trait;
 
+/// a policy store that lives in a smart contract
 pub struct ContractPolicyStore {
     // the contract address
     pub address: Vec<u8>,

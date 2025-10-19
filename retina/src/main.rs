@@ -27,15 +27,27 @@ struct Cli {
 /// Define available subcommands
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// encrypt a message under a 'policy' and then 'register' it
     Encrypt {
+        /// the directory of the plaintext
         #[arg(long)]
-        message: String,
+        message_dir: String,
+        /// the directory of the file defining the policy
+        #[arg(long)]
+        policy: String,
+        /// the directory of the kzg params (iris config)
         #[arg(long)]
         config_dir: String,
     },
+    /// request to decrypt a message
+    /// prepare a witness + send to t-of-n node RPCs
+    /// wait for response, then aggr and decrypt
     Decrypt {
+        /// the directory of the kzg params
         #[arg(long)]
         config_dir: String,
+        /// the directory pointing to the ciphertext
+        /// TODO: this will be replaced by CID
         #[arg(long)]
         ciphertext_dir: String,
     },

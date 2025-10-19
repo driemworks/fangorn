@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use serde::{Serialize, Deserialize};
 use crate::verifier::Statement;
 
-pub mod contract_policy_store;
+pub mod local_policy_store;
 
 // a generic content identifier
 pub struct CID(pub Vec<u8>);
