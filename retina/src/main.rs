@@ -3,14 +3,14 @@ use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{rand::rngs::OsRng, UniformRand};
 use clap::{Parser, Subcommand};
+use iris::rpc::server::*;
+use iris::types::*;
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
     setup::PartialDecryption, types::Ciphertext,
 };
 use std::io::prelude::*;
 use std::{fs, fs::OpenOptions};
-use iris::rpc::server::*;
-use iris::types::*;
 
 // https://hackmd.io/3968Gr5hSSmef-nptg2GRw
 // https://hackmd.io/xqYBrigYQwyKM_0Sn5Xf4w
@@ -63,41 +63,49 @@ async fn main() -> Result<()> {
             policy,
             config_dir,
         }) => {
-            // let config_hex =
-            //     fs::read_to_string(config_dir).expect("you must provide a valid config file.");
-            // let config_bytes = hex::decode(&config_hex).unwrap();
-            // let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
+            let config_hex =
+                fs::read_to_string(config_dir).expect("you must provide a valid config file.");
+            let config_bytes = hex::decode(&config_hex).unwrap();
+            let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
 
-            // // get the sys key
-            // let sys_key_request = tonic::Request::new(PreprocessRequest {});
-            // // from first node
-            // let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
-            // let response = client.preprocess(sys_key_request).await.unwrap();
-            // let hex = response.into_inner().hex_serialized_sys_key;
-            // let bytes = hex::decode(&hex[..]).unwrap();
+            // TODO: make this a parameter instead
+            // we don't need to make the rpc request here
 
-            // let sys_keys = SystemPublicKeys::<E>::deserialize_compressed(&bytes[..]).unwrap();
-            // let subset = vec![0, 1];
-            // let (_ak, ek) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
-            // // let mut test = Vec::new();
-            // // ek.serialize_compressed(&mut test).unwrap();
-            // // panic!("{:?}", test);
-            // // t = 1 , n = MAX, k = 1
-            // let t = 1;
-            // let gamma_g2 = G2::rand(&mut OsRng);
-            // let ct = encrypt::<E>(&ek, t, &config.crs, gamma_g2.into(), message.as_bytes()).unwrap();
-            // let mut ciphertext_bytes = Vec::new();
-            // ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
+            // get the sys key
+            let sys_key_request = tonic::Request::new(PreprocessRequest {});
+            // from first node
+            let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
+            let response = client.preprocess(sys_key_request).await.unwrap();
+            let hex = response.into_inner().hex_serialized_sys_key;
+            let bytes = hex::decode(&hex[..]).unwrap();
+            let sys_keys = SystemPublicKeys::<E>::deserialize_compressed(&bytes[..]).unwrap();
+            let subset = vec![0, 1];
+            // we could just read `ek` from the request
+            let (_ak, ek) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
+            // let mut test = Vec::new();
+            // ek.serialize_compressed(&mut test).unwrap();
+            // panic!("{:?}", test);
+            // t = 1 , n = MAX, k = 1
+            let t = 1;
+            let gamma_g2 = G2::rand(&mut OsRng);
 
-            // let mut file = OpenOptions::new()
-            //     .create(true)
-            //     .write(true)
-            //     .truncate(true)
-            //     .open("ciphertext.txt")
-            //     .unwrap();
+            let message = fs::read_to_string(message_dir)
+                .expect("you must provide a path to a plaintext file.");
 
-            // write!(&mut file, "{}", hex::encode(ciphertext_bytes)).unwrap();
-            // println!("> saved ciphertext to disk");
+            let ct =
+                encrypt::<E>(&ek, t, &config.crs, gamma_g2.into(), message.as_bytes()).unwrap();
+            let mut ciphertext_bytes = Vec::new();
+            ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
+
+            let mut file = OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open("ciphertext.txt")
+                .unwrap();
+
+            write!(&mut file, "{}", hex::encode(ciphertext_bytes)).unwrap();
+            println!("> saved ciphertext to disk");
         }
         Some(Commands::Decrypt {
             config_dir,
