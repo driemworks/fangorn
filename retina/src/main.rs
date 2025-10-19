@@ -70,7 +70,6 @@ async fn main() -> Result<()> {
 
             // TODO: make this a parameter instead
             // we don't need to make the rpc request here
-
             // get the sys key
             let sys_key_request = tonic::Request::new(PreprocessRequest {});
             // from first node
@@ -106,6 +105,10 @@ async fn main() -> Result<()> {
 
             write!(&mut file, "{}", hex::encode(ciphertext_bytes)).unwrap();
             println!("> saved ciphertext to disk");
+
+            // then build and register the 'policy' with the configured policy store
+
+
         }
         Some(Commands::Decrypt {
             config_dir,
@@ -126,7 +129,7 @@ async fn main() -> Result<()> {
             //  get the sys key (TODO: send this as a cli param instead)
             let sys_key_request = tonic::Request::new(PreprocessRequest {});
 
-            // TODO: generate the witness
+            // TODO: generate the witness here
 
             // from first node
             let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
@@ -199,4 +202,13 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+
+fn handle_encrypt() {
+
+}
+
+fn handle_decrypt() {
+    
 }
