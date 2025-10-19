@@ -25,7 +25,7 @@ pub enum PolicyType {
 
 impl Policy {
     /// convert a policy to an NP-statement 
-    fn to_statement(&self) -> Statement {
+    pub fn to_statement(&self) -> Statement {
         Statement(self.parameters.clone())
     }
 

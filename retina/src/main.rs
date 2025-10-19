@@ -107,8 +107,6 @@ async fn main() -> Result<()> {
             println!("> saved ciphertext to disk");
 
             // then build and register the 'policy' with the configured policy store
-
-
         }
         Some(Commands::Decrypt {
             config_dir,
@@ -204,11 +202,6 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+fn handle_encrypt() {}
 
-fn handle_encrypt() {
-
-}
-
-fn handle_decrypt() {
-    
-}
+fn handle_decrypt() {}

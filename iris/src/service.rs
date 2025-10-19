@@ -57,6 +57,12 @@ impl ServiceConfig {
     }
 }
 
+// build a service that connects to peers but doesn't sync,
+// does not produce shares, only operates the 'agg and dec' rpc and peer sync
+// this will be used by users to aggregate shares,
+// so we don't need to manually configure peer addresses.
+// pub async fn build_partial_service<C: Pairing>() -> Result<()> { }
+
 /// Build and start the full Iris node service
 pub async fn build_full_service<C: Pairing>(
     config: ServiceConfig,
