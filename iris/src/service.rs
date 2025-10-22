@@ -117,7 +117,7 @@ pub async fn build_full_service<C: Pairing>(
         .await
         .unwrap();
 
-    // 10. Main service loop
+    // main service loop
     run_service_loop().await
 }
 
