@@ -18,7 +18,7 @@ use std::{fs, fs::OpenOptions};
 const MAX_COMMITTEE_SIZE: usize = 2;
 
 #[derive(Parser, Debug)]
-#[command(name = "STE", version = "1.0")]
+#[command(name = "retina", version = "1.0")]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -135,7 +135,7 @@ async fn main() -> Result<()> {
             let hex = response.into_inner().hex_serialized_sys_key;
             let bytes = hex::decode(&hex[..]).unwrap();
             let sys_keys = SystemPublicKeys::<E>::deserialize_compressed(&bytes[..]).unwrap();
-            // hardcoded to be just the first sig
+            
             let subset = vec![0, 1];
             let (ak, _ek) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
 
@@ -154,19 +154,23 @@ async fn main() -> Result<()> {
 
             let part_dec_0 =
                 PartialDecryption::<E>::deserialize_compressed(&part_dec_0_bytes[..]).unwrap();
-            partial_decryptions[0] = part_dec_0;
+            partial_decryptions.push(part_dec_0);
 
             // get a second one
-            // let mut client = WorldClient::connect("http://127.0.0.1:30334")
-            //     .await
-            //     .unwrap();
-            // let request = tonic::Request::new(PartDecRequest { ciphertext_hex });
-            // let response = client.partdec(request).await.unwrap();
-            // let part_dec_1_hex = response.into_inner().hex_serialized_decryption;
-            // let part_dec_1_bytes = hex::decode(&part_dec_1_hex[..]).unwrap();
-            // let part_dec_1 =
-            //     PartialDecryption::<E>::deserialize_compressed(&part_dec_1_bytes[..]).unwrap();
-            // partial_decryptions.p ush(part_dec_1);
+            let mut client = RpcClient::connect("http://127.0.0.1:30334")
+                .await
+                .unwrap();
+            let request = tonic::Request::new(PartDecRequest {
+                ciphertext_hex: ciphertext_hex.clone(),
+                content_id: "".to_string(),
+                witness_hex: "".to_string(),
+            });
+            let response = client.partdec(request).await.unwrap();
+            let part_dec_1_hex = response.into_inner().hex_serialized_decryption;
+            let part_dec_1_bytes = hex::decode(&part_dec_1_hex[..]).unwrap();
+            let part_dec_1 =
+                PartialDecryption::<E>::deserialize_compressed(&part_dec_1_bytes[..]).unwrap();
+            partial_decryptions.push(part_dec_1);
 
             println!("> Collected partial decryptions, attempting to decrypt the ciphertext");
 

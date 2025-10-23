@@ -4,25 +4,32 @@ This is a proof of concept of a distributed network that enables silent threshol
 
 ## Setup Guide
 
+0. Build the binaries
+
+From the root, run `cargo build`.
+
 1. start a bootstrap node
 
-cargo run -- run --bind-port 9944 --rpc-port 30333 --is-bootstrap --index 0
+./target/debug/iris run --bind-port 9944 --rpc-port 30333 --is-bootstrap --index 0
 
 > This will save the randomly generated config to config.txt
 
 2. start a second peer (copy/paste pubkey and ticket)
 
-cargo run -- run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey faffe9c7183032237c8922c06742e43372f2e90cc728852a01ba78221f41f4ed --bootstrap-ip 172.31.149.62:9944 --ticket docaaaca46oxzfmt5nd6hwjo5647lhkpyndhxmuj2ugna4x23e7hkd2otnyah5p72ohdaydei34rermaz2c4qzxf4xjbtdsrbjkag5hqiq7ih2o2ajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagdmdehkkoqayavqpzkpwyju --index 1
+./target/debug/iris run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey 0f74d3db29d2508ca0e1e02ef8f8ad37a1f7412844f25ca5f041a96daf5230d0 --bootstrap-ip 172.31.149.62:9944 --ticket docaaacbojpklyow57sibmdiwkiiqsgjclb3rvmaoofkminalsoxrymzjodaehxju63fhjfbdfa4hqc56hyvu32d52bfbcpexff6ba2s3npkiynaajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagdmdehlnomayavqolfpoyju --index 1
 
-#### Encrypt a message
+#### Using Retina
+##### Encrypt a message 
 
 > hardcoded to save to ciphertext.txt for now
+> you must delete the file if you want to encrypt a new message... needs work
 
-cargo run -- encrypt --message "hello123123" --config-dir config.txt
+./target/debug/retina encrypt --message-dir test.txt --config-dir ./iris/config.txt --policy ""
 
-#### Decrypt a message 
+##### Decrypt a message 
 
-cargo run -- decrypt --ciphertext-dir ciphertext.txt --config-dir config.txt
+cargo run -- decrypt --ciphertext-dir ciphertext.txt --config-dir ./iris/config.txt
+./target/debug/retina decrypt --ciphertext-dir ciphertext.txt --config-dir ./iris/config.txt
 
 ## TODOs
 
