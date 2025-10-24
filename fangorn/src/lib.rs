@@ -5,3 +5,5 @@ pub mod service;
 pub mod types;
 pub mod storage;
 pub mod verifier;
+
+pub mod test;

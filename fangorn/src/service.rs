@@ -57,6 +57,12 @@ impl ServiceConfig {
     }
 }
 
+pub struct ServiceHandle<C: Pairing> {
+    pub node: Node<C>,
+    pub ticket: String,
+    pub doc: Doc<FlumeConnector<Response, Request>>,
+}
+
 // build a service that connects to peers but doesn't sync,
 // does not produce shares, only operates the 'agg and dec' rpc and peer sync
 // this will be used by users to aggregate shares,
@@ -67,7 +73,7 @@ impl ServiceConfig {
 pub async fn build_full_service<C: Pairing>(
     config: ServiceConfig,
     max_committee_size: usize,
-) -> Result<()> {
+) -> Result<ServiceHandle<C>> {
     // setup channels for state synchronization
     let (tx, rx) = flume::unbounded();
 
@@ -78,15 +84,18 @@ pub async fn build_full_service<C: Pairing>(
     let arc_state_clone = Arc::clone(&arc_state);
 
     let mut node = Node::build(params, rx, arc_state).await;
+
+    // panic!("{:?}", node.get_pk().await);
     node.try_connect_peers(config.bootstrap_peers)
         .await
         .unwrap();
 
-    let doc_stream = setup_document_stream(
+    let (doc_stream, ticket) = setup_document_stream(
         &node,
         config.is_bootstrap,
         config.ticket,
         max_committee_size,
+        &tx,
     )
     .await
     .unwrap();
@@ -106,19 +115,25 @@ pub async fn build_full_service<C: Pairing>(
             .unwrap();
     }
 
-    // ensure everything is synced
+    // wait for everything to synced
     thread::sleep(Duration::from_secs(1));
 
     // publish our own hint
     publish_node_hint(&node, &doc_stream, config.index, &tx)
         .await
         .unwrap();
+
     spawn_rpc_service(arc_state_clone, config.rpc_port)
         .await
         .unwrap();
 
-    // main service loop
-    run_service_loop().await
+    // // main service loop
+    // run_service_loop().await
+    Ok(ServiceHandle {
+        node: node.clone(),
+        ticket,
+        doc: doc_stream,
+    })
 }
 
 /// Setup the document stream for state synchronization
@@ -127,7 +142,8 @@ async fn setup_document_stream<C: Pairing>(
     is_bootstrap: bool,
     ticket: Option<String>,
     max_committee_size: usize,
-) -> Result<Doc<FlumeConnector<Response, Request>>> {
+    tx: &flume::Sender<Announcement>,
+) -> Result<(Doc<FlumeConnector<Response, Request>>, String)> {
     if is_bootstrap {
         println!("Initial Startup: Generating new config");
 
@@ -144,16 +160,16 @@ async fn setup_document_stream<C: Pairing>(
             .await
             .unwrap();
 
-        println!("Entry ticket: {}", ticket);
-
         // Import the document
-        let doc_stream = node.docs().import(ticket).await.unwrap();
+        let doc_stream = node.docs().import(ticket.clone()).await.unwrap();
 
         // Publish config to document
         let config_announcement = Announcement {
             tag: Tag::Config,
             data: config_bytes,
         };
+
+        tx.send(config_announcement.clone()).unwrap();
 
         doc_stream
             .set_bytes(
@@ -164,7 +180,8 @@ async fn setup_document_stream<C: Pairing>(
             .await
             .unwrap();
 
-        Ok(doc_stream)
+        let ticket_str = ticket.clone().to_string();
+        Ok((doc_stream, ticket_str))
     } else {
         // Join existing network
         let ticket_str = ticket
@@ -172,7 +189,7 @@ async fn setup_document_stream<C: Pairing>(
             .unwrap();
         let doc_ticket = DocTicket::from_str(&ticket_str).unwrap();
         let doc_stream = node.docs().import(doc_ticket).await.unwrap();
-        Ok(doc_stream)
+        Ok((doc_stream, ticket_str))
     }
 }
 
@@ -207,24 +224,36 @@ async fn load_previous_hints<C: Pairing>(
 ) -> Result<()> {
     println!("Loading hints from previous nodes...");
 
+    let mut count = 0;
     for i in 1..(our_index as u32) {
         let hint_query = QueryBuilder::<FlatQuery>::default()
             .key_exact(i.to_string())
             .limit(1);
-
         let entry_list = doc_stream.get_many(hint_query.build()).await.unwrap();
         let entry = entry_list.collect::<Vec<_>>().await;
+        let hash = entry[0].as_ref().unwrap().content_hash();
+        let content = node.blobs().read_to_bytes(hash).await.unwrap();
+        let announcement =
+            Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
+        tx.send(announcement).unwrap();
+        // let hint_query = QueryBuilder::<FlatQuery>::default()
+        //     .key_exact(i.to_string())
+        //     .limit(1);
 
-        if let Some(Ok(entry)) = entry.first() {
-            let hash = entry.content_hash();
-            let content = node.blobs().read_to_bytes(hash).await.unwrap();
-            let announcement =
-                Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
-            tx.send(announcement).unwrap();
-        }
+        // let entry_list = doc_stream.get_many(hint_query.build()).await.unwrap();
+        // let entry = entry_list.collect::<Vec<_>>().await;
+
+        // if let Some(Ok(entry)) = entry.first() {
+        //     let hash = entry.content_hash();
+        //     let content = node.blobs().read_to_bytes(hash).await.unwrap();
+        //     let announcement =
+        //         Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
+        //     tx.send(announcement).unwrap();
+        count += 1;
+        // }
     }
 
-    println!("Loaded {} previous hints", our_index - 1);
+    println!("Loaded {} previous hints", count);
     Ok(())
 }
 
@@ -235,6 +264,7 @@ async fn publish_node_hint<C: Pairing>(
     index: usize,
     tx: &flume::Sender<Announcement>,
 ) -> Result<()> {
+    // publish our own public key, hint, and index
     let pk = node
         .get_pk()
         .await
@@ -364,7 +394,7 @@ async fn run_service_loop() -> Result<()> {
     println!("> Fangorn node service running...");
 
     loop {
-        tokio::time::sleep(Duration::from_secs(60)).await;
+        // tokio::time::sleep(Duration::from_secs(60)).await;
     }
 }
 

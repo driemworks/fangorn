@@ -16,7 +16,7 @@ From the root, run `cargo build`.
 
 2. start a second peer (copy/paste pubkey and ticket)
 
-./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey d5241466abbd753d3124416dceaf8e96b806fa5f1c4cc816cea432393e09437d --bootstrap-ip 172.31.149.62:9944 --ticket docaaacbb5qoi6exqm2tzh3eqqb6zap2jmppocn3udv3qvbpz7jwvnnzpc7ahksifdgvo6xkpjreraw3tvpr2llqbx2l4oezsawz2sdeoj6bfbx2ajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagdmdehlnomayavqolfpoyju --index 1
+./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey 0554870c4b54a0124700273386eb83e017e5c61df5f86c154f53f4e815f2954d --bootstrap-ip 172.31.149.62:9944 --ticket docaaacabqtmtshjerx3lsvl35qwzhec44ndyttfafay62r6ihzewzuu25maecvjbymjnkkaeshaatthbxlqpqbpzogdx27q3avj5j7j2av6kku2ajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagdmdehkoigayavqolfpoyju --index 1
 
 #### Using Quickbeam
 ##### Encrypt a message 
@@ -24,7 +24,7 @@ From the root, run `cargo build`.
 > hardcoded to save to ciphertext.txt for now
 > you must delete the file if you want to encrypt a new message... needs work
 
-./target/debug/quickbeam encrypt --message-dir test.txt --config-dir config.txt --policy ""
+./target/debug/quickbeam encrypt --message-dir test.txt --config-dir config.txt
 
 ##### Decrypt a message 
 

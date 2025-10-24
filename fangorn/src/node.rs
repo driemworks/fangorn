@@ -31,7 +31,7 @@ pub struct Node<C: Pairing> {
     /// the iroh endpoint
     endpoint: Endpoint,
     /// the iroh router
-    router : Router,
+    pub router : Router,
     /// blobs client
     blobs: BlobsClient,
     /// docs client
