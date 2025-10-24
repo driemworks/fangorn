@@ -4,6 +4,16 @@
 cleanup() {
     echo ""
     echo "Ctrl+C received, cleaning up..."
+    # Kill instances if they're running
+    if [ ! -z "$FIRST_PID" ] && kill -0 "$FIRST_PID" 2>/dev/null; then
+        echo "Stopping first server (PID: $FIRST_PID)..."
+        kill "$FIRST_PID"
+    fi
+    
+    if [ ! -z "$SECOND_PID" ] && kill -0 "$SECOND_PID" 2>/dev/null; then
+        echo "Stopping second server (PID: $SECOND_PID)..."
+        kill "$SECOND_PID"
+    fi
     if [ -f "ticket.txt" ]; then
         rm "ticket.txt"
         echo "ticket.txt deleted"
