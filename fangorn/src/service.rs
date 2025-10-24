@@ -86,7 +86,7 @@ pub async fn build_full_service<C: Pairing>(
     let mut node = Node::build(params, rx, arc_state).await;
 
     // panic!("{:?}", node.get_pk().await);
-    node.try_connect_peers(config.bootstrap_peers)
+    node.try_connect_peers(config.bootstrap_peers.clone())
         .await
         .unwrap();
 
@@ -100,10 +100,11 @@ pub async fn build_full_service<C: Pairing>(
     .await
     .unwrap();
 
-    spawn_state_sync_service(doc_stream.clone(), node.clone(), tx.clone());
+    spawn_state_sync_service(doc_stream.clone(), node.clone(), tx.clone(), config.bootstrap_peers);
 
     // wait for initial sync
-    thread::sleep(Duration::from_secs(2));
+    thread::sleep(Duration::from_secs(3));
+
     // sync: load and distribute config
     load_and_distribute_config(&node, &doc_stream, &tx)
         .await
@@ -162,7 +163,6 @@ async fn setup_document_stream<C: Pairing>(
 
         println!("Entry ticket: {}", ticket);
         let ticket_string = ticket.to_string();
-
 
         let mut file = OpenOptions::new()
             .create(true)
@@ -249,21 +249,7 @@ async fn load_previous_hints<C: Pairing>(
         let announcement =
             Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
         tx.send(announcement).unwrap();
-        // let hint_query = QueryBuilder::<FlatQuery>::default()
-        //     .key_exact(i.to_string())
-        //     .limit(1);
-
-        // let entry_list = doc_stream.get_many(hint_query.build()).await.unwrap();
-        // let entry = entry_list.collect::<Vec<_>>().await;
-
-        // if let Some(Ok(entry)) = entry.first() {
-        //     let hash = entry.content_hash();
-        //     let content = node.blobs().read_to_bytes(hash).await.unwrap();
-        //     let announcement =
-        //         Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
-        //     tx.send(announcement).unwrap();
         count += 1;
-        // }
     }
 
     println!("Loaded {} previous hints", count);
@@ -316,9 +302,10 @@ fn spawn_state_sync_service<C: Pairing>(
     doc_stream: Doc<FlumeConnector<Response, Request>>,
     node: Node<C>,
     tx: flume::Sender<Announcement>,
+    bootstrap_peers: Option<Vec<NodeAddr>>,
 ) {
     n0_future::task::spawn(async move {
-        if let Err(e) = run_state_sync(doc_stream, node, tx).await {
+        if let Err(e) = run_state_sync(doc_stream, node, tx, bootstrap_peers).await {
             eprintln!("State sync error: {:?}", e);
         }
     });
@@ -329,36 +316,37 @@ async fn run_state_sync<C: Pairing>(
     doc_stream: Doc<FlumeConnector<Response, Request>>,
     node: Node<C>,
     tx: flume::Sender<Announcement>,
+    bootstrap_peers: Option<Vec<NodeAddr>>,
 ) -> Result<()> {
-    // Start syncing with peers
-    doc_stream.start_sync(vec![]).await.unwrap();
+    // to sync the doc with peers we need to read the state of the doc and load it
+    // doc_stream.start_sync(vec![]).await.unwrap();
+    let peers = bootstrap_peers.unwrap_or_default();
+    doc_stream.start_sync(peers).await.unwrap();
 
-    // Subscribe to document changes
+    // subscribe to changes to the doc
     let mut sub = doc_stream.subscribe().await.unwrap();
     let blobs = node.blobs().clone();
 
-    while let Ok(Some(evt)) = sub.try_next().await {
-        println!("{:?}", evt);
-
-        if let LiveEvent::InsertRemote { entry, .. } = evt {
-            // Try to read the blob content
-            let msg_body = blobs.read_to_bytes(entry.content_hash()).await;
-
-            match msg_body {
-                Ok(msg) => {
-                    let bytes = msg.to_vec();
-                    if let Ok(announcement) = Announcement::decode(&mut &bytes[..]) {
+    while let Ok(event) = sub.try_next().await {
+        if let Some(evt) = event {
+            println!("{:?}", evt);
+            if let LiveEvent::InsertRemote { entry, .. } = evt {
+                let msg_body = blobs.read_to_bytes(entry.content_hash()).await;
+                match msg_body {
+                    Ok(msg) => {
+                        let bytes = msg.to_vec();
+                        let announcement = Announcement::decode(&mut &bytes[..]).unwrap();
                         tx.send(announcement).unwrap();
                     }
-                }
-                Err(e) => {
-                    eprintln!("Failed to read blob: {:?}", e);
-                    // Retry a few times in case still syncing
-                    for _ in 0..3 {
-                        thread::sleep(Duration::from_secs(1));
-                        if let Ok(msg) = blobs.read_to_bytes(entry.content_hash()).await {
-                            let bytes = msg.to_vec();
-                            if let Ok(announcement) = Announcement::decode(&mut &bytes[..]) {
+                    Err(e) => {
+                        println!("{:?}", e);
+                        // may still be syncing so try again (3x)
+                        for _ in 0..3 {
+                            thread::sleep(Duration::from_secs(1));
+                            let message_content = blobs.read_to_bytes(entry.content_hash()).await;
+                            if let Ok(msg) = message_content {
+                                let bytes = msg.to_vec();
+                                let announcement = Announcement::decode(&mut &bytes[..]).unwrap();
                                 tx.send(announcement).unwrap();
                                 break;
                             }

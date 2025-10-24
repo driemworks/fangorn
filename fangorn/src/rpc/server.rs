@@ -89,7 +89,6 @@ impl<C: Pairing> Rpc for NodeServer<C> {
 
         let mut bytes = Vec::new();
 
-        // if *is_valid {
         let ciphertext_bytes = hex::decode(req_ref.ciphertext_hex.clone()).unwrap();
         let ciphertext = Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
 
@@ -97,7 +96,6 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let partial_decryption = state.sk.partial_decryption(&ciphertext);
 
         partial_decryption.serialize_compressed(&mut bytes).unwrap();
-        // }
 
         Ok(Response::new(PartDecResponse {
             hex_serialized_decryption: hex::encode(bytes),

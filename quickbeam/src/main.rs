@@ -97,39 +97,32 @@ async fn main() -> Result<()> {
             let subset = vec![0, 1];
             let (ak, _ek) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
 
-            // get a partial decryption
-            let request = tonic::Request::new(PartDecRequest {
-                ciphertext_hex: ciphertext_hex.clone(),
-                content_id: "".to_string(),
-                witness_hex: "".to_string(),
-            });
+            let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
 
-            let mut partial_decryptions = vec![PartialDecryption::zero(); MAX_COMMITTEE_SIZE];
+            for i in 0..1 {
+                let node_id = ak.lag_pks[i].id;
+                let rpc_port = match node_id {
+                    0 => 30333,
+                    1 => 30334,
+                    _ => panic!("Unknown node"),
+                };
 
-            let response = client.partdec(request).await.unwrap();
-            let part_dec_0_hex = response.into_inner().hex_serialized_decryption;
-            let part_dec_0_bytes = hex::decode(&part_dec_0_hex[..]).unwrap();
+                let mut client = RpcClient::connect(format!("http://127.0.0.1:{}", rpc_port))
+                    .await
+                    .unwrap();
+                let request = tonic::Request::new(PartDecRequest {
+                    ciphertext_hex: ciphertext_hex.to_string(),
+                    content_id: "".to_string(),
+                    witness_hex: "".to_string(),
+                });
 
-            let part_dec_0 =
-                PartialDecryption::<E>::deserialize_compressed(&part_dec_0_bytes[..]).unwrap();
-            partial_decryptions[0] = part_dec_0;
-
-            // // get a second one
-            // let mut client = RpcClient::connect("http://127.0.0.1:30334")
-            //     .await
-            //     .unwrap();
-            // let request = tonic::Request::new(PartDecRequest {
-            //     ciphertext_hex: ciphertext_hex.clone(),
-            //     content_id: "".to_string(),
-            //     witness_hex: "".to_string(),
-            // });
-            // let response = client.partdec(request).await.unwrap();
-            // let part_dec_1_hex = response.into_inner().hex_serialized_decryption;
-            // let part_dec_1_bytes = hex::decode(&part_dec_1_hex[..]).unwrap();
-            // let part_dec_1 =
-            //     PartialDecryption::<E>::deserialize_compressed(&part_dec_1_bytes[..]).unwrap();
-            // partial_decryptions.push(part_dec_1);
-
+                let response = client.partdec(request).await.unwrap();
+                let part_dec_hex = response.into_inner().hex_serialized_decryption;
+                let part_dec_bytes = hex::decode(&part_dec_hex).unwrap();
+                partial_decryptions[i] =
+                    PartialDecryption::deserialize_compressed(&part_dec_bytes[..]).unwrap();
+            }
+          
             println!("> Collected partial decryptions, attempting to decrypt the ciphertext");
 
             let mut selector = vec![false; MAX_COMMITTEE_SIZE];
