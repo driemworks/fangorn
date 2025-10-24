@@ -34,7 +34,7 @@ impl Verifier for PolkadotVerifier {
     async fn get_latest_finalized_block(&self) -> Result<Vec<u8>, VerificationError> {
         Ok(vec![])
     }
-    async fn verify_witness(&self, w:  Witness, s: Statement) -> Result<bool, VerificationError> {
+    async fn verify_witness(&self, _w:  Witness, _s: Statement) -> Result<bool, VerificationError> {
         Ok(true)
     }
 }

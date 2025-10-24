@@ -390,15 +390,6 @@ async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u1
     Ok(())
 }
 
-/// Run the main service loop
-async fn run_service_loop() -> Result<()> {
-    println!("> Fangorn node service running...");
-
-    loop {
-        // tokio::time::sleep(Duration::from_secs(60)).await;
-    }
-}
-
 /// Generate the initial config (for bootstrap nodes)
 fn generate_config(size: usize) -> Result<Vec<u8>> {
     use ark_serialize::CanonicalSerialize;

@@ -1,6 +1,4 @@
 // use crate::cli::{FangornNodeCli as Cli, FangornNodeCommands as Commands};
-use crate::service::{ServiceConfig, build_full_service};
-use crate::types::*;
 
 #[tokio::test]
 async fn basic_encrypt_decrypt_works() {

@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 
 use quic_rpc::transport::flume::FlumeConnector;
 
-use std::{fs::OpenOptions, io::Write, thread, time::Duration};
+use std::{fs::OpenOptions, io::Write};
 
 pub(crate) type BlobsClient = iroh_blobs::rpc::client::blobs::Client<
     FlumeConnector<iroh_blobs::rpc::proto::Response, iroh_blobs::rpc::proto::Request>,
@@ -23,9 +23,9 @@ pub(crate) type BlobsClient = iroh_blobs::rpc::client::blobs::Client<
 pub(crate) type DocsClient = iroh_docs::rpc::client::docs::Client<
     FlumeConnector<iroh_docs::rpc::proto::Response, iroh_docs::rpc::proto::Request>,
 >;
-pub(crate) type GossipClient = iroh_gossip::rpc::client::Client<
-    FlumeConnector<iroh_gossip::rpc::proto::Response, iroh_gossip::rpc::proto::Request>,
->;
+// pub(crate) type GossipClient = iroh_gossip::rpc::client::Client<
+//     FlumeConnector<iroh_gossip::rpc::proto::Response, iroh_gossip::rpc::proto::Request>,
+// >;
 
 /// A node...
 #[derive(Clone)]
@@ -38,8 +38,8 @@ pub struct Node<C: Pairing> {
     blobs: BlobsClient,
     /// docs client
     docs: DocsClient,
-    /// the iroh-gossip protocol
-    gossip: GossipClient,
+    // / the iroh-gossip protocol
+    // gossip: GossipClient,
     // / the secret key the node uses to sign messages
     // iroh_secret_key: IrohSecretKey,
     // / the bls secret key
@@ -113,7 +113,7 @@ impl<C: Pairing> Node<C> {
             router,
             blobs: blobs.client().clone(),
             docs: docs.client().clone(),
-            gossip: gossip.client().clone(),
+            // gossip: gossip.client().clone(),
             state,
         }
     }

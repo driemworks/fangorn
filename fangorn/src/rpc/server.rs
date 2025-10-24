@@ -2,9 +2,8 @@ use anyhow::Result;
 
 use ark_ec::pairing::Pairing;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use codec::Encode;
 use silent_threshold_encryption::{
-    aggregate::SystemPublicKeys, decryption::agg_dec, setup::PartialDecryption, types::Ciphertext,
+    aggregate::SystemPublicKeys, types::Ciphertext,
 };
 
 use crate::{storage::*, types::*, verifier::*};
@@ -105,149 +104,150 @@ impl<C: Pairing> Rpc for NodeServer<C> {
     // attempt aggregate decryption keys from peers
     async fn aggregate_decrypt(
         &self,
-        request: Request<AggregateDecryptRequest>,
+        _request: Request<AggregateDecryptRequest>,
     ) -> Result<Response<AggregateDecryptResponse>, Status> {
-        let req = request.get_ref();
+        // let req = request.get_ref();
 
-        // 1. Verify witness (this node does it)
-        let cid = CID(hex::decode(&req.content_id).unwrap());
-        let witness = Witness(hex::decode(&req.witness_hex).unwrap());
+        // // 1. Verify witness (this node does it)
+        // let cid = CID(hex::decode(&req.content_id).unwrap());
+        // let witness = Witness(hex::decode(&req.witness_hex).unwrap());
 
-        let policy = self.policy_store.get_policy(&cid).await.unwrap().unwrap();
-        // .map_err(|e| Status::internal(format!("Failed to fetch policy: {}", e)))?
-        // .ok_or_else(|| Status::not_found("No policy for CID"))?;
+        // let policy = self.policy_store.get_policy(&cid).await.unwrap().unwrap();
+        // // .map_err(|e| Status::internal(format!("Failed to fetch policy: {}", e)))?
+        // // .ok_or_else(|| Status::not_found("No policy for CID"))?;
 
-        // // we probably don't need to do this...
-        // let statement = policy.to_statement();
-        // self.verifier.verify_witness(&witness, &statement).await
-        //     .map_err(|e| Status::permission_denied(format!("Verification failed: {}", e)))?;
+        // // // we probably don't need to do this...
+        // // let statement = policy.to_statement();
+        // // self.verifier.verify_witness(&witness, &statement).await
+        // //     .map_err(|e| Status::permission_denied(format!("Verification failed: {}", e)))?;
 
-        // println!("Witness verified by coordinator");
+        // // println!("Witness verified by coordinator");
 
-        // 2. Get list of peer nodes [hardcoded for now]
-        let peer_endpoints = self.get_peer_endpoints().await?;
+        // // 2. Get list of peer nodes [hardcoded for now]
+        // let peer_endpoints = self.get_peer_endpoints().await?;
 
-        println!("📡 Fanning out to {} peers", peer_endpoints.len());
+        // println!("📡 Fanning out to {} peers", peer_endpoints.len());
 
-        // fan out to peers for partial decryptions
-        let mut handles = vec![];
-        for endpoint in peer_endpoints {
-            let ciphertext_hex = req.ciphertext_hex.clone();
-            let content_id = req.content_id.clone();
-            let witness_hex = req.witness_hex.clone();
+        // // fan out to peers for partial decryptions
+        // let mut handles = vec![];
+        // for endpoint in peer_endpoints {
+        //     let ciphertext_hex = req.ciphertext_hex.clone();
+        //     let content_id = req.content_id.clone();
+        //     let witness_hex = req.witness_hex.clone();
 
-            let handle = tokio::spawn(async move {
-                // request partial decryptions from each peer
-                let mut client = RpcClient::connect(endpoint).await?;
-                let response = client
-                    .partdec(PartDecRequest {
-                        ciphertext_hex,
-                        content_id,
-                        witness_hex,
-                    })
-                    .await?;
-                Ok::<_, anyhow::Error>(response.into_inner().hex_serialized_decryption)
-            });
+        //     let handle = tokio::spawn(async move {
+        //         // request partial decryptions from each peer
+        //         let mut client = RpcClient::connect(endpoint).await?;
+        //         let response = client
+        //             .partdec(PartDecRequest {
+        //                 ciphertext_hex,
+        //                 content_id,
+        //                 witness_hex,
+        //             })
+        //             .await?;
+        //         Ok::<_, anyhow::Error>(response.into_inner().hex_serialized_decryption)
+        //     });
 
-            handles.push(handle);
-        }
+        //     handles.push(handle);
+        // }
 
-        // collect responses
-        let mut partial_decryptions = vec![];
-        for handle in handles {
-            match handle.await {
-                Ok(Ok(part_dec_hex)) => {
-                    let bytes = hex::decode(&part_dec_hex).unwrap();
-                    let part_dec =
-                        PartialDecryption::<C>::deserialize_compressed(&bytes[..]).unwrap();
-                    partial_decryptions.push(part_dec);
-                }
-                _ => continue, // Skip failed nodes
-            }
+        // // collect responses
+        // let mut partial_decryptions = vec![];
+        // for handle in handles {
+        //     match handle.await {
+        //         Ok(Ok(part_dec_hex)) => {
+        //             let bytes = hex::decode(&part_dec_hex).unwrap();
+        //             let part_dec =
+        //                 PartialDecryption::<C>::deserialize_compressed(&bytes[..]).unwrap();
+        //             partial_decryptions.push(part_dec);
+        //         }
+        //         _ => continue, // Skip failed nodes
+        //     }
 
-            // Stop once we have threshold shares
-            if partial_decryptions.len() >= req.threshold as usize {
-                break;
-            }
-        }
+        //     // Stop once we have threshold shares
+        //     if partial_decryptions.len() >= req.threshold as usize {
+        //         break;
+        //     }
+        // }
 
-        if partial_decryptions.len() < req.threshold as usize {
-            return Err(Status::internal("Failed to collect enough shares"));
-        }
+        // if partial_decryptions.len() < req.threshold as usize {
+        //     return Err(Status::internal("Failed to collect enough shares"));
+        // }
 
-        println!("Collected {} shares", partial_decryptions.len());
+        // println!("Collected {} shares", partial_decryptions.len());
 
-        // aggregate and decrypt
-        let plaintext = self
-            .aggregate_and_decrypt(
-                &req.ciphertext_hex,
-                &partial_decryptions,
-                req.threshold as usize,
-            )
-            .await?;
+        // // aggregate and decrypt
+        // let plaintext = self
+        //     .aggregate_and_decrypt(
+        //         &req.ciphertext_hex,
+        //         &partial_decryptions,
+        //         req.threshold as usize,
+        //     )
+        //     .await?;
 
+        let bytes = Vec::new();
         Ok(Response::new(AggregateDecryptResponse {
-            plaintext_hex: hex::encode(plaintext),
+            plaintext_hex: hex::encode(bytes),
         }))
     }
 }
 
-impl<C: Pairing> NodeServer<C> {
-    /// Get endpoints of other nodes in the network
-    async fn get_peer_endpoints(&self) -> Result<Vec<String>, Status> {
-        // For now, hardcode or read from config
-        // Later: discover via iroh network
-        Ok(vec![
-            "http://127.0.0.1:30333".to_string(),
-            "http://127.0.0.1:30334".to_string(),
-        ])
-    }
+// impl<C: Pairing> NodeServer<C> {
+//     /// Get endpoints of other nodes in the network
+//     async fn get_peer_endpoints(&self) -> Result<Vec<String>, Status> {
+//         // For now, hardcode or read from config
+//         // Later: discover via iroh network
+//         Ok(vec![
+//             "http://127.0.0.1:30333".to_string(),
+//             "http://127.0.0.1:30334".to_string(),
+//         ])
+//     }
 
-    async fn aggregate_and_decrypt(
-        &self,
-        ciphertext_hex: &str,
-        partial_decryptions: &[PartialDecryption<C>],
-        threshold: usize,
-    ) -> Result<Vec<u8>, Status> {
-        // Load config
-        let state = self.state.lock().await;
-        let config = state
-            .config
-            .as_ref()
-            .ok_or_else(|| Status::internal("No config"))?;
+//     async fn aggregate_and_decrypt(
+//         &self,
+//         ciphertext_hex: &str,
+//         partial_decryptions: &[PartialDecryption<C>],
+//         threshold: usize,
+//     ) -> Result<Vec<u8>, Status> {
+//         // Load config
+//         let state = self.state.lock().await;
+//         let config = state
+//             .config
+//             .as_ref()
+//             .ok_or_else(|| Status::internal("No config"))?;
 
-        // Deserialize ciphertext
-        let ciphertext_bytes = hex::decode(ciphertext_hex)
-            .map_err(|_| Status::invalid_argument("Invalid ciphertext"))?;
-        let ciphertext = Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..])
-            .map_err(|_| Status::invalid_argument("Invalid ciphertext"))?;
+//         // Deserialize ciphertext
+//         let ciphertext_bytes = hex::decode(ciphertext_hex)
+//             .map_err(|_| Status::invalid_argument("Invalid ciphertext"))?;
+//         let ciphertext = Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..])
+//             .map_err(|_| Status::invalid_argument("Invalid ciphertext"))?;
 
-        // Build selector
-        let mut selector = vec![false; partial_decryptions.len()];
-        for i in 0..threshold {
-            selector[i] = true;
-        }
+//         // Build selector
+//         let mut selector = vec![false; partial_decryptions.len()];
+//         for i in 0..threshold {
+//             selector[i] = true;
+//         }
 
-        // Get aggregate key
-        let hints = state
-            .hints
-            .as_ref()
-            .ok_or_else(|| Status::internal("No hints"))?;
-        let subset: Vec<usize> = (0..threshold).collect();
-        let sys_keys =
-            SystemPublicKeys::<C>::new(hints.clone(), &config.crs, &config.lag_polys, 1).unwrap();
-        let (ak, _) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
+//         // Get aggregate key
+//         let hints = state
+//             .hints
+//             .as_ref()
+//             .ok_or_else(|| Status::internal("No hints"))?;
+//         let subset: Vec<usize> = (0..threshold).collect();
+//         let sys_keys =
+//             SystemPublicKeys::<C>::new(hints.clone(), &config.crs, &config.lag_polys, 1).unwrap();
+//         let (ak, _) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
 
-        // Decrypt
-        let plaintext = agg_dec(
-            partial_decryptions,
-            &ciphertext,
-            &selector,
-            &ak,
-            &config.crs,
-        )
-        .map_err(|e| Status::internal(format!("Decryption failed: {}", e)))?;
+//         // Decrypt
+//         let plaintext = agg_dec(
+//             partial_decryptions,
+//             &ciphertext,
+//             &selector,
+//             &ak,
+//             &config.crs,
+//         )
+//         .map_err(|e| Status::internal(format!("Decryption failed: {}", e)))?;
 
-        Ok(plaintext)
-    }
-}
+//         Ok(plaintext)
+//     }
+// }

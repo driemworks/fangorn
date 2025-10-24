@@ -6,8 +6,7 @@ use clap::{Parser, Subcommand};
 use fangorn::rpc::server::*;
 use fangorn::types::*;
 use silent_threshold_encryption::{
-    aggregate::{EncryptionKey, SystemPublicKeys},
-    crs::CRS,
+    aggregate::SystemPublicKeys,
     decryption::agg_dec,
     encryption::encrypt,
     setup::PartialDecryption,
@@ -63,91 +62,92 @@ async fn main() -> Result<()> {
             message_dir,
             config_dir,
         }) => {
-            handle_encrypt(message_dir, config_dir).await;
+            handle_encrypt(config_dir, message_dir).await;
         }
         Some(Commands::Decrypt {
             config_dir,
             ciphertext_dir,
         }) => {
-            // read the config
-            let config_hex =
-                fs::read_to_string(config_dir).expect("you must provide a valid config file.");
-            let config_bytes = hex::decode(&config_hex).unwrap();
-            let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
-            // get the ciphertext
-            let ciphertext_hex =
-                fs::read_to_string(ciphertext_dir).expect("you must provide a ciphertext.");
-            let ciphertext_bytes = hex::decode(ciphertext_hex.clone()).unwrap();
+            handle_decrypt(config_dir, ciphertext_dir).await;
+            // // read the config
+            // let config_hex =
+            //     fs::read_to_string(config_dir).expect("you must provide a valid config file.");
+            // let config_bytes = hex::decode(&config_hex).unwrap();
+            // let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
+            // // get the ciphertext
+            // let ciphertext_hex =
+            //     fs::read_to_string(ciphertext_dir).expect("you must provide a ciphertext.");
+            // let ciphertext_bytes = hex::decode(ciphertext_hex.clone()).unwrap();
 
-            let ciphertext =
-                Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
+            // let ciphertext =
+            //     Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
 
-            //  get the sys key (TODO: send this as a cli param instead)
-            let sys_key_request = tonic::Request::new(PreprocessRequest {});
+            // //  get the sys key (TODO: send this as a cli param instead)
+            // let sys_key_request = tonic::Request::new(PreprocessRequest {});
 
-            // TODO: generate the witness here
+            // // TODO: generate the witness here
 
-            // from first node
-            let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
-            let response = client.preprocess(sys_key_request).await.unwrap();
-            let hex = response.into_inner().hex_serialized_sys_key;
-            let bytes = hex::decode(&hex[..]).unwrap();
-            let sys_keys = SystemPublicKeys::<E>::deserialize_compressed(&bytes[..]).unwrap();
+            // // from first node
+            // let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
+            // let response = client.preprocess(sys_key_request).await.unwrap();
+            // let hex = response.into_inner().hex_serialized_sys_key;
+            // let bytes = hex::decode(&hex[..]).unwrap();
+            // let sys_keys = SystemPublicKeys::<E>::deserialize_compressed(&bytes[..]).unwrap();
 
-            let subset = vec![0, 1];
-            let (ak, _ek) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
+            // let subset = vec![0, 1];
+            // let (ak, _ek) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
 
-            let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
+            // let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
 
-            for i in 0..1 {
-                let node_id = ak.lag_pks[i].id;
-                let rpc_port = match node_id {
-                    0 => 30333,
-                    1 => 30334,
-                    _ => panic!("Unknown node"),
-                };
+            // for i in 0..1 {
+            //     let node_id = ak.lag_pks[i].id;
+            //     let rpc_port = match node_id {
+            //         0 => 30333,
+            //         1 => 30334,
+            //         _ => panic!("Unknown node"),
+            //     };
 
-                let mut client = RpcClient::connect(format!("http://127.0.0.1:{}", rpc_port))
-                    .await
-                    .unwrap();
-                let request = tonic::Request::new(PartDecRequest {
-                    ciphertext_hex: ciphertext_hex.to_string(),
-                    content_id: "".to_string(),
-                    witness_hex: "".to_string(),
-                });
+            //     let mut client = RpcClient::connect(format!("http://127.0.0.1:{}", rpc_port))
+            //         .await
+            //         .unwrap();
+            //     let request = tonic::Request::new(PartDecRequest {
+            //         ciphertext_hex: ciphertext_hex.to_string(),
+            //         content_id: "".to_string(),
+            //         witness_hex: "".to_string(),
+            //     });
 
-                let response = client.partdec(request).await.unwrap();
-                let part_dec_hex = response.into_inner().hex_serialized_decryption;
-                let part_dec_bytes = hex::decode(&part_dec_hex).unwrap();
-                partial_decryptions[i] =
-                    PartialDecryption::deserialize_compressed(&part_dec_bytes[..]).unwrap();
-            }
-          
-            println!("> Collected partial decryptions, attempting to decrypt the ciphertext");
+            //     let response = client.partdec(request).await.unwrap();
+            //     let part_dec_hex = response.into_inner().hex_serialized_decryption;
+            //     let part_dec_bytes = hex::decode(&part_dec_hex).unwrap();
+            //     partial_decryptions[i] =
+            //         PartialDecryption::deserialize_compressed(&part_dec_bytes[..]).unwrap();
+            // }
 
-            let mut selector = vec![false; MAX_COMMITTEE_SIZE];
-            selector[0] = true;
-            // if k = 2 => selector[1] =  true; too
+            // println!("> Collected partial decryptions, attempting to decrypt the ciphertext");
 
-            let mut pds = Vec::new();
-            partial_decryptions.iter().for_each(|pd| {
-                let mut test = Vec::new();
-                pd.serialize_compressed(&mut test).unwrap();
-                pds.push(test);
-            });
+            // let mut selector = vec![false; MAX_COMMITTEE_SIZE];
+            // selector[0] = true;
+            // // if k = 2 => selector[1] =  true; too
 
-            let mut ct_bytes = Vec::new();
-            ciphertext.serialize_compressed(&mut ct_bytes).unwrap();
+            // let mut pds = Vec::new();
+            // partial_decryptions.iter().for_each(|pd| {
+            //     let mut test = Vec::new();
+            //     pd.serialize_compressed(&mut test).unwrap();
+            //     pds.push(test);
+            // });
 
-            let out = agg_dec(
-                &partial_decryptions,
-                &ciphertext,
-                &selector,
-                &ak,
-                &config.crs,
-            )
-            .unwrap();
-            println!("OUT: {:?}", std::str::from_utf8(&out).unwrap());
+            // let mut ct_bytes = Vec::new();
+            // ciphertext.serialize_compressed(&mut ct_bytes).unwrap();
+
+            // let out = agg_dec(
+            //     &partial_decryptions,
+            //     &ciphertext,
+            //     &selector,
+            //     &ak,
+            //     &config.crs,
+            // )
+            // .unwrap();
+            // println!("OUT: {:?}", std::str::from_utf8(&out).unwrap());
         }
         None => {
             // do nothing
@@ -157,7 +157,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn handle_encrypt(message_dir: &String, config_dir: &String) {
+async fn handle_encrypt(config_dir: &String, message_dir: &String) {
     let config_hex = fs::read_to_string(config_dir).expect("you must provide a valid config file.");
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
@@ -198,20 +198,82 @@ async fn handle_encrypt(message_dir: &String, config_dir: &String) {
     println!("> saved ciphertext to disk");
 }
 
-// async fn do_encrypt(message: &[u8], encryption_key: EncryptionKey<E>, crs: CRS<E>, threshold: u8) -> Ciphertext<E> {
-//     let gamma_g2 = G2::rand(&mut OsRng);
-//     let ct = encrypt::<E>(
-//         &encryption_key,
-//         threshold,
-//         &config.crs,
-//         gamma_g2.into(),
-//         message.as_bytes(),
-//     )
-//     .unwrap();
+async fn handle_decrypt(config_dir: &String, ciphertext_dir: &String) {
+    // read the config
+    let config_hex = fs::read_to_string(config_dir).expect("you must provide a valid config file.");
+    let config_bytes = hex::decode(&config_hex).unwrap();
+    let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
+    // get the ciphertext
+    let ciphertext_hex =
+        fs::read_to_string(ciphertext_dir).expect("you must provide a ciphertext.");
+    let ciphertext_bytes = hex::decode(ciphertext_hex.clone()).unwrap();
 
-//     let mut ciphertext_bytes = Vec::new();
-//     ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
-//     ciphertext_bytes
-// }
+    let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
 
-fn handle_decrypt() {}
+    //  get the sys key (TODO: send this as a cli param instead)
+    let sys_key_request = tonic::Request::new(PreprocessRequest {});
+
+    // TODO: generate the witness here
+
+    // from first node
+    let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
+    let response = client.preprocess(sys_key_request).await.unwrap();
+    let hex = response.into_inner().hex_serialized_sys_key;
+    let bytes = hex::decode(&hex[..]).unwrap();
+    let sys_keys = SystemPublicKeys::<E>::deserialize_compressed(&bytes[..]).unwrap();
+
+    let subset = vec![0, 1];
+    let (ak, _ek) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
+
+    let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
+
+    for i in 0..1 {
+        let node_id = ak.lag_pks[i].id;
+        let rpc_port = match node_id {
+            0 => 30333,
+            1 => 30334,
+            _ => panic!("Unknown node"),
+        };
+
+        let mut client = RpcClient::connect(format!("http://127.0.0.1:{}", rpc_port))
+            .await
+            .unwrap();
+        let request = tonic::Request::new(PartDecRequest {
+            ciphertext_hex: ciphertext_hex.to_string(),
+            content_id: "".to_string(),
+            witness_hex: "".to_string(),
+        });
+
+        let response = client.partdec(request).await.unwrap();
+        let part_dec_hex = response.into_inner().hex_serialized_decryption;
+        let part_dec_bytes = hex::decode(&part_dec_hex).unwrap();
+        partial_decryptions[i] =
+            PartialDecryption::deserialize_compressed(&part_dec_bytes[..]).unwrap();
+    }
+
+    println!("> Collected partial decryptions, attempting to decrypt the ciphertext");
+
+    let mut selector = vec![false; MAX_COMMITTEE_SIZE];
+    selector[0] = true;
+    // if k = 2 => selector[1] =  true; too
+
+    let mut pds = Vec::new();
+    partial_decryptions.iter().for_each(|pd| {
+        let mut test = Vec::new();
+        pd.serialize_compressed(&mut test).unwrap();
+        pds.push(test);
+    });
+
+    let mut ct_bytes = Vec::new();
+    ciphertext.serialize_compressed(&mut ct_bytes).unwrap();
+
+    let out = agg_dec(
+        &partial_decryptions,
+        &ciphertext,
+        &selector,
+        &ak,
+        &config.crs,
+    )
+    .unwrap();
+    println!("OUT: {:?}", std::str::from_utf8(&out).unwrap());
+}
