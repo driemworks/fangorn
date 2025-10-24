@@ -5242,6 +5242,7 @@ dependencies = [
 [[package]]
 name = "silent-threshold-encryption"
 version = "0.1.0"
+source = "git+https://github.com/driemworks/silent-threshold-encryption.git?branch=dev#ff226d2a6058ac5a01a9a7ddd6ce6f73777d491e"
 dependencies = [
  "aes-gcm",
  "ark-bls12-381",
