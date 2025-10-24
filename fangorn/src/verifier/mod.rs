@@ -1,4 +1,4 @@
-//! verifiers for iris
+//! verifiers for fangorn
 use anyhow::Result;
 use async_trait::async_trait;
 

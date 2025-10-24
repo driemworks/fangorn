@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
-use iris::cli::{IrisNodeCli as Cli, IrisNodeCommands as Commands};
-use iris::service::{ServiceConfig, build_full_service};
-use iris::types::*;
+use fangorn::cli::{FangornNodeCli as Cli, FangornNodeCommands as Commands};
+use fangorn::service::{ServiceConfig, build_full_service};
+use fangorn::types::*;
 
 // https://hackmd.io/3968Gr5hSSmef-nptg2GRw
 // https://hackmd.io/xqYBrigYQwyKM_0Sn5Xf4w

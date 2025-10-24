@@ -1,16 +1,16 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
-#[command(name = "iris", version = "1.0")]
-pub struct IrisNodeCli {
+#[command(name = "fangorn", version = "1.0")]
+pub struct FangornNodeCli {
     #[command(subcommand)]
-    pub command: Option<IrisNodeCommands>,
+    pub command: Option<FangornNodeCommands>,
 }
 
 
 /// Define available subcommands
 #[derive(Subcommand, Debug)]
-pub enum IrisNodeCommands {
+pub enum FangornNodeCommands {
     Setup {
         /// The output directory (relative path)
         #[arg(long)]

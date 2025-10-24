@@ -97,7 +97,7 @@ mod tests {
     
     #[tokio::test]
     async fn test_local_policy_store() {
-        let temp_dir = "/tmp/iris_test_policies";
+        let temp_dir = "/tmp/test_policies";
         let store = LocalPolicyStore::new(temp_dir);
         
         // Create a test policy

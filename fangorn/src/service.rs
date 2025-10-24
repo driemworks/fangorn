@@ -63,7 +63,7 @@ impl ServiceConfig {
 // so we don't need to manually configure peer addresses.
 // pub async fn build_partial_service<C: Pairing>() -> Result<()> { }
 
-/// Build and start the full Iris node service
+/// Build and start the full Fangorn node service
 pub async fn build_full_service<C: Pairing>(
     config: ServiceConfig,
     max_committee_size: usize,
@@ -361,7 +361,7 @@ async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u1
 
 /// Run the main service loop
 async fn run_service_loop() -> Result<()> {
-    println!("> Iris node service running...");
+    println!("> Fangorn node service running...");
 
     loop {
         tokio::time::sleep(Duration::from_secs(60)).await;

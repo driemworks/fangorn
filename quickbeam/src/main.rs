@@ -3,8 +3,8 @@ use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{rand::rngs::OsRng, UniformRand};
 use clap::{Parser, Subcommand};
-use iris::rpc::server::*;
-use iris::types::*;
+use fangorn::rpc::server::*;
+use fangorn::types::*;
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
     setup::PartialDecryption, types::Ciphertext,
@@ -18,7 +18,7 @@ use std::{fs, fs::OpenOptions};
 const MAX_COMMITTEE_SIZE: usize = 2;
 
 #[derive(Parser, Debug)]
-#[command(name = "retina", version = "1.0")]
+#[command(name = "quickbeam", version = "1.0")]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -35,7 +35,7 @@ enum Commands {
         /// the directory of the file defining the policy
         #[arg(long)]
         policy: String,
-        /// the directory of the kzg params (iris config)
+        /// the directory of the kzg params (fangorn config)
         #[arg(long)]
         config_dir: String,
     },

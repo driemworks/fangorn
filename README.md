@@ -1,4 +1,4 @@
-# Silent Threshold Encryption PoC
+# Fangorn 
 
 This is a proof of concept of a distributed network that enables silent threshold encryption.
 
@@ -10,26 +10,25 @@ From the root, run `cargo build`.
 
 1. start a bootstrap node
 
-./target/debug/iris run --bind-port 9944 --rpc-port 30333 --is-bootstrap --index 0
+./target/debug/fangorn run --bind-port 9944 --rpc-port 30333 --is-bootstrap --index 0
 
 > This will save the randomly generated config to config.txt
 
 2. start a second peer (copy/paste pubkey and ticket)
 
-./target/debug/iris run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey 0f74d3db29d2508ca0e1e02ef8f8ad37a1f7412844f25ca5f041a96daf5230d0 --bootstrap-ip 172.31.149.62:9944 --ticket docaaacbojpklyow57sibmdiwkiiqsgjclb3rvmaoofkminalsoxrymzjodaehxju63fhjfbdfa4hqc56hyvu32d52bfbcpexff6ba2s3npkiynaajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagdmdehlnomayavqolfpoyju --index 1
+./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey d5241466abbd753d3124416dceaf8e96b806fa5f1c4cc816cea432393e09437d --bootstrap-ip 172.31.149.62:9944 --ticket docaaacbb5qoi6exqm2tzh3eqqb6zap2jmppocn3udv3qvbpz7jwvnnzpc7ahksifdgvo6xkpjreraw3tvpr2llqbx2l4oezsawz2sdeoj6bfbx2ajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagdmdehlnomayavqolfpoyju --index 1
 
-#### Using Retina
+#### Using Quickbeam
 ##### Encrypt a message 
 
 > hardcoded to save to ciphertext.txt for now
 > you must delete the file if you want to encrypt a new message... needs work
 
-./target/debug/retina encrypt --message-dir test.txt --config-dir ./iris/config.txt --policy ""
+./target/debug/quickbeam encrypt --message-dir test.txt --config-dir config.txt --policy ""
 
 ##### Decrypt a message 
 
-cargo run -- decrypt --ciphertext-dir ciphertext.txt --config-dir ./iris/config.txt
-./target/debug/retina decrypt --ciphertext-dir ciphertext.txt --config-dir ./iris/config.txt
+./target/debug/quickbeam decrypt --ciphertext-dir ciphertext.txt --config-dir config.txt
 
 ## TODOs
 
@@ -99,7 +98,6 @@ Buyer: If I buy your book for $X, then I own it. I do not want to pay more fees 
 - Merkle Verifier - maybe not for hackathon, future work
 - IPFS integration (or polkastorage or something to give more oomph?) - also future work? can use firebase for now if need be, though will try to stretch. 
 
-- [ ] migrate 'retina' cli and test it out
 - [ ] design smart contract, deploy on IDN? Asset Hub? 
 - [ ] Gossipsub for requesting partial decryptions
 - [ ] masking partial decryptions and unmasking 

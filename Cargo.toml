@@ -8,8 +8,8 @@ homepage = "https://idealabs.network"
 resolver = "2"
 
 members = [
-    "iris",
-    "retina",
+    "fangorn",
+    "quickbeam",
 ]
 
 # [workspace.lints.rust]
@@ -102,4 +102,4 @@ quic-rpc = "0.19.0"
 flume = "0.11.1"
 
 #local deps
-iris = { path = "./iris" }
+fangorn = { path = "./fangorn" }

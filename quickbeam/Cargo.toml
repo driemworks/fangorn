@@ -1,16 +1,14 @@
 [package]
-name = "iris"
+name = "quickbeam"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-async-trait.workspace = true
 anyhow.workspace = true
 iroh.workspace = true
 iroh-gossip.workspace = true
 n0-future.workspace = true
 silent-threshold-encryption.workspace = true
-
 ark-std.workspace = true
 ark-ec.workspace = true
 ark-poly.workspace = true
@@ -27,8 +25,6 @@ axum.workspace = true
 tonic.workspace = true
 prost.workspace = true
 serde.workspace = true
-serde_json.workspace = true
-
 tonic-reflection.workspace = true
 ark-serialize.workspace = true
 codec.workspace = true
@@ -38,6 +34,4 @@ iroh-docs.workspace = true
 iroh-blobs.workspace = true
 quic-rpc.workspace = true
 flume.workspace = true
-
-[build-dependencies]
-tonic-build = "0.13.0"
+fangorn.workspace = true

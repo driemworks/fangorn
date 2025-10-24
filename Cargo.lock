@@ -1532,6 +1532,45 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
 
 [[package]]
+name = "fangorn"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ark-bls12-381",
+ "ark-ec",
+ "ark-poly",
+ "ark-serialize",
+ "ark-std",
+ "async-trait",
+ "axum 0.8.4",
+ "bytes",
+ "clap",
+ "flume",
+ "futures",
+ "hex",
+ "iroh",
+ "iroh-blobs",
+ "iroh-docs",
+ "iroh-gossip",
+ "n0-future",
+ "parity-scale-codec",
+ "postcard",
+ "prost",
+ "quic-rpc",
+ "rand 0.9.1",
+ "rand_core 0.9.3",
+ "serde",
+ "serde_json",
+ "silent-threshold-encryption",
+ "tarpc",
+ "tokio",
+ "tokio-serde",
+ "tonic",
+ "tonic-build",
+ "tonic-reflection",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2508,45 +2547,6 @@ name = "ipnet"
 version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "469fb0b9cefa57e3ef31275ee7cacb78f2fdca44e4765491884a2b119d4eb130"
-
-[[package]]
-name = "iris"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ark-bls12-381",
- "ark-ec",
- "ark-poly",
- "ark-serialize",
- "ark-std",
- "async-trait",
- "axum 0.8.4",
- "bytes",
- "clap",
- "flume",
- "futures",
- "hex",
- "iroh",
- "iroh-blobs",
- "iroh-docs",
- "iroh-gossip",
- "n0-future",
- "parity-scale-codec",
- "postcard",
- "prost",
- "quic-rpc",
- "rand 0.9.1",
- "rand_core 0.9.3",
- "serde",
- "serde_json",
- "silent-threshold-encryption",
- "tarpc",
- "tokio",
- "tokio-serde",
- "tonic",
- "tonic-build",
- "tonic-reflection",
-]
 
 [[package]]
 name = "iroh"
@@ -4261,6 +4261,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
+name = "quickbeam"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ark-bls12-381",
+ "ark-ec",
+ "ark-poly",
+ "ark-serialize",
+ "ark-std",
+ "axum 0.8.4",
+ "bytes",
+ "clap",
+ "fangorn",
+ "flume",
+ "futures",
+ "hex",
+ "iroh",
+ "iroh-blobs",
+ "iroh-docs",
+ "iroh-gossip",
+ "n0-future",
+ "parity-scale-codec",
+ "postcard",
+ "prost",
+ "quic-rpc",
+ "rand 0.9.1",
+ "rand_core 0.9.3",
+ "serde",
+ "silent-threshold-encryption",
+ "tarpc",
+ "tokio",
+ "tokio-serde",
+ "tonic",
+ "tonic-reflection",
+]
+
+[[package]]
 name = "quickcheck"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4650,43 +4687,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48375394603e3dd4b2d64371f7148fd8c7baa2680e28741f2cb8d23b59e3d4c4"
 dependencies = [
  "hostname",
-]
-
-[[package]]
-name = "retina"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "ark-bls12-381",
- "ark-ec",
- "ark-poly",
- "ark-serialize",
- "ark-std",
- "axum 0.8.4",
- "bytes",
- "clap",
- "flume",
- "futures",
- "hex",
- "iris",
- "iroh",
- "iroh-blobs",
- "iroh-docs",
- "iroh-gossip",
- "n0-future",
- "parity-scale-codec",
- "postcard",
- "prost",
- "quic-rpc",
- "rand 0.9.1",
- "rand_core 0.9.3",
- "serde",
- "silent-threshold-encryption",
- "tarpc",
- "tokio",
- "tokio-serde",
- "tonic",
- "tonic-reflection",
 ]
 
 [[package]]
