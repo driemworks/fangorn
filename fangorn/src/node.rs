@@ -15,6 +15,8 @@ use tokio::sync::Mutex;
 
 use quic_rpc::transport::flume::FlumeConnector;
 
+use std::{fs::OpenOptions, io::Write, thread, time::Duration};
+
 pub(crate) type BlobsClient = iroh_blobs::rpc::client::blobs::Client<
     FlumeConnector<iroh_blobs::rpc::proto::Response, iroh_blobs::rpc::proto::Request>,
 >;
@@ -89,7 +91,14 @@ impl<C: Pairing> Node<C> {
 
         let addr = router.endpoint().node_addr().await;
         println!("> Generated node address: {:?}", addr);
-
+        let pubkey = addr.expect("NodeAddr issue occurred").node_id.to_string();
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open("pubkey.txt")
+            .unwrap();
+        writeln!(&mut file, "{}", pubkey).expect("Unable to write pubkey to file.");
         let arc_state_clone = Arc::clone(&state);
 
         n0_future::task::spawn(async move {

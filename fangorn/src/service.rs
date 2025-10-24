@@ -145,6 +145,17 @@ async fn setup_document_stream<C: Pairing>(
             .unwrap();
 
         println!("Entry ticket: {}", ticket);
+        let ticket_string = ticket.to_string();
+
+
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open("ticket.txt")
+            .unwrap();
+
+        writeln!(&mut file, "{}", ticket_string).expect("Unable to write ticket to file.");
 
         // Import the document
         let doc_stream = node.docs().import(ticket).await.unwrap();
