@@ -29,8 +29,8 @@ async fn basic_encrypt_decrypt_works() {
     let bootstrap_pubkey = bootstrap_handle.node.router.endpoint().node_addr().await.unwrap().node_id.to_string();
     let bootstrap_ip = format!("127.0.0.1:{}", 9933);
     
-    // Give it time to fully initialize
-    sleep(Duration::from_secs(3)).await;
+    // // Give it time to fully initialize
+    // sleep(Duration::from_secs(3)).await;
     
     // // Start client node
     // let client_config = ServiceConfig {
