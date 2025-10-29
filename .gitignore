@@ -4,3 +4,4 @@ test.txt
 ciphertext.txt
 pubkey.txt
 ticket.txt
+tmp/
