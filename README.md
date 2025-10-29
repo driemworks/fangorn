@@ -1,6 +1,7 @@
 # Fangorn 
 
-This is a proof of concept of a distributed network that enables silent threshold encryption.
+"Certainly the forest of Fangorn is perilous — not least to those that are too ready with their axes; and Fangorn himself, he is perilous too; yet he is wise and kindly nonetheless.”
+― J.R.R. Tolkien, The Lord of the Rings 
 
 ## Setup Guide
 
@@ -57,7 +58,6 @@ From the root, run `cargo build`.
   - using iroh doc store
   - register via RPC?
   - [CID -> {CONDITION, OWNER}]
-- separate the 'worker' functionality from encrypt/decrypt
 - add wasm support for multi-language bindings (enc/dec in js for example)# iris
 
 

@@ -1,8 +1,8 @@
 //! a generic policy 'store'
 //! the core abstraction workers leverage for mapping content identifiers to policies
-
-use crate::verifier::Statement;
+use crate::verifier::{Challenge, Statement};
 use anyhow::Result;
+use ark_serialize::CanonicalSerialize;
 use async_trait::async_trait;
 use cid::Cid;
 use serde::{Deserialize, Serialize};
@@ -26,22 +26,28 @@ pub enum IntentType {
 
 impl Intent {
     /// convert a policy to an NP-statement
-    pub fn to_statement(&self) -> Statement {
-        Statement(self.parameters.clone())
-    }
-
-    //     /// Create a challenge policy
-    // pub fn challenge(question: &str, answer: &str) -> Self {
-    //     use crate::verification::challenge::ChallengeStatement;
-    //     let stmt = ChallengeStatement::new(question, answer);
-    //     Self {
-    //         policy_type: PolicyType::Challenge,
-    //         parameters: serde_json::to_vec(&stmt).unwrap(),
-    //     }
+    // pub fn to_statement(&self) -> Statement {
+    //     Statement(self.parameters.clone())
     // }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        serde_json::to_vec(self).unwrap()
+    }
+    //     /// Create a challenge policy
+    pub fn create_intent<C: Challenge>(
+        question: &Vec<u8>,
+        answer: &Vec<u8>,
+        intent_type: IntentType,
+    ) -> Self {
+        let stmt = C::create_challenge_statement(question, answer);
+        Self {
+            policy_type: intent_type,
+            parameters: stmt.0,
+        }
+    }
 }
 
-/// The SharedStore manages content identifier to data mappings
+/// The SharedStore manages key-value mappings against some shared storage backend
 #[async_trait]
 pub trait SharedStore<K, V>: Send + Sync {
     /// add the data to storage and get a content identifier
@@ -56,8 +62,12 @@ pub trait SharedStore<K, V>: Send + Sync {
 
 /// The docstore is a SharedStore where the key is a cid
 /// and the value is the corresponding message
-pub trait DocStore: Send + Sync + SharedStore<Cid, Data> { }
+pub trait DocStore: Send + Sync + SharedStore<Cid, Data> {}
 
-
-// /// shared intent storage
-// pub trait IntentStore: Send + Sync + SharedStore<Intent, ()> { }
+/// shared statement storage to associate CID (data) to intent
+#[async_trait]
+pub trait IntentStore {
+    async fn register_intent(&self, cid: &Cid, intent: &Intent) -> Result<()>;
+    async fn get_intent(&self, cid: &Cid) -> Result<Option<Intent>>;
+    async fn remove_intent(&self, cid: &Cid) -> Result<()>;
+}

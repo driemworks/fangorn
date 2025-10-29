@@ -4,8 +4,9 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{rand::rngs::OsRng, UniformRand};
 use clap::{Parser, Subcommand};
 use fangorn::rpc::server::*;
-use fangorn::storage::{local_store::LocalDocStore, SharedStore};
+use fangorn::storage::{local_store::LocalDocStore, Intent, IntentStore, IntentType, SharedStore};
 use fangorn::types::*;
+use fangorn::verifier::LocalFileLocationChallenge;
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
     setup::PartialDecryption, types::Ciphertext,
@@ -104,11 +105,37 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
     ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
 
     // create docstore (same dir as in service.rs)
-    let doc_store = LocalDocStore::new("tmp/");
+    let shared_store = LocalDocStore::new("tmp/docs", "tmp/intents/");
     // write the ciphertext
-    let cid = doc_store.add(&ciphertext_bytes).await.unwrap();
+    let cid = shared_store.add(&ciphertext_bytes).await.unwrap();
+
+    let key = [11; 32].to_vec();
+    let file_location: Vec<u8> = "test.txt".bytes().collect();
+
+    let intent_type = IntentType::Challenge;
+    let intent =
+        Intent::create_intent::<LocalFileLocationChallenge>(&file_location, &key, intent_type);
+
+    // let intent_bytes = intent.to_bytes();
+    shared_store.register_intent(&cid, &intent).await;
+
+    // create intents store
+    // let intent_store = LocalDocStore::new("tmp/intents");
+    // intent_store.add(&intent_bytes).await.unwrap();
+
+    // // This needs to be replaced with a contract call
+    // fs::create_dir_all("tmp/intents").unwrap();
+    // let mut file = OpenOptions::new()
+    //     .create(true)
+    //     .write(true)
+    //     .truncate(true)
+    //     .open(format!("tmp/intents/{}.intent", cid))
+    //     .unwrap();
+
+    // write!(&mut file, "{}", hex::encode(intent_bytes)).unwrap();
 
     println!("> Saved ciphertext to /tmp/{}.dat", &cid.to_string());
+    println!("> Saved intent to /tmp/intents/{}.intent", &cid.to_string());
 }
 
 async fn handle_decrypt(config_dir: &String, cid_string: &String) {
@@ -117,7 +144,7 @@ async fn handle_decrypt(config_dir: &String, cid_string: &String) {
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
     // get the ciphertext
-    let doc_store = LocalDocStore::new("tmp/");
+    let doc_store = LocalDocStore::new("tmp/docs/", "tmp/intents/");
     let cid = cid::Cid::from_str(cid_string).unwrap();
 
     // living dangerously...

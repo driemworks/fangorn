@@ -367,7 +367,8 @@ async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u1
 
     // a local document store (local fs)
     let doc_store = Arc::new(crate::storage::local_store::LocalDocStore::new(
-        "tmp/".to_string(),
+        "tmp/docs/".to_string(),
+        "tmp/intents/".to_string(),
     ));
 
     // a dummy verifier that always returns true (for now...)
