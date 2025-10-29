@@ -4,6 +4,7 @@ use ark_ec::pairing::Pairing;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext};
 use cid::Cid;
+use std::str::FromStr;
 
 use crate::{storage::*, types::*, verifier::*};
 
@@ -89,20 +90,23 @@ impl<C: Pairing> Rpc for NodeServer<C> {
 
         // try to fetch the ciphertext based on the cid
         // recover cid
-        let cid_bytes = req_ref.cid.clone();
-        let cid = Cid::try_from(cid_bytes).unwrap();
-        // let doc_store = self.doc_store.await;
-
+        let cid_string = req_ref.cid.clone();
+        println!("got cid: {}", cid_string.clone());
+        let cid = Cid::from_str(&cid_string).unwrap();
         // if the doc is found, proceed 
         if let Some(ciphertext_bytes) = self.doc_store.fetch(&cid).await.unwrap() {
-            // let ciphertext_bytes = hex::decode(req_ref.ciphertext_hex.clone()).unwrap();
             let ciphertext =
                 Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
+
+            println!("recovered the ciphertext");
 
             let state = self.state.lock().await;
             let partial_decryption = state.sk.partial_decryption(&ciphertext);
 
             partial_decryption.serialize_compressed(&mut bytes).unwrap();
+            println!("produced a partial decryption");
+        } else {
+            println!("data unavailable");
         }
         
         Ok(Response::new(PartDecResponse {

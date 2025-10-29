@@ -15,6 +15,7 @@ use silent_threshold_encryption::{
 };
 use std::io::prelude::*;
 use std::{fs, fs::OpenOptions};
+use std::str::FromStr;
 
 const MAX_COMMITTEE_SIZE: usize = 2;
 
@@ -47,10 +48,9 @@ enum Commands {
         /// the directory of the kzg params
         #[arg(long)]
         config_dir: String,
-        /// the directory pointing to the ciphertext
-        /// TODO: this will be replaced by CID
+        /// the content identifier
         #[arg(long)]
-        ciphertext_dir: String,
+        cid: String,
     },
 }
 
@@ -67,9 +67,9 @@ async fn main() -> Result<()> {
         }
         Some(Commands::Decrypt {
             config_dir,
-            ciphertext_dir,
+            cid,
         }) => {
-            handle_decrypt(config_dir, ciphertext_dir).await;
+            handle_decrypt(config_dir, cid).await;
         }
         None => {
             // do nothing
@@ -124,21 +124,22 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
 
     // write!(&mut file, "{}", hex::encode(ciphertext_bytes)).unwrap();
     
-    println!("> Saved ciphertext to /tmp/{:?}", &cid.to_string());
+    println!("> Saved ciphertext to /tmp/{}.dat", &cid.to_string());
 }
 
-async fn handle_decrypt(config_dir: &String, ciphertext_dir: &String) {
+async fn handle_decrypt(config_dir: &String, cid_string: &String) {
     // read the config
     let config_hex = fs::read_to_string(config_dir).expect("you must provide a valid config file.");
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
     // get the ciphertext
-    let ciphertext_hex =
-        fs::read_to_string(ciphertext_dir).expect("you must provide a ciphertext.");
-    let ciphertext_bytes = hex::decode(ciphertext_hex.clone()).unwrap();
+    let doc_store = LocalDocStore::new("tmp/");
+    let cid = cid::Cid::from_str(cid_string).unwrap();
 
+    // living dangerously...
+    let ciphertext_bytes = doc_store.fetch(&cid).await.unwrap().unwrap();
+    // println!("we got the ciphertext: {:?}", ciphertext_bytes.clone());
     let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
-
     //  get the sys key (TODO: send this as a cli param instead)
     let sys_key_request = tonic::Request::new(PreprocessRequest {});
 
@@ -168,8 +169,7 @@ async fn handle_decrypt(config_dir: &String, ciphertext_dir: &String) {
             .await
             .unwrap();
         let request = tonic::Request::new(PartDecRequest {
-            // ciphertext_hex: ciphertext_hex.to_string(),
-            cid: "".to_string(),
+            cid: cid.to_string(),
             witness_hex: "".to_string(),
         });
 

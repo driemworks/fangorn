@@ -4444,6 +4444,7 @@ dependencies = [
  "ark-std",
  "axum 0.8.4",
  "bytes",
+ "cid",
  "clap",
  "fangorn",
  "flume",

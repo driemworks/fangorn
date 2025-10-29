@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use cid::Cid;
 use multihash_codetable::{Code, MultihashDigest};
 use std::fs::OpenOptions;
-use std::path::PathBuf;
 use std::io::prelude::*;
+use std::path::PathBuf;
 use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -67,12 +67,12 @@ impl SharedStore<Cid, Data> for LocalDocStore {
         }
 
         // Read file
-        let mut file = fs::File::open(&filepath).await?;
-        let mut contents = Vec::new();
-        file.read_to_end(&mut contents).await?;
-        let decoded = hex::decode(&contents).unwrap();
+        let ciphertext_hex = fs::read_to_string(filepath)
+            .await
+            .expect("you must provide a ciphertext.");
+        let ciphertext_bytes = hex::decode(ciphertext_hex.clone()).unwrap();
 
-        Ok(Some(decoded))
+        Ok(Some(ciphertext_bytes))
     }
 
     async fn remove(&self, cid: &Cid) -> Result<()> {

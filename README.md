@@ -34,7 +34,7 @@ From the root, run `cargo build`.
 
 ##### Decrypt a message 
 
-./target/debug/quickbeam decrypt --ciphertext-dir ciphertext.txt --config-dir config.txt
+./target/debug/quickbeam decrypt --cid bafkreidkaj2d7ken3jfhs4sbgylgvvr2yorif7eqv3plt7nq6iq4txw27m --config-dir config.txt
 
 ## TODOs
 
