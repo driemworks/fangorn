@@ -365,13 +365,13 @@ async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u1
     let addr_str = format!("127.0.0.1:{}", rpc_port);
     let addr = addr_str.parse().unwrap();
 
-    // a dummy 'polkadot verifier' for now, always returns true
-    let policy_store = Arc::new(crate::storage::local_policy_store::LocalPolicyStore::new(
-        "/tmp".to_string(),
-    ));
+    // // a dummy 'polkadot verifier' for now, always returns true
+    // let policy_store = Arc::new(crate::storage::local_policy_store::LocalPolicyStore::new(
+    //     "/tmp".to_string(),
+    // ));
     let verifier = Arc::new(crate::verifier::PolkadotVerifier::new());
     let server = NodeServer::<C> {
-        policy_store,
+        // policy_store,
         state,
         verifier,
     };

@@ -69,85 +69,6 @@ async fn main() -> Result<()> {
             ciphertext_dir,
         }) => {
             handle_decrypt(config_dir, ciphertext_dir).await;
-            // // read the config
-            // let config_hex =
-            //     fs::read_to_string(config_dir).expect("you must provide a valid config file.");
-            // let config_bytes = hex::decode(&config_hex).unwrap();
-            // let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
-            // // get the ciphertext
-            // let ciphertext_hex =
-            //     fs::read_to_string(ciphertext_dir).expect("you must provide a ciphertext.");
-            // let ciphertext_bytes = hex::decode(ciphertext_hex.clone()).unwrap();
-
-            // let ciphertext =
-            //     Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
-
-            // //  get the sys key (TODO: send this as a cli param instead)
-            // let sys_key_request = tonic::Request::new(PreprocessRequest {});
-
-            // // TODO: generate the witness here
-
-            // // from first node
-            // let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
-            // let response = client.preprocess(sys_key_request).await.unwrap();
-            // let hex = response.into_inner().hex_serialized_sys_key;
-            // let bytes = hex::decode(&hex[..]).unwrap();
-            // let sys_keys = SystemPublicKeys::<E>::deserialize_compressed(&bytes[..]).unwrap();
-
-            // let subset = vec![0, 1];
-            // let (ak, _ek) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
-
-            // let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
-
-            // for i in 0..1 {
-            //     let node_id = ak.lag_pks[i].id;
-            //     let rpc_port = match node_id {
-            //         0 => 30333,
-            //         1 => 30334,
-            //         _ => panic!("Unknown node"),
-            //     };
-
-            //     let mut client = RpcClient::connect(format!("http://127.0.0.1:{}", rpc_port))
-            //         .await
-            //         .unwrap();
-            //     let request = tonic::Request::new(PartDecRequest {
-            //         ciphertext_hex: ciphertext_hex.to_string(),
-            //         content_id: "".to_string(),
-            //         witness_hex: "".to_string(),
-            //     });
-
-            //     let response = client.partdec(request).await.unwrap();
-            //     let part_dec_hex = response.into_inner().hex_serialized_decryption;
-            //     let part_dec_bytes = hex::decode(&part_dec_hex).unwrap();
-            //     partial_decryptions[i] =
-            //         PartialDecryption::deserialize_compressed(&part_dec_bytes[..]).unwrap();
-            // }
-
-            // println!("> Collected partial decryptions, attempting to decrypt the ciphertext");
-
-            // let mut selector = vec![false; MAX_COMMITTEE_SIZE];
-            // selector[0] = true;
-            // // if k = 2 => selector[1] =  true; too
-
-            // let mut pds = Vec::new();
-            // partial_decryptions.iter().for_each(|pd| {
-            //     let mut test = Vec::new();
-            //     pd.serialize_compressed(&mut test).unwrap();
-            //     pds.push(test);
-            // });
-
-            // let mut ct_bytes = Vec::new();
-            // ciphertext.serialize_compressed(&mut ct_bytes).unwrap();
-
-            // let out = agg_dec(
-            //     &partial_decryptions,
-            //     &ciphertext,
-            //     &selector,
-            //     &ak,
-            //     &config.crs,
-            // )
-            // .unwrap();
-            // println!("OUT: {:?}", std::str::from_utf8(&out).unwrap());
         }
         None => {
             // do nothing
@@ -195,6 +116,7 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
         .unwrap();
 
     write!(&mut file, "{}", hex::encode(ciphertext_bytes)).unwrap();
+    
     println!("> saved ciphertext to disk");
 }
 

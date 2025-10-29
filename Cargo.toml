@@ -53,6 +53,8 @@ members = [
 [workspace.dependencies]
 async-trait = "0.1.89"
 anyhow = "1.0.98"
+cid = "0.11.1"
+multihash-codetable = { version = "0.1.4", features = ["sha2"] }
 
 # networking
 iroh = { version = "0.34.1", default-features = false, features = [

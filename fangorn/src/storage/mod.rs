@@ -1,30 +1,30 @@
-//! a generic policy 'store' 
+//! a generic policy 'store'
 //! the core abstraction workers leverage for mapping content identifiers to policies
 
+use crate::verifier::Statement;
 use anyhow::Result;
 use async_trait::async_trait;
-use serde::{Serialize, Deserialize};
-use crate::verifier::Statement;
+use serde::{Deserialize, Serialize};
 
-pub mod local_policy_store;
+pub mod local_store;
 
 // a generic content identifier
 pub struct CID(pub Vec<u8>);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Policy {
-    pub policy_type: PolicyType,
+pub struct Intent {
+    pub policy_type: IntentType,
     pub parameters: Vec<u8>,
 }
 
 /// types of policies
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum PolicyType {
+pub enum IntentType {
     Challenge,
 }
 
-impl Policy {
-    /// convert a policy to an NP-statement 
+impl Intent {
+    /// convert a policy to an NP-statement
     pub fn to_statement(&self) -> Statement {
         Statement(self.parameters.clone())
     }
@@ -40,15 +40,17 @@ impl Policy {
     // }
 }
 
-/// The PolicyStore manages content identifier to policy mapping
+/// The SharedStore manages content identifier to data mappings
 #[async_trait]
-pub trait PolicyStore: Send + Sync {
-     /// Get the policy for a given content ID
-    async fn get_policy(&self, cid: &CID) -> Result<Option<Policy>>;
-    
-    /// Register a new policy for content
-    async fn register_policy(&self, cid: CID, policy: Policy) -> Result<()>;
-    
-    /// Remove a cid -> policy mapping
-    async fn kill_policy(&self, cid: &CID) -> Result<()>;
+pub trait SharedStore<K, V>: Send + Sync {
+    /// add the data to storage and get a content identifier
+    async fn add(&self, v: &V) -> Result<K>;
+
+    /// fetch data by key
+    async fn fetch(&self, k: &K) -> Result<Option<V>>;
+
+    /// Remove data associated with a key
+    async fn remove(&self, k: &K) -> Result<()>;
 }
+// /// shared intent storage
+// pub trait IntentStore: Send + Sync + SharedStore<Intent, ()> { }

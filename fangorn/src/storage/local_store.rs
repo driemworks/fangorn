@@ -3,13 +3,21 @@ use async_trait::async_trait;
 use std::path::PathBuf;
 use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use multihash_codetable::{Code, MultihashDigest};
+use cid::Cid;
 
-pub struct LocalPolicyStore {
-    /// the root directory to store policy data
+/// The codec for generating CIDs
+const RAW: u64 = 0x55;
+
+/// the raw data type for storage
+type Data = Vec<u8>;
+
+pub struct LocalDocStore {
+    /// the root directory to store data
     pub dir: String,
 }
 
-impl LocalPolicyStore {
+impl LocalDocStore {
     pub fn new(dir: impl Into<String>) -> Self {
         Self { dir: dir.into() }
     }
@@ -21,26 +29,37 @@ impl LocalPolicyStore {
     }
     
     /// convert CID to filename
-    fn cid_to_filename(&self, cid: &CID) -> PathBuf {
-        let cid_hex = hex::encode(&cid.0);
-        PathBuf::from(&self.dir).join(format!("{}.policy", cid_hex))
-    }
-    
-    /// serialize policy to bytes
-    fn serialize_policy(&self, policy: &Policy) -> Result<Vec<u8>> {
-        Ok(serde_json::to_vec(policy)?)
-    }
-    
-    /// deserialize policy from bytes
-    fn deserialize_policy(&self, bytes: &[u8]) -> Result<Policy> {
-        Ok(serde_json::from_slice(bytes)?)
+    fn cid_to_filename(&self, cid_bytes: &[u8]) -> PathBuf {
+        let cid_hex = hex::encode(cid_bytes);
+        PathBuf::from(&self.dir).join(format!("{}.dat", cid_hex))
     }
 }
 
 #[async_trait]
-impl PolicyStore for LocalPolicyStore {
-    async fn get_policy(&self, cid: &CID) -> Result<Option<Policy>> {
-        let filepath = self.cid_to_filename(cid);
+impl SharedStore<cid::Cid, Data> for LocalDocStore {
+    
+    async fn add(&self, data: &Data) -> Result<Cid> {
+        // Ensure directory exists
+        self.ensure_dir().await?;
+
+        // generate a cid
+        let hash = Code::Sha2_256.digest(data);
+        let cid = Cid::new_v1(RAW, hash);
+        let key = cid.to_bytes();
+        
+        // Write to file
+        let filepath = self.cid_to_filename(&key);
+        let mut file = fs::File::create(&filepath).await?;
+        file.write_all(&data).await?;
+        file.flush().await?;
+        
+        println!("Registered policy for CID: {} at {:?}", hex::encode(&key), filepath);
+        
+        Ok(cid)
+    }
+    
+    async fn fetch(&self, cid: &Cid) -> Result<Option<Data>> {
+        let filepath = self.cid_to_filename(&cid.to_bytes());
         
         // Check if file exists
         if !filepath.exists() {
@@ -52,39 +71,18 @@ impl PolicyStore for LocalPolicyStore {
         let mut contents = Vec::new();
         file.read_to_end(&mut contents).await?;
         
-        // Deserialize
-        let policy = self.deserialize_policy(&contents)?;
-        
-        Ok(Some(policy))
+        Ok(Some(contents))
     }
     
-    async fn register_policy(&self, cid: CID, policy: Policy) -> Result<()> {
-        // Ensure directory exists
-        self.ensure_dir().await?;
-        
-        // Serialize policy
-        let bytes = self.serialize_policy(&policy)?;
-        
-        // Write to file
-        let filepath = self.cid_to_filename(&cid);
-        let mut file = fs::File::create(&filepath).await?;
-        file.write_all(&bytes).await?;
-        file.flush().await?;
-        
-        println!("Registered policy for CID: {} at {:?}", hex::encode(&cid.0), filepath);
-        
-        Ok(())
-    }
-    
-    async fn kill_policy(&self, cid: &CID) -> Result<()> {
-        let filepath = self.cid_to_filename(cid);
+    async fn remove(&self, cid: &Cid) -> Result<()> {
+        let filepath = self.cid_to_filename(&cid.to_bytes());
         
         // Check if file exists
         if filepath.exists() {
             fs::remove_file(&filepath).await?;
-            println!("Killed policy for CID: {}", hex::encode(&cid.0));
+            println!("Removed data for CID: {}", &cid.to_string());
         } else {
-            println!("No policy found for CID: {}", hex::encode(&cid.0));
+            println!("No data found for CID: {}", &cid.to_string());
         }
         
         Ok(())

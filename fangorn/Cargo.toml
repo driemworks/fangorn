@@ -39,5 +39,8 @@ iroh-blobs.workspace = true
 quic-rpc.workspace = true
 flume.workspace = true
 
+cid.workspace = true
+multihash-codetable.workspace = true
+
 [build-dependencies]
 tonic-build = "0.13.0"

@@ -25,7 +25,7 @@ pub use rpc::{
 };
 
 pub struct NodeServer<C: Pairing> {
-    pub policy_store: Arc<dyn PolicyStore>,
+    // pub policy_store: Arc<dyn IntentStore>,
     pub state: Arc<Mutex<State<C>>>,
     pub verifier: Arc<dyn Verifier>,
 }
