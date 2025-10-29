@@ -4,18 +4,15 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{rand::rngs::OsRng, UniformRand};
 use clap::{Parser, Subcommand};
 use fangorn::rpc::server::*;
+use fangorn::storage::{local_store::LocalDocStore, SharedStore};
 use fangorn::types::*;
-use fangorn::storage::{SharedStore, local_store::LocalDocStore};
 use silent_threshold_encryption::{
-    aggregate::SystemPublicKeys,
-    decryption::agg_dec,
-    encryption::encrypt,
-    setup::PartialDecryption,
-    types::Ciphertext,
+    aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
+    setup::PartialDecryption, types::Ciphertext,
 };
 use std::io::prelude::*;
-use std::{fs, fs::OpenOptions};
 use std::str::FromStr;
+use std::{fs, fs::OpenOptions};
 
 const MAX_COMMITTEE_SIZE: usize = 2;
 
@@ -65,10 +62,7 @@ async fn main() -> Result<()> {
         }) => {
             handle_encrypt(config_dir, message_dir).await;
         }
-        Some(Commands::Decrypt {
-            config_dir,
-            cid,
-        }) => {
+        Some(Commands::Decrypt { config_dir, cid }) => {
             handle_decrypt(config_dir, cid).await;
         }
         None => {
@@ -80,8 +74,7 @@ async fn main() -> Result<()> {
 }
 
 async fn handle_encrypt(config_dir: &String, message_dir: &String) {
-    let config_hex = fs::read_to_string(config_dir)
-        .expect("you must provide a valid config file.");
+    let config_hex = fs::read_to_string(config_dir).expect("you must provide a valid config file.");
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
 
@@ -115,15 +108,6 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
     // write the ciphertext
     let cid = doc_store.add(&ciphertext_bytes).await.unwrap();
 
-    // let mut file = OpenOptions::new()
-    //     .create(true)
-    //     .write(true)
-    //     .truncate(true)
-    //     .open("ciphertext.txt")
-    //     .unwrap();
-
-    // write!(&mut file, "{}", hex::encode(ciphertext_bytes)).unwrap();
-    
     println!("> Saved ciphertext to /tmp/{}.dat", &cid.to_string());
 }
 
