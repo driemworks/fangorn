@@ -6,6 +6,25 @@ use async_trait::async_trait;
 
 pub struct Witness(pub Vec<u8>);
 pub struct Statement(pub Vec<u8>);
+pub mod verifier_utils;
+
+pub trait Challenge {
+    fn create_challenge_statement(question: &Vec<u8>, answer: &Vec<u8>) -> Statement;
+}
+
+pub struct LocalFileLocationChallenge;
+
+impl Challenge for LocalFileLocationChallenge {
+
+    // The challenge statement here is whether Bob knows the key that reveals
+    // the file's location
+    fn create_challenge_statement(file_location: &Vec<u8>, key: &Vec<u8>, ) -> Statement {
+        let statement = verifier_utils::xor_padded(key, file_location);
+        Statement(statement.to_vec())
+    }
+
+}
+
 
 #[async_trait]
 pub trait Verifier: Send + Sync {

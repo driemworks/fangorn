@@ -5,7 +5,8 @@ use ark_std::{rand::rngs::OsRng, UniformRand};
 use clap::{Parser, Subcommand};
 use fangorn::rpc::server::*;
 use fangorn::types::*;
-use fangorn::storage::{SharedStore, local_store::LocalDocStore};
+use fangorn::storage::{SharedStore, local_store::LocalDocStore, Intent, IntentType};
+use fangorn::verifier::{LocalFileLocationChallenge};
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys,
     decryption::agg_dec,
@@ -114,17 +115,27 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
     let doc_store = LocalDocStore::new("tmp/");
     // write the ciphertext
     let cid = doc_store.add(&ciphertext_bytes).await.unwrap();
+    let key = [11; 32].to_vec();
+    let file_location: Vec<u8>  = "test.txt".bytes().collect();
 
-    // let mut file = OpenOptions::new()
-    //     .create(true)
-    //     .write(true)
-    //     .truncate(true)
-    //     .open("ciphertext.txt")
-    //     .unwrap();
+    let intent_type = IntentType::Challenge;
+    let intent = Intent::create_intent::<LocalFileLocationChallenge>(&file_location, &key, intent_type);
 
-    // write!(&mut file, "{}", hex::encode(ciphertext_bytes)).unwrap();
+    let intent_bytes = intent.to_bytes();
+
+    // This needs to be replaced with a contract call
+    fs::create_dir_all("tmp/intents").unwrap();
+    let mut file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(format!("tmp/intents/{}.intent", cid))
+        .unwrap();
+
+    write!(&mut file, "{}", hex::encode(intent_bytes)).unwrap();
     
     println!("> Saved ciphertext to /tmp/{}.dat", &cid.to_string());
+    println!("> Saved intent to /tmp/intents/{}.intent", &cid.to_string());
 }
 
 async fn handle_decrypt(config_dir: &String, cid_string: &String) {

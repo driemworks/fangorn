@@ -6,6 +6,8 @@ use anyhow::Result;
 use async_trait::async_trait;
 use cid::Cid;
 use serde::{Deserialize, Serialize};
+use ark_serialize::CanonicalSerialize;
+use crate::verifier::Challenge;
 
 pub mod local_store;
 
@@ -26,19 +28,21 @@ pub enum IntentType {
 
 impl Intent {
     /// convert a policy to an NP-statement
-    pub fn to_statement(&self) -> Statement {
-        Statement(self.parameters.clone())
-    }
-
-    //     /// Create a challenge policy
-    // pub fn challenge(question: &str, answer: &str) -> Self {
-    //     use crate::verification::challenge::ChallengeStatement;
-    //     let stmt = ChallengeStatement::new(question, answer);
-    //     Self {
-    //         policy_type: PolicyType::Challenge,
-    //         parameters: serde_json::to_vec(&stmt).unwrap(),
-    //     }
+    // pub fn to_statement(&self) -> Statement {
+    //     Statement(self.parameters.clone())
     // }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        serde_json::to_vec(self).unwrap()
+    }
+    //     /// Create a challenge policy
+    pub fn create_intent<C: Challenge, >(question: &Vec<u8>, answer: &Vec<u8>, intent_type: IntentType) -> Self {
+        let stmt = C::create_challenge_statement(question, answer);
+        Self {
+            policy_type: intent_type,
+            parameters: stmt.0
+        }
+    }
 }
 
 /// The SharedStore manages content identifier to data mappings
