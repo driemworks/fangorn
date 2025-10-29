@@ -2,9 +2,8 @@ use anyhow::Result;
 
 use ark_ec::pairing::Pairing;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use silent_threshold_encryption::{
-    aggregate::SystemPublicKeys, types::Ciphertext,
-};
+use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext};
+use cid::Cid;
 
 use crate::{storage::*, types::*, verifier::*};
 
@@ -25,7 +24,7 @@ pub use rpc::{
 };
 
 pub struct NodeServer<C: Pairing> {
-    // pub policy_store: Arc<dyn IntentStore>,
+    pub doc_store: Arc<dyn DocStore>,
     pub state: Arc<Mutex<State<C>>>,
     pub verifier: Arc<dyn Verifier>,
 }
@@ -88,14 +87,24 @@ impl<C: Pairing> Rpc for NodeServer<C> {
 
         let mut bytes = Vec::new();
 
-        let ciphertext_bytes = hex::decode(req_ref.ciphertext_hex.clone()).unwrap();
-        let ciphertext = Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
+        // try to fetch the ciphertext based on the cid
+        // recover cid
+        let cid_bytes = req_ref.cid.clone();
+        let cid = Cid::try_from(cid_bytes).unwrap();
+        // let doc_store = self.doc_store.await;
 
-        let state = self.state.lock().await;
-        let partial_decryption = state.sk.partial_decryption(&ciphertext);
+        // if the doc is found, proceed 
+        if let Some(ciphertext_bytes) = self.doc_store.fetch(&cid).await.unwrap() {
+            // let ciphertext_bytes = hex::decode(req_ref.ciphertext_hex.clone()).unwrap();
+            let ciphertext =
+                Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
 
-        partial_decryption.serialize_compressed(&mut bytes).unwrap();
+            let state = self.state.lock().await;
+            let partial_decryption = state.sk.partial_decryption(&ciphertext);
 
+            partial_decryption.serialize_compressed(&mut bytes).unwrap();
+        }
+        
         Ok(Response::new(PartDecResponse {
             hex_serialized_decryption: hex::encode(bytes),
         }))

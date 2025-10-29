@@ -22,10 +22,8 @@ message PreprocessResponse {
 
 // request a partial decryption from a node
 message PartDecRequest {
-  // TODO: remove this
-  string ciphertext_hex = 1;
-  string content_id = 2;
-  string witness_hex = 3;
+  string cid = 1;
+  string witness_hex = 2;
 }
 // the partial decryption response
 message PartDecResponse {

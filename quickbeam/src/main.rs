@@ -5,6 +5,7 @@ use ark_std::{rand::rngs::OsRng, UniformRand};
 use clap::{Parser, Subcommand};
 use fangorn::rpc::server::*;
 use fangorn::types::*;
+use fangorn::storage::{SharedStore, local_store::LocalDocStore};
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys,
     decryption::agg_dec,
@@ -79,7 +80,8 @@ async fn main() -> Result<()> {
 }
 
 async fn handle_encrypt(config_dir: &String, message_dir: &String) {
-    let config_hex = fs::read_to_string(config_dir).expect("you must provide a valid config file.");
+    let config_hex = fs::read_to_string(config_dir)
+        .expect("you must provide a valid config file.");
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
 
@@ -108,16 +110,21 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
     let mut ciphertext_bytes = Vec::new();
     ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
 
-    let mut file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open("ciphertext.txt")
-        .unwrap();
+    // create docstore (same dir as in service.rs)
+    let doc_store = LocalDocStore::new("tmp/");
+    // write the ciphertext
+    let cid = doc_store.add(&ciphertext_bytes).await.unwrap();
 
-    write!(&mut file, "{}", hex::encode(ciphertext_bytes)).unwrap();
+    // let mut file = OpenOptions::new()
+    //     .create(true)
+    //     .write(true)
+    //     .truncate(true)
+    //     .open("ciphertext.txt")
+    //     .unwrap();
+
+    // write!(&mut file, "{}", hex::encode(ciphertext_bytes)).unwrap();
     
-    println!("> saved ciphertext to disk");
+    println!("> Saved ciphertext to /tmp/{:?}", &cid.to_string());
 }
 
 async fn handle_decrypt(config_dir: &String, ciphertext_dir: &String) {
@@ -161,8 +168,8 @@ async fn handle_decrypt(config_dir: &String, ciphertext_dir: &String) {
             .await
             .unwrap();
         let request = tonic::Request::new(PartDecRequest {
-            ciphertext_hex: ciphertext_hex.to_string(),
-            content_id: "".to_string(),
+            // ciphertext_hex: ciphertext_hex.to_string(),
+            cid: "".to_string(),
             witness_hex: "".to_string(),
         });
 

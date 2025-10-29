@@ -4,12 +4,13 @@
 use crate::verifier::Statement;
 use anyhow::Result;
 use async_trait::async_trait;
+use cid::Cid;
 use serde::{Deserialize, Serialize};
 
 pub mod local_store;
 
-// a generic content identifier
-pub struct CID(pub Vec<u8>);
+/// the raw data type for storage
+type Data = Vec<u8>;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Intent {
@@ -52,5 +53,11 @@ pub trait SharedStore<K, V>: Send + Sync {
     /// Remove data associated with a key
     async fn remove(&self, k: &K) -> Result<()>;
 }
+
+/// The docstore is a SharedStore where the key is a cid
+/// and the value is the corresponding message
+pub trait DocStore: Send + Sync + SharedStore<Cid, Data> { }
+
+
 // /// shared intent storage
 // pub trait IntentStore: Send + Sync + SharedStore<Intent, ()> { }
