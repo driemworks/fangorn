@@ -40,7 +40,7 @@ impl Intent {
         intent_type: IntentType,
     ) -> Self {
         let stmt = C::create_challenge_statement(question, answer);
-        let stmt_unwrap = stmt.expect("There was an issue unwrapping the statemnt");
+        let stmt_unwrap = stmt.expect("There was an issue unwrapping the statement");
         Self {
             policy_type: intent_type,
             parameters: stmt_unwrap.0,

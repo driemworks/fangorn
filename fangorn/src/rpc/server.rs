@@ -126,7 +126,7 @@ impl<C: Pairing> Rpc for NodeServer<C> {
                 }
             }
             Ok(false) => {
-                println!("Witness verification failed")
+                println!("Witness verification failed");
             }
             Err(e) => {
                 println!("An Error occurred: {}", e);
