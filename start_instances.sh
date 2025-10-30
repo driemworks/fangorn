@@ -22,6 +22,12 @@ cleanup() {
         rm "pubkey.txt"
         echo "pubkey.txt deleted"
     fi
+
+    echo "Removing files from docs store"
+    find ./tmp/docs -mindepth 1 -delete
+    echo "Removing files from intents store"
+    find ./tmp/intents -mindepth 1 -delete
+
     exit 0
 }
 
