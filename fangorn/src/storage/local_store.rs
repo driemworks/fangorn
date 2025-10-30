@@ -6,6 +6,7 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use tokio::fs;
+use crate::verification::intents::Intent;
 
 /// The codec for generating CIDs
 const RAW: u64 = 0x55;

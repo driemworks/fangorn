@@ -1,57 +1,15 @@
 //! a generic policy 'store'
 //! the core abstraction workers leverage for mapping content identifiers to policies
-use crate::verifier::Challenge;
 use anyhow::Result;
 use async_trait::async_trait;
 use cid::Cid;
-use serde::{Deserialize, Serialize};
+use crate::verification::intents::Intent;
 
 pub mod local_store;
 
 /// the raw data type for storage
 type Data = Vec<u8>;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Intent {
-    pub policy_type: IntentType,
-    pub parameters: Vec<u8>,
-}
-
-/// types of policies
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum IntentType {
-    Challenge,
-}
-
-impl Intent {
-    /// convert a policy to an NP-statement
-    // pub fn to_statement(&self) -> Statement {
-    //     Statement(self.parameters.clone())
-    // }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        serde_json::to_vec(self).unwrap()
-    }
-    /// Create an NP-hard problem 
-    pub fn create_intent<C: Challenge>(
-        question: &Vec<u8>,
-        answer: &Vec<u8>,
-        intent_type: IntentType,
-    ) -> Self {
-        let stmt = C::create_challenge_statement(question, answer);
-        let stmt_unwrap = stmt.expect("There was an issue unwrapping the statement");
-        Self {
-            policy_type: intent_type,
-            parameters: stmt_unwrap.0,
-        }
-    }
-}
-
-impl From<Vec<u8>> for Intent {
-    fn from(bytes: Vec<u8>) -> Self {
-        serde_json::from_slice(&bytes).unwrap()
-    }
-}
 
 /// The SharedStore manages key-value mappings against some shared storage backend
 #[async_trait]

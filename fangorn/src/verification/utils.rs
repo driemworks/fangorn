@@ -1,4 +1,3 @@
-// use super::*;
 
 pub fn xor_padded(a: &Vec<u8>, b: &Vec<u8>) -> Vec<u8> {
         let max_len = a.len().max(b.len());

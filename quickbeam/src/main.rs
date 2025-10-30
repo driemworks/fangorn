@@ -4,9 +4,9 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{rand::rngs::OsRng, UniformRand};
 use clap::{Parser, Subcommand};
 use fangorn::rpc::server::*;
-use fangorn::storage::{local_store::LocalDocStore, Intent, IntentStore, IntentType, SharedStore};
+use fangorn::storage::{local_store::LocalDocStore, IntentStore, SharedStore};
 use fangorn::types::*;
-use fangorn::verifier::{PasswordChallenge, PasswordSolution, Solution};
+use fangorn::verification::{intents::{Intent, IntentType}, challenges::PasswordChallenge, solutions::{PasswordSolution, Solution}};
 use multihash_codetable::{Code, MultihashDigest};
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,

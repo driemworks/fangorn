@@ -6,7 +6,7 @@ use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext
 use cid::Cid;
 use std::str::FromStr;
 
-use crate::{storage::{*, local_store::LocalDocStore}, types::*, verifier::*};
+use crate::{storage::{*, local_store::LocalDocStore}, types::*, verification::{Witness, Statement, verifiers::{Verifier, PasswordVerifier}}};
 
 use tonic::{Request, Response, Status};
 
