@@ -6,7 +6,8 @@ use clap::{Parser, Subcommand};
 use fangorn::rpc::server::*;
 use fangorn::storage::{local_store::LocalDocStore, Intent, IntentStore, IntentType, SharedStore};
 use fangorn::types::*;
-use fangorn::verifier::LocalFileLocationChallenge;
+use fangorn::verifier::{PasswordChallenge, PasswordSolution, Solution};
+use multihash_codetable::{Code, MultihashDigest};
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
     setup::PartialDecryption, types::Ciphertext,
@@ -109,33 +110,17 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
     // write the ciphertext
     let cid = shared_store.add(&ciphertext_bytes).await.unwrap();
 
-    let key = [11; 32].to_vec();
-    let file_location: Vec<u8> = "test.txt".bytes().collect();
+    let password_vec: Vec<u8> = "ideallabs".as_bytes().to_vec();
+    let password_hash = Code::Sha2_256.digest(&password_vec).to_bytes();
 
     let intent_type = IntentType::Challenge;
     let intent =
-        Intent::create_intent::<LocalFileLocationChallenge>(&file_location, &key, intent_type);
+        Intent::create_intent::<PasswordChallenge>(&password_hash, &password_vec, intent_type);
 
-    // let intent_bytes = intent.to_bytes();
-    shared_store.register_intent(&cid, &intent).await;
-
-    // create intents store
-    // let intent_store = LocalDocStore::new("tmp/intents");
-    // intent_store.add(&intent_bytes).await.unwrap();
-
-    // // This needs to be replaced with a contract call
-    // fs::create_dir_all("tmp/intents").unwrap();
-    // let mut file = OpenOptions::new()
-    //     .create(true)
-    //     .write(true)
-    //     .truncate(true)
-    //     .open(format!("tmp/intents/{}.intent", cid))
-    //     .unwrap();
-
-    // write!(&mut file, "{}", hex::encode(intent_bytes)).unwrap();
+    shared_store.register_intent(&cid, &intent).await.expect("An error occurred when registering intent in shared store");
 
     println!("> Saved ciphertext to /tmp/{}.dat", &cid.to_string());
-    println!("> Saved intent to /tmp/intents/{}.intent", &cid.to_string());
+    println!("> Saved intent to /tmp/intents/{}.ents", &cid.to_string());
 }
 
 async fn handle_decrypt(config_dir: &String, cid_string: &String) {
@@ -155,6 +140,10 @@ async fn handle_decrypt(config_dir: &String, cid_string: &String) {
     let sys_key_request = tonic::Request::new(PreprocessRequest {});
 
     // TODO: generate the witness here
+
+    let password_vec = "ideallabs".as_bytes().to_vec();
+    let witness = PasswordSolution::prepare_witness(password_vec);
+    let witness_hex = hex::encode(witness.0);
 
     // from first node
     let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
@@ -181,14 +170,14 @@ async fn handle_decrypt(config_dir: &String, cid_string: &String) {
             .unwrap();
         let request = tonic::Request::new(PartDecRequest {
             cid: cid.to_string(),
-            witness_hex: "".to_string(),
+            witness_hex: witness_hex.clone(),
         });
 
-        let response = client.partdec(request).await.unwrap();
+        let response = client.partdec(request).await.expect("Something went wrong with the partial decryption request");
         let part_dec_hex = response.into_inner().hex_serialized_decryption;
-        let part_dec_bytes = hex::decode(&part_dec_hex).unwrap();
+        let part_dec_bytes = hex::decode(&part_dec_hex).expect("Couldn't decode partial decryption hex");
         partial_decryptions[i] =
-            PartialDecryption::deserialize_compressed(&part_dec_bytes[..]).unwrap();
+            PartialDecryption::deserialize_compressed(&part_dec_bytes[..]).expect("Couldn't deserialize the partial decryption bytes");
     }
 
     println!("> Collected partial decryptions, attempting to decrypt the ciphertext");
