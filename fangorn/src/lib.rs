@@ -4,6 +4,6 @@ pub mod rpc;
 pub mod service;
 pub mod types;
 pub mod storage;
-pub mod verification;
+pub mod entish;
 
 pub mod test;
