@@ -1,5 +1,4 @@
 use super::*;
-use crate::verifier::Statement;
 use async_trait::async_trait;
 use cid::Cid;
 use multihash_codetable::{Code, MultihashDigest};
@@ -7,7 +6,6 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use tokio::fs;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// The codec for generating CIDs
 const RAW: u64 = 0x55;
@@ -58,7 +56,7 @@ impl LocalDocStore {
 
     /// convert CID to filename
     fn cid_to_filename_for_intents(&self, cid: &str) -> PathBuf {
-        PathBuf::from(&self.intents_dir).join(format!("{}.dat", cid))
+        PathBuf::from(&self.intents_dir).join(format!("{}.ents", cid))
     }
 
     /// generate a cid
@@ -126,23 +124,25 @@ impl IntentStore for LocalDocStore {
     }
 
     async fn get_intent(&self, cid: &Cid) -> Result<Option<Intent>> {
-        // let filepath = self.cid_to_filename(&cid.to_string());
+        let filepath = self.cid_to_filename_for_intents(&cid.to_string());
 
         // // Check if file exists
-        // if !filepath.exists() {
-        //     return Ok(None);
-        // }
+        if !filepath.exists() {
+            return Ok(None);
+        }
 
         // // Read file
-        // let raw = fs::read_to_string(filepath)
-        //     .await
-        //     .expect("you must provide a ciphertext.");
-        // let bytes = hex::decode(raw.clone()).unwrap();
+        let raw = fs::read_to_string(filepath)
+            .await
+            .expect("Issue reading intent to string");
+        let bytes = hex::decode(raw.clone()).unwrap();
 
-        Ok(None)
+        let intent: Intent = bytes.into();
+
+        Ok(Some(intent))
     }
 
-    async fn remove_intent(&self, cid: &Cid) -> Result<()> {
+    async fn remove_intent(&self, _cid: &Cid) -> Result<()> {
         Ok(())
     }
 }

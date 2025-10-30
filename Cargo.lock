@@ -4454,6 +4454,7 @@ dependencies = [
  "iroh-blobs",
  "iroh-docs",
  "iroh-gossip",
+ "multihash-codetable",
  "n0-future",
  "parity-scale-codec",
  "postcard",
