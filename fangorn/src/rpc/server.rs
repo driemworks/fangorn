@@ -6,7 +6,7 @@ use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext
 use cid::Cid;
 use std::str::FromStr;
 
-use crate::{storage::*, types::*, verifier::*};
+use crate::{storage::{*, local_store::LocalDocStore}, types::*, verifier::*};
 
 use tonic::{Request, Response, Status};
 
@@ -93,22 +93,45 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let cid_string = req_ref.cid.clone();
         println!("got cid: {}", cid_string.clone());
         let cid = Cid::from_str(&cid_string).unwrap();
-        // if the doc is found, proceed 
-        if let Some(ciphertext_bytes) = self.doc_store.fetch(&cid).await.unwrap() {
-            let ciphertext =
-                Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
+        let witness = Witness(hex::decode(req_ref.witness_hex.clone()).unwrap());
+        println!("got witness");
 
-            println!("recovered the ciphertext");
+        let shared_store = LocalDocStore::new("tmp/docs", "tmp/intents");
 
-            let state = self.state.lock().await;
-            let partial_decryption = state.sk.partial_decryption(&ciphertext);
+        let intent = shared_store.get_intent(&cid).await.expect("Something went wrong when looking for intent.").expect("Intent wasn't found");
+        println!("found intent");
 
-            partial_decryption.serialize_compressed(&mut bytes).unwrap();
-            println!("produced a partial decryption");
-        } else {
-            println!("data unavailable");
+        let statement = Statement(intent.parameters);
+        println!("created statement");
+
+        let verifier = PasswordVerifier::new();
+
+        println!("verifying witness");
+        match verifier.verify_witness(witness, statement).await {
+            Ok(true) => {
+                println!("Witness verification succeeded");
+                if let Some(ciphertext_bytes) = self.doc_store.fetch(&cid).await.unwrap() {
+                    let ciphertext =
+                        Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
+
+                    println!("recovered the ciphertext");
+
+                    let state = self.state.lock().await;
+                    let partial_decryption = state.sk.partial_decryption(&ciphertext);
+
+                    partial_decryption.serialize_compressed(&mut bytes).unwrap();
+                    println!("produced a partial decryption");
+                } else {
+                    println!("data unavailable");
+                }
+            }
+            Ok(false) => {
+                println!("Witness verification failed")
+            }
+            Err(e) => {
+                println!("An Error occurred: {}", e);
+            }
         }
-        
         Ok(Response::new(PartDecResponse {
             hex_serialized_decryption: hex::encode(bytes),
         }))
