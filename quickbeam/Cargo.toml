@@ -36,3 +36,4 @@ quic-rpc.workspace = true
 flume.workspace = true
 fangorn.workspace = true
 cid.workspace = true
+multihash-codetable.workspace = true
