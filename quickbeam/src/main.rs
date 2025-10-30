@@ -105,7 +105,7 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
     ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
 
     // create docstore (same dir as in service.rs)
-    let shared_store = LocalDocStore::new("tmp/docs", "tmp/intents/");
+    let shared_store = LocalDocStore::new("tmp/docs/", "tmp/intents/");
     // write the ciphertext
     let cid = shared_store.add(&ciphertext_bytes).await.unwrap();
 
@@ -117,7 +117,7 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
         Intent::create_intent::<LocalFileLocationChallenge>(&file_location, &key, intent_type);
 
     // let intent_bytes = intent.to_bytes();
-    shared_store.register_intent(&cid, &intent).await;
+    let _ = shared_store.register_intent(&cid, &intent).await;
 
     // create intents store
     // let intent_store = LocalDocStore::new("tmp/intents");
@@ -134,7 +134,7 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
 
     // write!(&mut file, "{}", hex::encode(intent_bytes)).unwrap();
 
-    println!("> Saved ciphertext to /tmp/{}.dat", &cid.to_string());
+    println!("> Saved ciphertext to /tmp/docs/{}.dat", &cid.to_string());
     println!("> Saved intent to /tmp/intents/{}.intent", &cid.to_string());
 }
 
@@ -149,12 +149,9 @@ async fn handle_decrypt(config_dir: &String, cid_string: &String) {
 
     // living dangerously...
     let ciphertext_bytes = doc_store.fetch(&cid).await.unwrap().unwrap();
-    // println!("we got the ciphertext: {:?}", ciphertext_bytes.clone());
     let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
-    //  get the sys key (TODO: send this as a cli param instead)
+    //  get the sys key (TODO: send this as a cli param instead?)
     let sys_key_request = tonic::Request::new(PreprocessRequest {});
-
-    // TODO: generate the witness here
 
     // from first node
     let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
