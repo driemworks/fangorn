@@ -1,8 +1,7 @@
 //! a generic policy 'store'
 //! the core abstraction workers leverage for mapping content identifiers to policies
-use crate::verifier::{Challenge, Statement};
+use crate::verifier::Challenge;
 use anyhow::Result;
-use ark_serialize::CanonicalSerialize;
 use async_trait::async_trait;
 use cid::Cid;
 use serde::{Deserialize, Serialize};

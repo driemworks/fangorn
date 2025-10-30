@@ -1,5 +1,4 @@
 use super::*;
-use crate::verifier::Statement;
 use async_trait::async_trait;
 use cid::Cid;
 use multihash_codetable::{Code, MultihashDigest};
@@ -7,7 +6,6 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use tokio::fs;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// The codec for generating CIDs
 const RAW: u64 = 0x55;
@@ -144,7 +142,7 @@ impl IntentStore for LocalDocStore {
         Ok(Some(intent))
     }
 
-    async fn remove_intent(&self, cid: &Cid) -> Result<()> {
+    async fn remove_intent(&self, _cid: &Cid) -> Result<()> {
         Ok(())
     }
 }

@@ -12,9 +12,8 @@ use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
     setup::PartialDecryption, types::Ciphertext,
 };
-use std::io::prelude::*;
 use std::str::FromStr;
-use std::{fs, fs::OpenOptions};
+use std::fs;
 
 const MAX_COMMITTEE_SIZE: usize = 2;
 

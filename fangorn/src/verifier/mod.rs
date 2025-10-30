@@ -1,5 +1,5 @@
 //! verifiers for fangorn
-use anyhow::{Result, Context};
+use anyhow::Result;
 use async_trait::async_trait;
 use multihash_codetable::{Code, MultihashDigest};
 
