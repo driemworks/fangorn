@@ -3,7 +3,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use cid::Cid;
-use crate::verification::intents::Intent;
+use crate::entish::intents::Intent;
 
 pub mod local_store;
 

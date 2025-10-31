@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 async-trait.workspace = true
 anyhow.workspace = true
+nom.workspace = true
 iroh.workspace = true
 iroh-gossip.workspace = true
 n0-future.workspace = true

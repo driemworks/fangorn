@@ -6,7 +6,7 @@ use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext
 use cid::Cid;
 use std::str::FromStr;
 
-use crate::{storage::{*, local_store::LocalDocStore}, types::*, verification::{Witness, Statement, verifiers::{Verifier, PasswordVerifier}}};
+use crate::{storage::{*, local_store::LocalDocStore}, types::*, entish::{Witness, Statement, verifiers::{Verifier, PasswordVerifier}}};
 
 use tonic::{Request, Response, Status};
 
@@ -74,20 +74,7 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         // build the witness (signature checks out)
         let req_ref = request.get_ref();
 
-        // // convert hex encoded inputs to bytes
-        // let witness_bytes = Witness(hex::decode(req_ref.witness_hex.clone()).unwrap());
-        // // build the statement (acct controlled by PK owns NFT id = X)
-        // let statement_bytes = Statement(b"".to_vec());
-
-        // // then verify it and proceed
-        // let is_valid = &self
-        //     .verifier
-        //     .verify_witness(witness_bytes, statement_bytes)
-        //     .await
-        //     .unwrap();
-
         let mut bytes = Vec::new();
-
         // try to fetch the ciphertext based on the cid
         // recover cid
         let cid_string = req_ref.cid.clone();

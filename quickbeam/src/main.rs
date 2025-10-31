@@ -3,10 +3,14 @@ use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{rand::rngs::OsRng, UniformRand};
 use clap::{Parser, Subcommand};
+use fangorn::entish::{
+    challenges::PasswordChallenge,
+    intents::{Intent, IntentType},
+    solutions::{PasswordSolution, Solution},
+};
 use fangorn::rpc::server::*;
 use fangorn::storage::{local_store::LocalDocStore, IntentStore, SharedStore};
 use fangorn::types::*;
-use fangorn::verification::{intents::{Intent, IntentType}, challenges::PasswordChallenge, solutions::{PasswordSolution, Solution}};
 use multihash_codetable::{Code, MultihashDigest};
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
@@ -32,12 +36,12 @@ enum Commands {
         /// the directory of the plaintext
         #[arg(long)]
         message_dir: String,
-        // /// the directory of the file defining the policy
-        // #[arg(long)]
-        // policy: String,
         /// the directory of the kzg params (fangorn config)
         #[arg(long)]
         config_dir: String,
+        /// the intent for encrypting the message
+        #[arg(long)]
+        intent: String,
     },
     /// request to decrypt a message
     /// prepare a witness + send to t-of-n node RPCs
@@ -60,8 +64,9 @@ async fn main() -> Result<()> {
         Some(Commands::Encrypt {
             message_dir,
             config_dir,
+            intent,
         }) => {
-            handle_encrypt(config_dir, message_dir).await;
+            handle_encrypt(config_dir, message_dir, intent).await;
         }
         Some(Commands::Decrypt { config_dir, cid }) => {
             handle_decrypt(config_dir, cid).await;
@@ -74,7 +79,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn handle_encrypt(config_dir: &String, message_dir: &String) {
+async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_str: &String) {
     let config_hex = fs::read_to_string(config_dir).expect("you must provide a valid config file.");
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
@@ -96,11 +101,10 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
     let t = 1;
     let gamma_g2 = G2::rand(&mut OsRng);
 
+    // build the ciphertext
     let message =
         fs::read_to_string(message_dir).expect("you must provide a path to a plaintext file.");
-
     let ct = encrypt::<E>(&ek, t, &config.crs, gamma_g2.into(), message.as_bytes()).unwrap();
-
     let mut ciphertext_bytes = Vec::new();
     ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
 
@@ -112,9 +116,8 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String) {
     let password_vec: Vec<u8> = "ideallabs".as_bytes().to_vec();
     let password_hash = Code::Sha2_256.digest(&password_vec).to_bytes();
 
-    let intent_type = IntentType::Challenge;
-    let intent =
-        Intent::create_intent::<PasswordChallenge>(&password_hash, &password_vec, intent_type);
+    // todo: how can we avoid passing in the PasswordChallenge type here?
+    let intent = Intent::try_from_string::<PasswordChallenge>(intent_str).unwrap();
 
     let _ = shared_store
         .register_intent(&cid, &intent)

@@ -31,7 +31,7 @@ From the root, run `cargo build`.
 > hardcoded to save to ciphertext.txt for now
 > you must delete the file if you want to encrypt a new message... needs work
 
-./target/debug/quickbeam encrypt --message-dir test.txt --config-dir config.txt
+./target/debug/quickbeam encrypt --message-dir test.txt --config-dir config.txt --intent "Password(test)"
 
 ##### Decrypt a message 
 
