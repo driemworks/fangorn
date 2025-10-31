@@ -1,47 +1,51 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+
 /// content identifier
 pub struct CID(pub Vec<u8>);
+pub struct Intent(pub Vec<u8>);
 
 #[ink::contract]
-mod iris {
+mod pass_store {
 
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
     #[ink(storage)]
-    pub struct IrisPolicyStore {
-        /// Stores a single `bool` value on the storage.
-        conditions: 
+    pub struct PasswordBasedDocStore {
+        aggregate_key: Vec<u8>,
+        encryption_key: Vec<u8>,
+        owner: AccountId,
+        registry: Mapping<Vec<u8>, (CID, Intent)>
     }
 
     impl Iris {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
+        
         #[ink(constructor)]
-        pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+        pub fn new(aggregate_key: Vec<u8>, encryption_key: Vec<u8>, owner: AccountId) -> Self {
+            Self {
+                aggregate_key,
+                encryption_key,
+                owner,
+            }
         }
 
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
-        }
+        // /// Constructor that initializes the `bool` value to `false`.
+        // ///
+        // /// Constructors can delegate to other constructors.
+        // #[ink(constructor)]
+        // pub fn default() -> Self {
+        //     Self::new(Default::default())
+        // }
 
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
+        /// register a cid <> intent mapping
         #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
+        pub fn register(&mut self, filename: Vec<u8>, cid: CID, intent: Vec<u8>) {
+            // get caller
+            // insert into storage: filename -> (cid, intent)
         }
 
-        /// Simply returns the current value of our `bool`.
+        /// read cid and intent based on filename
         #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
+        pub fn read(&self, filename: Vec<u8>) -> bool {
+            // self.value
         }
     }
 
@@ -69,7 +73,6 @@ mod iris {
             assert_eq!(iris.get(), true);
         }
     }
-
 
     /// This is how you'd write end-to-end (E2E) or integration tests for ink! contracts.
     ///

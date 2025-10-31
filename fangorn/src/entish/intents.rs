@@ -72,7 +72,7 @@ impl Intent {
 
     /// Parse a string into an Intent
     pub fn try_from_string<C: Challenge>(input: &str) -> Result<Self, String> {
-        let ((intent_type_str, password)) = parse_intent_string(input).unwrap();
+        let (intent_type_str, password) = parse_intent_string(input).unwrap();
         //.map_err(|e| format!("Failed to parse intent: {}", e))?;
 
         let intent_type = IntentType::from_str(intent_type_str)?;

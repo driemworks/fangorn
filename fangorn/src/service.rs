@@ -372,6 +372,8 @@ async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u1
     ));
 
     // a dummy verifier that always returns true (for now...)
+    // this should be some kind of "modular gadget factory"
+    // since we want to be able to swap verification on demand
     let verifier = Arc::new(crate::entish::verifiers::PolkadotVerifier::new());
 
     let server = NodeServer::<C> {

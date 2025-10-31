@@ -53,6 +53,9 @@ enum Commands {
         /// the content identifier
         #[arg(long)]
         cid: String,
+        /// A witness that satisfies the intent associated with the CID
+        #[arg(long)]
+        witness: String,
     },
 }
 
@@ -68,8 +71,8 @@ async fn main() -> Result<()> {
         }) => {
             handle_encrypt(config_dir, message_dir, intent).await;
         }
-        Some(Commands::Decrypt { config_dir, cid }) => {
-            handle_decrypt(config_dir, cid).await;
+        Some(Commands::Decrypt { config_dir, cid, witness }) => {
+            handle_decrypt(config_dir, cid, witness).await;
         }
         None => {
             // do nothing
@@ -128,7 +131,7 @@ async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_str: &
     println!("> Saved intent to /tmp/intents/{}.ents", &cid.to_string());
 }
 
-async fn handle_decrypt(config_dir: &String, cid_string: &String) {
+async fn handle_decrypt(config_dir: &String, cid_string: &String, witness_string: &String) {
     // read the config
     let config_hex = fs::read_to_string(config_dir).expect("you must provide a valid config file.");
     let config_bytes = hex::decode(&config_hex).unwrap();
@@ -143,9 +146,8 @@ async fn handle_decrypt(config_dir: &String, cid_string: &String) {
     //  get the sys key (TODO: send this as a cli param instead?)
     let sys_key_request = tonic::Request::new(PreprocessRequest {});
 
-    // TODO: generate the witness here
-
-    let password_vec = "ideallabs".as_bytes().to_vec();
+    // encode witness
+    let password_vec = witness_string.as_bytes().to_vec();
     let witness = PasswordSolution::prepare_witness(password_vec);
     let witness_hex = hex::encode(witness.0);
 
