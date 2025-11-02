@@ -1,19 +1,28 @@
 #!/bin/bash
 
+# Create a unique signal file
+SIGNAL_FILE="/tmp/fangorn_signal_$$"
+
 # Cleanup function to be called on exit
 cleanup() {
     echo ""
     echo "Ctrl+C received, cleaning up..."
-    # Kill instances if they're running
+    
+    # Kill first instance if it's running
     if [ ! -z "$FIRST_PID" ] && kill -0 "$FIRST_PID" 2>/dev/null; then
         echo "Stopping first server (PID: $FIRST_PID)..."
         kill "$FIRST_PID"
     fi
     
-    if [ ! -z "$SECOND_PID" ] && kill -0 "$SECOND_PID" 2>/dev/null; then
-        echo "Stopping second server (PID: $SECOND_PID)..."
-        kill "$SECOND_PID"
+    # Signal second terminal to close (it will kill its own process and exit)
+    if [ -f "$SIGNAL_FILE.second_pid" ]; then
+        SECOND_PID=$(cat "$SIGNAL_FILE.second_pid")
+        if [ ! -z "$SECOND_PID" ] && kill -0 "$SECOND_PID" 2>/dev/null; then
+            echo "Stopping second server and closing second terminal..."
+            kill "$SECOND_PID"
+        fi
     fi
+    
     if [ -f "ticket.txt" ]; then
         rm "ticket.txt"
         echo "ticket.txt deleted"
@@ -22,13 +31,19 @@ cleanup() {
         rm "pubkey.txt"
         echo "pubkey.txt deleted"
     fi
-
+    if [ -f "$SIGNAL_FILE" ]; then
+        rm "$SIGNAL_FILE"
+    fi
+    if [ -f "$SIGNAL_FILE.second_pid" ]; then
+        rm "$SIGNAL_FILE.second_pid"
+    fi
     echo "Removing files from docs store"
-    find ./tmp/docs -mindepth 1 -delete
+    find ./tmp/docs -mindepth 1 -delete 2>/dev/null
     echo "Removing files from intents store"
-    find ./tmp/intents -mindepth 1 -delete
-
-    exit 0
+    find ./tmp/intents -mindepth 1 -delete 2>/dev/null
+    
+    # Don't exit - just return to shell
+    echo "Cleanup complete."
 }
 
 # Set trap to catch Ctrl+C (SIGINT) and call cleanup
@@ -39,19 +54,28 @@ if [ -f "ticket.txt" ]; then
     echo "Found existing ticket.txt, deleting..."
     rm "ticket.txt"
 fi
+
 # Check if pubkey.txt exists and delete it
 if [ -f "pubkey.txt" ]; then
     echo "Found existing pubkey.txt, deleting..."
     rm "pubkey.txt"
 fi
 
-# Start the first instance
+# Clean up old signal files if they exist
+if [ -f "$SIGNAL_FILE" ]; then
+    rm "$SIGNAL_FILE"
+fi
+if [ -f "$SIGNAL_FILE.second_pid" ]; then
+    rm "$SIGNAL_FILE.second_pid"
+fi
+
+# Start the first instance in the background of current terminal
 echo "Starting first instance: ./target/debug/fangorn run --bind-port 9944 --rpc-port 30333 --is-bootstrap --index 0"
 ./target/debug/fangorn run --bind-port 9944 --rpc-port 30333 --is-bootstrap --index 0 &
 FIRST_PID=$!
-echo "PID of instance: $FIRST_PID"
+echo "PID of first instance: $FIRST_PID"
+
 # Wait for ticket.txt to appear
-# Note: there is no need to sleep for 2 seconds. It works (quicker) with sleep 0.5 as well.
 echo "Waiting for ticket.txt..."
 while [ ! -f "ticket.txt" ]; do
     sleep 2
@@ -64,15 +88,58 @@ done
 
 TICKET_CONTENT=$(cat ticket.txt)
 PUBKEY=$(cat pubkey.txt)
-echo "ticket.txt and pubukey.txt found!"
+echo "ticket.txt and pubkey.txt found!"
 
-echo "Starting second instance: /target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9944 --ticket $TICKET_CONTENT --index 1"
-# Start the second instance
+echo "Starting second instance in new terminal..."
+
+# Pass the main script's PID and signal file to the second terminal
+MAIN_PID=$$
+gnome-terminal -- bash -c "
+SECOND_SERVER_PID=\"\"
+
+cleanup_second() {
+    echo \"\"
+    echo \"Second terminal: Ctrl+C received, cleaning up...\"
+    if [ ! -z \"\$SECOND_SERVER_PID\" ] && kill -0 \"\$SECOND_SERVER_PID\" 2>/dev/null; then
+        echo \"Stopping second server...\"
+        kill \"\$SECOND_SERVER_PID\"
+    fi
+    echo \"Signaling main script...\"
+    echo \"stop\" > \"$SIGNAL_FILE\"
+    echo \"Closing terminal...\"
+    exit 0
+}
+
+trap cleanup_second SIGINT
+
+echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9944 --ticket $TICKET_CONTENT --index 1'
 ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9944 --ticket $TICKET_CONTENT --index 1 &
-SECOND_PID=$!
-echo "PID of second instance: $SECOND_PID"
+SECOND_SERVER_PID=\$!
+echo \"PID: \$SECOND_SERVER_PID\"
+echo \"\$SECOND_SERVER_PID\" > \"$SIGNAL_FILE.second_pid\"
+echo 'Press Ctrl+C here to stop both instances'
 
-echo "Both instances running. Press Ctrl+C to stop."
+wait \$SECOND_SERVER_PID
+" &
 
-# Wait indefinitely (servers run in background)
-wait
+# Monitor for signal file in the background
+(
+    while true; do
+        if [ -f "$SIGNAL_FILE" ]; then
+            echo "Received stop signal from second terminal"
+            # Call cleanup but don't exit the main shell
+            cleanup
+            break
+        fi
+        sleep 0.5
+    done
+) &
+MONITOR_PID=$!
+
+echo "Both instances running. Press Ctrl+C in either window to stop both."
+
+# Wait for the first process
+wait $FIRST_PID
+
+echo "First instance stopped. Cleaning up remaining processes..."
+cleanup
