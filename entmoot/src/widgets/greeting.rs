@@ -1,4 +1,4 @@
-use ratatui::{buffer::Buffer, layout::{Position, Rect}, style::Style, widgets::{Block, StatefulWidget, Widget}};
+use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 
 pub struct GreetingWidget {
     name: String,
@@ -22,22 +22,4 @@ impl Widget for GreetingWidget {
         let y = area.height/2;
         buf.set_string(x, y, greeting, Style::default());
     }
-}
-
-pub struct TerminalWidget;
-
-impl TerminalWidget {
-    pub fn new() -> Self {
-        Self{}  
-    }
-}
-
-impl Widget for TerminalWidget {
-
-    fn render(self, area: Rect, buf: &mut Buffer) {
-
-        // let block = Block:
-
-    }
-
 }
