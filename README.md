@@ -25,6 +25,7 @@ From the root, run `cargo build`.
 1. Ensure start_instances.sh has execute priveleges: `chmod +x start_servers.sh`
 2. From the root, run start_instances.sh: `./start_instances.sh`
 
+
 #### Using Quickbeam
 ##### Encrypt a message 
 
@@ -36,6 +37,12 @@ From the root, run `cargo build`.
 ##### Decrypt a message 
 
 ./target/debug/quickbeam decrypt --cid bafkreifl7uhj22r75exbzzk5rwryb6st4mifj57wjrd5r7lh6cttdddbam --config-dir config.txt --witness test
+
+##### To run UI
+1. From the root run: `cargo run -p entmoot`
+
+2. To quit hit the ESC key
+   
 
 ## TODOs
 

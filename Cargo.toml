@@ -10,6 +10,7 @@ resolver = "2"
 members = [
     "fangorn",
     "quickbeam",
+    "entmoot"
 ]
 
 # [workspace.lints.rust]
@@ -79,6 +80,12 @@ rand_core = "0.9.3"
 sp-core = "38.1.0"
 sp-weights = "33.1.0"
 subxt = "0.44.0"
+
+# ratatui
+color-eyre = "0.6"
+crossterm = "0.29"
+ratatui = "0.29"
+
 
 postcard = "1.1.1"
 clap = { version = "4.5.37", default-features = false, features = ["derive"] }
