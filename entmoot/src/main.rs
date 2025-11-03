@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use color_eyre::Result;
 use crossterm::{event::{self, Event, KeyCode, poll}};
-use ratatui::{DefaultTerminal, Frame, layout::{Constraint, Direction, Layout, Rect}, widgets::{Block, Borders, Paragraph}};
+use ratatui::{DefaultTerminal, Frame, layout::{Constraint, Direction, Layout, Rect}, widgets::{Block, BorderType, Borders, Paragraph}};
 
 use crate::widgets::buttons::{BLUE, Button, GREEN, State};
 
@@ -61,31 +61,29 @@ impl App {
 
     fn render(&mut self, frame: &mut Frame) {
 
+        let vertical_layout = Layout::vertical([
+            Constraint::Percentage(40),
+            Constraint::Percentage(33),
+            Constraint::Percentage(27),
+            Constraint::Min(0), // ignore remaining space
+        ]);
+
+        let [title_vert, buttons_vert, _, _] = vertical_layout.areas(frame.area());
+
         match self.menu_id {
             Menu::MainMenu => {
-                    let main_menu = render_buttons(frame);
-                    // frame.render_widget(Paragraph::new("Left Box").block(Block::new().borders(Borders::ALL)), top_area[0]);
-                    // frame.render_widget(Paragraph::new("Right Box").block(Block::new().borders(Borders::ALL)), top_area[1]);
-                    // frame.render_widget(Paragraph::new("Bottom Box").block(Block::new().borders(Borders::ALL)), bottom_area);
+                    render_title(title_vert, frame);
+                    render_buttons(buttons_vert, frame);
             }
             // _ => {}
         }
         // Always render box with title
-        frame.render_widget(Block::new().borders(Borders::ALL).title("Fangorn"), frame.area());
+        frame.render_widget(Block::new().borders(Borders::ALL).border_type(BorderType::Double).title("IDEAL LABS"), frame.area());
 
     }
 }
 
-    fn render_buttons(frame: &mut Frame) {
-
-        let vertical_layout = Layout::vertical([
-            Constraint::Percentage(33),
-            Constraint::Percentage(33),
-            Constraint::Percentage(33),
-            Constraint::Min(0), // ignore remaining space
-        ]);
-
-        let [_, buttons_vert, _, _] = vertical_layout.areas(frame.area());
+    fn render_buttons(buttons_vert: Rect, frame: &mut Frame) {
 
         let layout = Layout::horizontal([Constraint::Percentage(20), Constraint::Percentage(20), Constraint::Percentage(20), Constraint::Percentage(20), Constraint::Percentage(20)]);
 
@@ -98,6 +96,20 @@ impl App {
         frame.render_widget(decrypt_btton, dec);
 
         
+
+}
+
+fn render_title(title_area: Rect, frame: &mut Frame) {
+
+    let logo = Paragraph::new("  
+             _                         _   
+            | |                       | |  
+   ___ _ __ | |_ _ __ ___   ___   ___ | |_ 
+  / _ \\ '_ \\| __| '_ ` _ \\ / _ \\ / _ \\| __|
+ |  __/ | | | |_| | | | | | (_) | (_) | |_ 
+  \\___|_| |_|\\__|_| |_| |_|\\___/ \\___/ \\__|").centered();
+
+frame.render_widget(logo, title_area);
 
 }
 
