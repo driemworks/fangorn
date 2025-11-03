@@ -56,8 +56,8 @@ pub async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_st
     let password_vec: Vec<u8> = "ideallabs".as_bytes().to_vec();
     let password_hash = Code::Sha2_256.digest(&password_vec).to_bytes();
 
-    // todo: how can we avoid passing in the PasswordChallenge type here?
-    let intent = Intent::try_from_string::<PasswordChallenge>(intent_str).unwrap();
+    // parse the intent
+    let intent = Intent::try_from_string(intent_str).unwrap();
 
     let _ = shared_store
         .register_intent(&cid, &intent)

@@ -2,6 +2,7 @@
 // intents allow users to associate data access
 // with an np-hard problem
 use super::challenges::Challenge;
+use crate::entish::challenges::PasswordChallenge;
 use multihash_codetable::{Code, MultihashDigest};
 use nom::{
     bytes::complete::{tag, take_until},
@@ -71,7 +72,7 @@ impl Intent {
     }
 
     /// Parse a string into an Intent
-    pub fn try_from_string<C: Challenge>(input: &str) -> Result<Self, String> {
+    pub fn try_from_string(input: &str) -> Result<Self, String> {
         let (intent_type_str, password) = parse_intent_string(input).unwrap();
         //.map_err(|e| format!("Failed to parse intent: {}", e))?;
 
@@ -84,7 +85,7 @@ impl Intent {
                 let question = Code::Sha2_256.digest(&answer).to_bytes();
 
                 // TODO: can we somehow infer the challenge type based on intent type?
-                Ok(Self::create_intent::<C>(
+                Ok(Self::create_intent::<PasswordChallenge>(
                     &question,
                     &answer,
                     IntentType::Password,
