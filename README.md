@@ -22,6 +22,7 @@ From the root, run `cargo build`.
     ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey d5241466abbd753d3124416dceaf8e96b806fa5f1c4cc816cea432393e09437d --bootstrap-ip 172.31.149.62:9944 --ticket docaaacbb5qoi6exqm2tzh3eqqb6zap2jmppocn3udv3qvbpz7jwvnnzpc7ahksifdgvo6xkpjreraw3tvpr2llqbx2l4oezsawz2sdeoj6bfbx2ajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagdmdehlnomayavqolfpoyju --index 1
 
 ### Option B: Automatically start two instances
+0. Install gnome-terminalL `sudo apt install gnome-terminal`
 1. Ensure start_instances.sh has execute priveleges: `chmod +x start_servers.sh`
 2. From the root, run start_instances.sh: `./start_instances.sh`
 
