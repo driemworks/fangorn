@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use color_eyre::Result;
 use crossterm::{event::{self, Event, KeyCode, poll}};
-use ratatui::{DefaultTerminal, Frame, layout::{Constraint, Direction, Layout, Rect}, widgets::{Block, BorderType, Borders, Paragraph}};
+use ratatui::{DefaultTerminal, Frame, layout::{Alignment, Constraint, Direction, Layout, Rect}, widgets::{Block, BorderType, Borders, Paragraph}};
 
 use crate::widgets::buttons::{BLUE, Button, GREEN, State};
 
@@ -78,7 +78,7 @@ impl App {
             // _ => {}
         }
         // Always render box with title
-        frame.render_widget(Block::new().borders(Borders::ALL).border_type(BorderType::Double).title("IDEAL LABS"), frame.area());
+        frame.render_widget(Block::new().borders(Borders::ALL).border_type(BorderType::Double), frame.area());
 
     }
 }
@@ -107,7 +107,9 @@ fn render_title(title_area: Rect, frame: &mut Frame) {
    ___ _ __ | |_ _ __ ___   ___   ___ | |_ 
   / _ \\ '_ \\| __| '_ ` _ \\ / _ \\ / _ \\| __|
  |  __/ | | | |_| | | | | | (_) | (_) | |_ 
-  \\___|_| |_|\\__|_| |_| |_|\\___/ \\___/ \\__|").centered();
+  \\___|_| |_|\\__|_| |_| |_|\\___/ \\___/ \\__|
+                               by Ideal Labs
+  ").centered();
 
 frame.render_widget(logo, title_area);
 
