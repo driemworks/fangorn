@@ -36,3 +36,9 @@ pub trait IntentStore {
     async fn get_intent(&self, cid: &Cid) -> Result<Option<Intent>>;
     async fn remove_intent(&self, cid: &Cid) -> Result<()>;
 }
+
+#[async_trait]
+pub trait PlaintextStore {
+    async fn read_plaintext(&self, message_dir: &String) -> Result<String>;
+    async fn write_to_pt_store(&self, filename: &String, data: &Vec<u8>) -> Result<()>;
+}

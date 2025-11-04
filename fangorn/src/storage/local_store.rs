@@ -15,13 +15,15 @@ pub struct LocalStore {
     /// the root directory to store data
     pub docs_dir: String,
     pub intents_dir: String,
+    pub pt_dir: String
 }
 
 impl LocalStore {
-    pub fn new(docs_dir: impl Into<String>, intents_dir: impl Into<String>) -> Self {
+    pub fn new(docs_dir: impl Into<String>, intents_dir: impl Into<String>, pt_dir: impl Into<String>) -> Self {
         Self {
             docs_dir: docs_dir.into(),
             intents_dir: intents_dir.into(),
+            pt_dir: pt_dir.into()
         }
     }
 
@@ -35,6 +37,26 @@ impl LocalStore {
     async fn ensure_intents_dir(&self) -> Result<()> {
         fs::create_dir_all(&self.intents_dir).await?;
         Ok(())
+    }
+
+    async fn ensure_pt_dir(&self) -> Result<()> {
+        fs::create_dir_all(&self.pt_dir).await?;
+        Ok(())
+    }
+
+
+    fn write_pt_to_disk(&self, data: &Data, filepath: PathBuf) {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(filepath)
+            .unwrap();
+
+        let pt = String::from_utf8(data.clone()).expect("Couldn't translate Vec to String for PT persistence");
+
+        write!(&mut file, "{}", pt).unwrap();
+
     }
 
 
@@ -145,6 +167,28 @@ impl IntentStore for LocalStore {
 
     async fn remove_intent(&self, _cid: &Cid) -> Result<()> {
         Ok(())
+    }
+}
+
+#[async_trait]
+impl PlaintextStore for LocalStore {
+    async fn read_plaintext(&self, message_dir: &String) -> Result<String> {
+
+        let plaintext = fs::read_to_string(message_dir).await.expect("you must provide a path to a plaintext file.");
+
+        Ok(plaintext)
+    }
+    async fn write_to_pt_store(&self, filename: &String, data: &Vec<u8>) -> Result<()>{
+        
+        self.ensure_pt_dir().await?;
+
+        let filepath = format!("{}{}.txt", self.pt_dir, filename);
+        let pathbuf = PathBuf::from(filepath);
+
+        self.write_pt_to_disk(data, pathbuf);
+
+        Ok(())
+
     }
 }
 

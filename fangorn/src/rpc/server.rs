@@ -83,7 +83,7 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let witness = Witness(hex::decode(req_ref.witness_hex.clone()).unwrap());
         println!("got witness");
 
-        let shared_store = LocalStore::new("tmp/docs", "tmp/intents");
+        let shared_store = LocalStore::new("tmp/docs", "tmp/intents", "temp/plaintexts");
 
         let intent = shared_store.get_intent(&cid).await.expect("Something went wrong when looking for intent.").expect("Intent wasn't found");
         println!("found intent");

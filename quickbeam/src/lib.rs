@@ -1,11 +1,11 @@
 use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{rand::rngs::OsRng, UniformRand};
-use fangorn::entish::{
+use fangorn::{entish::{
     challenges::PasswordChallenge,
     intents::Intent,
     solutions::{PasswordSolution, Solution},
-};
+}, storage::PlaintextStore};
 use fangorn::rpc::server::*;
 use fangorn::storage::{local_store::LocalStore, IntentStore, SharedStore};
 use fangorn::types::*;
@@ -41,15 +41,17 @@ pub async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_st
     let t = 1;
     let gamma_g2 = G2::rand(&mut OsRng);
 
+        // create docstore (same dir as in service.rs)
+    let shared_store = LocalStore::new("tmp/docs/", "tmp/intents/", "tmp/plaintexts/");
+
     // build the ciphertext
-    let message =
-        fs::read_to_string(message_dir).expect("you must provide a path to a plaintext file.");
+    // let message =
+    //     fs::read_to_string(message_dir).expect("you must provide a path to a plaintext file.");
+    let message = shared_store.read_plaintext(message_dir).await.expect("Something went wrong while reading PT");
     let ct = encrypt::<E>(&ek, t, &config.crs, gamma_g2.into(), message.as_bytes()).unwrap();
     let mut ciphertext_bytes = Vec::new();
     ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
 
-    // create docstore (same dir as in service.rs)
-    let shared_store = LocalStore::new("tmp/docs/", "tmp/intents/");
     // write the ciphertext
     let cid = shared_store.add(&ciphertext_bytes).await.unwrap();
 
@@ -65,13 +67,13 @@ pub async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_st
     println!("> Saved intent to /tmp/intents/{}.ents", &cid.to_string());
 }
 
-pub async fn handle_decrypt(config_dir: &String, cid_string: &String, witness_string: &String) {
+pub async fn handle_decrypt(config_dir: &String, cid_string: &String, witness_string: &String, pt_filename: &String) {
     // read the config
     let config_hex = fs::read_to_string(config_dir).expect("you must provide a valid config file.");
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
     // get the ciphertext
-    let doc_store = LocalStore::new("tmp/docs/", "tmp/intents/");
+    let doc_store = LocalStore::new("tmp/docs/", "tmp/intents/", "tmp/plaintexts/");
     let cid = cid::Cid::from_str(cid_string).unwrap();
 
     // living dangerously...
@@ -140,7 +142,7 @@ pub async fn handle_decrypt(config_dir: &String, cid_string: &String, witness_st
     let mut ct_bytes = Vec::new();
     ciphertext.serialize_compressed(&mut ct_bytes).unwrap();
 
-    let out = agg_dec(
+    let plaintext = agg_dec(
         &partial_decryptions,
         &ciphertext,
         &selector,
@@ -148,5 +150,6 @@ pub async fn handle_decrypt(config_dir: &String, cid_string: &String, witness_st
         &config.crs,
     )
     .unwrap();
-    println!("OUT: {:?}", std::str::from_utf8(&out).unwrap());
+    doc_store.write_to_pt_store(pt_filename, &plaintext).await.expect("Something went wrong with PT file persistence");
+    println!("OUT: {:?}", std::str::from_utf8(&plaintext).unwrap());
 }

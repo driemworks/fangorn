@@ -37,7 +37,7 @@ From the root, run `cargo build`.
 
 ##### Decrypt a message 
 
-./target/debug/quickbeam decrypt --cid bafkreifl7uhj22r75exbzzk5rwryb6st4mifj57wjrd5r7lh6cttdddbam --config-dir config.txt --witness test
+./target/debug/quickbeam decrypt --cid bafkreihtg6e2w2fa2b2nkoecohdlvrd4j5bv2rr23xajn7rcy24x2oacje --config-dir config.txt --witness test --pt_filename test
 
 ##### To run UI
 1. From the root run: `cargo run -p entmoot`

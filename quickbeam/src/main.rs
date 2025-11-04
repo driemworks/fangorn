@@ -36,6 +36,10 @@ enum Commands {
         /// A witness that satisfies the intent associated with the CID
         #[arg(long)]
         witness: String,
+        /// The name of the file to which you would like to write
+        /// the decrypted text to
+        #[arg(long)]
+        pt_filename: String,
     },
 }
 
@@ -51,8 +55,8 @@ async fn main() -> Result<()> {
         }) => {
             quickbeam::handle_encrypt(config_dir, message_dir, intent).await;
         }
-        Some(Commands::Decrypt { config_dir, cid, witness }) => {
-            quickbeam::handle_decrypt(config_dir, cid, witness).await;
+        Some(Commands::Decrypt { config_dir, cid, witness , pt_filename}) => {
+            quickbeam::handle_decrypt(config_dir, cid, witness, pt_filename).await;
         }
         None => {
             // do nothing

@@ -41,6 +41,8 @@ cleanup() {
     find ./tmp/docs -mindepth 1 -delete 2>/dev/null
     echo "Removing files from intents store"
     find ./tmp/intents -mindepth 1 -delete 2>/dev/null
+    echo "Removing files from plaintext store"
+    find ./tmp/plaintexts -mindepth 1 -delete 2>/dev/null
     
     # Don't exit - just return to shell
     echo "Cleanup complete."
