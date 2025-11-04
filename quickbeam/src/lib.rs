@@ -53,9 +53,6 @@ pub async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_st
     // write the ciphertext
     let cid = shared_store.add(&ciphertext_bytes).await.unwrap();
 
-    let password_vec: Vec<u8> = "ideallabs".as_bytes().to_vec();
-    let password_hash = Code::Sha2_256.digest(&password_vec).to_bytes();
-
     // parse the intent
     let intent = Intent::try_from_string(intent_str).unwrap();
 

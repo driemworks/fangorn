@@ -10,7 +10,8 @@ resolver = "2"
 members = [
     "fangorn",
     "quickbeam",
-    "entmoot"
+    "entmoot",
+    "contract/iris",
 ]
 
 # [workspace.lints.rust]
