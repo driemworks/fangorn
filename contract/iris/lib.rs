@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use codec::{Encode, Decode};
 use ink::prelude::vec::Vec;
 
 /// content identifier
@@ -61,6 +60,11 @@ mod pass_store {
         #[ink(message)]
         pub fn read(&self, filename: Filename) -> Option<Entry> {
             self.registry.get(filename)
+        }
+
+        #[ink(message)]
+        pub fn remove(&mut self, filename: Filename) -> Option<Entry> {
+            self.registry.take(filename)
         }
     }
 

@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use cid::Cid;
 use crate::entish::intents::Intent;
 
+pub mod contract_store;
 pub mod local_store;
 
 /// the raw data type for storage

@@ -6,7 +6,7 @@ use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext
 use cid::Cid;
 use std::str::FromStr;
 
-use crate::{storage::{*, local_store::LocalDocStore}, types::*, entish::{Witness, Statement, verifiers::{Verifier, PasswordVerifier}}};
+use crate::{storage::{*, local_store::LocalStore}, types::*, entish::{Witness, Statement, verifiers::{Verifier, PasswordVerifier}}};
 
 use tonic::{Request, Response, Status};
 
@@ -83,7 +83,7 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let witness = Witness(hex::decode(req_ref.witness_hex.clone()).unwrap());
         println!("got witness");
 
-        let shared_store = LocalDocStore::new("tmp/docs", "tmp/intents");
+        let shared_store = LocalStore::new("tmp/docs", "tmp/intents");
 
         let intent = shared_store.get_intent(&cid).await.expect("Something went wrong when looking for intent.").expect("Intent wasn't found");
         println!("found intent");

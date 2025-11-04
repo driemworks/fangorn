@@ -11,13 +11,13 @@ use crate::entish::intents::Intent;
 /// The codec for generating CIDs
 const RAW: u64 = 0x55;
 
-pub struct LocalDocStore {
+pub struct LocalStore {
     /// the root directory to store data
     pub docs_dir: String,
     pub intents_dir: String,
 }
 
-impl LocalDocStore {
+impl LocalStore {
     pub fn new(docs_dir: impl Into<String>, intents_dir: impl Into<String>) -> Self {
         Self {
             docs_dir: docs_dir.into(),
@@ -68,7 +68,7 @@ impl LocalDocStore {
 }
 
 #[async_trait]
-impl SharedStore<Cid, Data> for LocalDocStore {
+impl SharedStore<Cid, Data> for LocalStore {
     async fn add(&self, data: &Data) -> Result<Cid> {
         self.ensure_docs_dir().await?;
         // build the cid
@@ -111,10 +111,10 @@ impl SharedStore<Cid, Data> for LocalDocStore {
     }
 }
 
-impl DocStore for LocalDocStore {}
+impl DocStore for LocalStore {}
 
 #[async_trait]
-impl IntentStore for LocalDocStore {
+impl IntentStore for LocalStore {
     async fn register_intent(&self, cid: &Cid, intent: &Intent) -> Result<()> {
         // // should check that the cid is unique but don't care at this point
         self.ensure_intents_dir().await?;

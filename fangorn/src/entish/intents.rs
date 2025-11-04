@@ -57,6 +57,7 @@ impl Intent {
     pub fn to_bytes(&self) -> Vec<u8> {
         serde_json::to_vec(self).unwrap()
     }
+    
     /// Create an NP-hard problem
     pub fn create_intent<C: Challenge>(
         question: &Vec<u8>,

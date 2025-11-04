@@ -7,7 +7,7 @@ use fangorn::entish::{
     solutions::{PasswordSolution, Solution},
 };
 use fangorn::rpc::server::*;
-use fangorn::storage::{local_store::LocalDocStore, IntentStore, SharedStore};
+use fangorn::storage::{local_store::LocalStore, IntentStore, SharedStore};
 use fangorn::types::*;
 use multihash_codetable::{Code, MultihashDigest};
 use silent_threshold_encryption::{
@@ -49,7 +49,7 @@ pub async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_st
     ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
 
     // create docstore (same dir as in service.rs)
-    let shared_store = LocalDocStore::new("tmp/docs/", "tmp/intents/");
+    let shared_store = LocalStore::new("tmp/docs/", "tmp/intents/");
     // write the ciphertext
     let cid = shared_store.add(&ciphertext_bytes).await.unwrap();
 
@@ -71,7 +71,7 @@ pub async fn handle_decrypt(config_dir: &String, cid_string: &String, witness_st
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
     // get the ciphertext
-    let doc_store = LocalDocStore::new("tmp/docs/", "tmp/intents/");
+    let doc_store = LocalStore::new("tmp/docs/", "tmp/intents/");
     let cid = cid::Cid::from_str(cid_string).unwrap();
 
     // living dangerously...

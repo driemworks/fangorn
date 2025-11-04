@@ -76,11 +76,15 @@ ark-poly = "0.5.0"
 rand = "0.9.1"
 ark-bls12-381 = "0.5.0"
 rand_core = "0.9.3"
+jsonrpsee = { version = "0.24", features = ["http-client"] }
 
 # substrate
 sp-core = "38.1.0"
+sp-core-hashing = "16.0.0"
 sp-weights = "33.1.0"
 subxt = "0.44.0"
+subxt-signer = "0.44.0"
+sp-keyring = "44.0.0"
 
 # ratatui
 color-eyre = "0.6"

@@ -11,6 +11,12 @@ iroh.workspace = true
 iroh-gossip.workspace = true
 n0-future.workspace = true
 silent-threshold-encryption.workspace = true
+subxt.workspace = true
+subxt-signer.workspace = true
+sp-core.workspace = true
+sp-core-hashing.workspace = true
+sp-keyring.workspace = true
+jsonrpsee.workspace = true
 
 ark-std.workspace = true
 ark-ec.workspace = true
