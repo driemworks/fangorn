@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use fangorn::crypto::cipher::{handle_encrypt, handle_decrypt};
 
 #[derive(Parser, Debug)]
 #[command(name = "quickbeam", version = "1.0")]
@@ -53,7 +54,7 @@ async fn main() -> Result<()> {
             config_dir,
             intent,
         }) => {
-            quickbeam::handle_encrypt(config_dir, message_dir, intent).await;
+            handle_encrypt(config_dir, message_dir, intent).await;
         }
         Some(Commands::Decrypt {
             config_dir,
@@ -61,7 +62,7 @@ async fn main() -> Result<()> {
             witness,
             pt_filename,
         }) => {
-            quickbeam::handle_decrypt(config_dir, cid, witness, pt_filename).await;
+            handle_decrypt(config_dir, cid, witness, pt_filename).await;
         }
         None => {
             // do nothing

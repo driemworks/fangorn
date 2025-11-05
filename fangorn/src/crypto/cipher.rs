@@ -1,13 +1,13 @@
 use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{UniformRand, rand::rngs::OsRng};
-use fangorn::rpc::server::*;
-use fangorn::storage::{
+use crate::rpc::server::*;
+use crate::storage::{
     AppStore, DocStore, IntentStore, SharedStore, 
     local_store::{LocalDocStore, LocalIntentStore, LocalPlaintextStore}
 };
-use fangorn::types::*;
-use fangorn::{
+use crate::types::*;
+use crate::{
     entish::{
         challenges::PasswordChallenge,
         intents::Intent,

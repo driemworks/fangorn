@@ -7,6 +7,8 @@ edition = "2024"
 async-trait.workspace = true
 anyhow.workspace = true
 nom.workspace = true
+thiserror.workspace = true
+
 iroh.workspace = true
 iroh-gossip.workspace = true
 n0-future.workspace = true
@@ -15,7 +17,10 @@ subxt.workspace = true
 subxt-signer.workspace = true
 sp-core.workspace = true
 sp-core-hashing.workspace = true
+sc-keystore.workspace = true
 sp-keyring.workspace = true
+sp-keystore.workspace = true
+sp-application-crypto.workspace = true
 jsonrpsee.workspace = true
 
 ark-std.workspace = true
