@@ -7,7 +7,6 @@ pub struct FangornNodeCli {
     pub command: Option<FangornNodeCommands>,
 }
 
-
 /// Define available subcommands
 #[derive(Subcommand, Debug)]
 pub enum FangornNodeCommands {
@@ -38,5 +37,5 @@ pub enum FangornNodeCommands {
         /// The bootstrap node ip
         #[arg(long, default_value=None)]
         bootstrap_ip: Option<String>,
-    }
+    },
 }

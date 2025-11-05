@@ -1,8 +1,8 @@
 use anyhow::Result;
-use iroh::{protocol::Router, Endpoint, NodeAddr};
-use iroh_blobs::{net_protocol::Blobs, ALPN as BLOBS_ALPN};
-use iroh_docs::{protocol::Docs, ALPN as DOCS_ALPN};
-use iroh_gossip::{net::Gossip, ALPN as GOSSIP_ALPN};
+use iroh::{Endpoint, NodeAddr, protocol::Router};
+use iroh_blobs::{ALPN as BLOBS_ALPN, net_protocol::Blobs};
+use iroh_docs::{ALPN as DOCS_ALPN, protocol::Docs};
+use iroh_gossip::{ALPN as GOSSIP_ALPN, net::Gossip};
 
 use crate::types::*;
 use ark_ec::pairing::Pairing;
@@ -29,7 +29,7 @@ pub struct Node<C: Pairing> {
     /// the iroh endpoint
     endpoint: Endpoint,
     /// the iroh router
-    pub router : Router,
+    pub router: Router,
     /// blobs client
     blobs: BlobsClient,
     /// docs client

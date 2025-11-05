@@ -1,4 +1,10 @@
-use ratatui::{buffer::Buffer, layout::Rect, style::{Color, Style}, text::Line, widgets::Widget};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Style},
+    text::Line,
+    widgets::Widget,
+};
 
 /// A custom widget that renders a button with a label, theme and state.
 #[derive(Debug, Clone)]

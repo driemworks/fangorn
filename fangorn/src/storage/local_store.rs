@@ -1,4 +1,5 @@
 use super::*;
+use crate::entish::intents::Intent;
 use async_trait::async_trait;
 use cid::Cid;
 use multihash_codetable::{Code, MultihashDigest};
@@ -6,60 +7,31 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use tokio::fs;
-use crate::entish::intents::Intent;
 
 /// The codec for generating CIDs
 const RAW: u64 = 0x55;
 
-pub struct LocalStore {
-    /// the root directory to store data
+pub struct LocalDocStore {
     pub docs_dir: String,
-    pub intents_dir: String,
-    pub pt_dir: String
 }
 
-impl LocalStore {
-    pub fn new(docs_dir: impl Into<String>, intents_dir: impl Into<String>, pt_dir: impl Into<String>) -> Self {
-        Self {
-            docs_dir: docs_dir.into(),
-            intents_dir: intents_dir.into(),
-            pt_dir: pt_dir.into()
-        }
+impl LocalDocStore {
+    pub fn new(docs_dir: &str) -> Self {
+        Self { docs_dir: docs_dir.to_string() }
     }
 
-    /// a helper function to check if a directory exists
-    async fn ensure_docs_dir(&self) -> Result<()> {
+    /// Ensure the docs directory exists
+    async fn ensure_dir(&self) -> Result<()> {
         fs::create_dir_all(&self.docs_dir).await?;
         Ok(())
     }
 
-    /// a helper function to check if a directory exists
-    async fn ensure_intents_dir(&self) -> Result<()> {
-        fs::create_dir_all(&self.intents_dir).await?;
-        Ok(())
+    /// Convert CID to filename for documents
+    fn cid_to_filename(&self, cid: &str) -> PathBuf {
+        PathBuf::from(&self.docs_dir).join(format!("{}", cid))
     }
 
-    async fn ensure_pt_dir(&self) -> Result<()> {
-        fs::create_dir_all(&self.pt_dir).await?;
-        Ok(())
-    }
-
-
-    fn write_pt_to_disk(&self, data: &Data, filepath: PathBuf) {
-        let mut file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(filepath)
-            .unwrap();
-
-        let pt = String::from_utf8(data.clone()).expect("Couldn't translate Vec to String for PT persistence");
-
-        write!(&mut file, "{}", pt).unwrap();
-
-    }
-
-
+    /// Write data to disk as hex-encoded
     fn write_to_disk(&self, data: &Data, filepath: PathBuf) {
         let mut file = OpenOptions::new()
             .create(true)
@@ -72,17 +44,7 @@ impl LocalStore {
         write!(&mut file, "{}", hex_enc).unwrap();
     }
 
-    /// convert CID to filename
-    fn cid_to_filename(&self, cid: &str) -> PathBuf {
-        PathBuf::from(&self.docs_dir).join(format!("{}.dat", cid))
-    }
-
-    /// convert CID to filename
-    fn cid_to_filename_for_intents(&self, cid: &str) -> PathBuf {
-        PathBuf::from(&self.intents_dir).join(format!("{}.ents", cid))
-    }
-
-    /// generate a cid
+    /// Generate a CID for the given data
     fn build_cid(&self, data: &Data) -> Cid {
         let hash = Code::Sha2_256.digest(data);
         Cid::new_v1(RAW, hash)
@@ -90,9 +52,9 @@ impl LocalStore {
 }
 
 #[async_trait]
-impl SharedStore<Cid, Data> for LocalStore {
+impl SharedStore<Cid, Data> for LocalDocStore {
     async fn add(&self, data: &Data) -> Result<Cid> {
-        self.ensure_docs_dir().await?;
+        self.ensure_dir().await?;
         // build the cid
         let cid = self.build_cid(data);
         // write to file
@@ -133,28 +95,63 @@ impl SharedStore<Cid, Data> for LocalStore {
     }
 }
 
-impl DocStore for LocalStore {}
+impl DocStore for LocalDocStore {}
+
+// local intent store impl
+
+pub struct LocalIntentStore {
+    pub intents_dir: String,
+}
+
+impl LocalIntentStore {
+    pub fn new(intents_dir: &str) -> Self {
+        Self { intents_dir: intents_dir.to_string() }
+    }
+
+    /// Ensure the intents directory exists
+    async fn ensure_dir(&self) -> Result<()> {
+        fs::create_dir_all(&self.intents_dir).await?;
+        Ok(())
+    }
+
+    /// Convert CID to filename for intents
+    fn cid_to_filename(&self, cid: &str) -> PathBuf {
+        PathBuf::from(&self.intents_dir).join(format!("{}", cid))
+    }
+
+    /// Write data to disk as hex-encoded
+    fn write_to_disk(&self, data: &Data, filepath: PathBuf) {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(filepath)
+            .unwrap();
+
+        let hex_enc = hex::encode(data);
+        write!(&mut file, "{}", hex_enc).unwrap();
+    }
+}
 
 #[async_trait]
-impl IntentStore for LocalStore {
+impl IntentStore for LocalIntentStore {
     async fn register_intent(&self, cid: &Cid, intent: &Intent) -> Result<()> {
-        // // should check that the cid is unique but don't care at this point
-        self.ensure_intents_dir().await?;
+        self.ensure_dir().await?;
         // write to file
-        let filepath = self.cid_to_filename_for_intents(&cid.to_string());
+        let filepath = self.cid_to_filename(&cid.to_string());
         self.write_to_disk(&intent.to_bytes(), filepath);
         Ok(())
     }
 
     async fn get_intent(&self, cid: &Cid) -> Result<Option<Intent>> {
-        let filepath = self.cid_to_filename_for_intents(&cid.to_string());
+        let filepath = self.cid_to_filename(&cid.to_string());
 
-        // // Check if file exists
+        // Check if file exists
         if !filepath.exists() {
             return Ok(None);
         }
 
-        // // Read file
+        // Read file
         let raw = fs::read_to_string(filepath)
             .await
             .expect("Issue reading intent to string");
@@ -165,22 +162,66 @@ impl IntentStore for LocalStore {
         Ok(Some(intent))
     }
 
-    async fn remove_intent(&self, _cid: &Cid) -> Result<()> {
+    async fn remove_intent(&self, cid: &Cid) -> Result<()> {
+        let filepath = self.cid_to_filename(&cid.to_string());
+
+        // Check if file exists
+        if filepath.exists() {
+            fs::remove_file(&filepath).await?;
+            println!("Removed intent for CID: {}", &cid.to_string());
+        } else {
+            println!("No intent found for CID: {}", &cid.to_string());
+        }
+
         Ok(())
     }
 }
 
-#[async_trait]
-impl PlaintextStore for LocalStore {
-    async fn read_plaintext(&self, message_dir: &String) -> Result<String> {
+// local pt store impl
 
-        let plaintext = fs::read_to_string(message_dir).await.expect("you must provide a path to a plaintext file.");
+pub struct LocalPlaintextStore {
+    pub pt_dir: String,
+}
+
+impl LocalPlaintextStore {
+    pub fn new(pt_dir: &str) -> Self {
+        Self { pt_dir: pt_dir.to_string() }
+    }
+
+    /// Ensure the plaintext directory exists
+    async fn ensure_dir(&self) -> Result<()> {
+        fs::create_dir_all(&self.pt_dir).await?;
+        Ok(())
+    }
+
+    /// Write plaintext to disk (not hex-encoded)
+    fn write_pt_to_disk(&self, data: &Data, filepath: PathBuf) {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(filepath)
+            .unwrap();
+
+        let pt = String::from_utf8(data.clone())
+            .expect("Couldn't translate Vec to String for PT persistence");
+
+        write!(&mut file, "{}", pt).unwrap();
+    }
+}
+
+#[async_trait]
+impl PlaintextStore for LocalPlaintextStore {
+    async fn read_plaintext(&self, message_dir: &String) -> Result<String> {
+        let plaintext = fs::read_to_string(message_dir)
+            .await
+            .expect("you must provide a path to a plaintext file.");
 
         Ok(plaintext)
     }
-    async fn write_to_pt_store(&self, filename: &String, data: &Vec<u8>) -> Result<()>{
-        
-        self.ensure_pt_dir().await?;
+
+    async fn write_to_pt_store(&self, filename: &String, data: &Vec<u8>) -> Result<()> {
+        self.ensure_dir().await?;
 
         let filepath = format!("{}{}.txt", self.pt_dir, filename);
         let pathbuf = PathBuf::from(filepath);
@@ -188,38 +229,5 @@ impl PlaintextStore for LocalStore {
         self.write_pt_to_disk(data, pathbuf);
 
         Ok(())
-
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-
-//     #[tokio::test]
-//     async fn test_local_policy_store() {
-//         let temp_dir = "/tmp/test_policies";
-//         let store = LocalPolicyStore::new(temp_dir);
-
-//         // Create a test policy
-//         let cid = CID(b"test_content_123".to_vec());
-//         let policy = Policy::challenge("What is 2+2?", "4");
-
-//         // Register
-//         store.register_policy(cid.clone(), policy.clone()).await.unwrap();
-
-//         // Retrieve
-//         let retrieved = store.get_policy(&cid).await.unwrap();
-//         assert!(retrieved.is_some());
-
-//         // Kill
-//         store.kill_policy(&cid).await.unwrap();
-
-//         // Verify deleted
-//         let after_kill = store.get_policy(&cid).await.unwrap();
-//         assert!(after_kill.is_none());
-
-//         // Cleanup
-//         let _ = std::fs::remove_dir_all(temp_dir);
-//     }
-// }

@@ -9,13 +9,13 @@ use core::str::FromStr;
 use futures::prelude::*;
 use iroh::{NodeAddr, PublicKey as IrohPublicKey};
 use iroh_docs::{
+    DocTicket,
     engine::LiveEvent,
     rpc::{
         client::docs::{Doc, ShareMode},
         proto::{Request, Response},
     },
     store::{FlatQuery, QueryBuilder},
-    DocTicket,
 };
 use quic_rpc::transport::flume::FlumeConnector;
 use std::sync::Arc;
@@ -26,6 +26,10 @@ use tonic::transport::Server;
 use crate::node::*;
 use crate::rpc::server::{NodeServer, RpcServer};
 use crate::types::*;
+use crate::storage::{
+    AppStore, DocStore, IntentStore, SharedStore, 
+    local_store::{LocalDocStore, LocalIntentStore, LocalPlaintextStore}
+};
 
 /// Configuration for starting a full node service
 pub struct ServiceConfig {
@@ -100,7 +104,12 @@ pub async fn build_full_service<C: Pairing>(
     .await
     .unwrap();
 
-    spawn_state_sync_service(doc_stream.clone(), node.clone(), tx.clone(), config.bootstrap_peers);
+    spawn_state_sync_service(
+        doc_stream.clone(),
+        node.clone(),
+        tx.clone(),
+        config.bootstrap_peers,
+    );
 
     // wait for initial sync
     thread::sleep(Duration::from_secs(3));
@@ -365,12 +374,8 @@ async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u1
     let addr_str = format!("127.0.0.1:{}", rpc_port);
     let addr = addr_str.parse().unwrap();
 
-    // a local document store (local fs)
-    let doc_store = Arc::new(crate::storage::local_store::LocalStore::new(
-        "tmp/docs/".to_string(),
-        "tmp/intents/".to_string(),
-        "tmp/plaintexts/".to_string(),
-    ));
+    let doc_store = Arc::new(LocalDocStore::new("tmp/docs/"));
+    let intent_store = Arc::new(LocalIntentStore::new("tmp/intents/"));
 
     // a dummy verifier that always returns true (for now...)
     // this should be some kind of "modular gadget factory"
@@ -379,6 +384,7 @@ async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u1
 
     let server = NodeServer::<C> {
         doc_store,
+        intent_store,
         state,
         verifier,
     };

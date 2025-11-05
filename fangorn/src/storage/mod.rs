@@ -1,16 +1,15 @@
 //! a generic policy 'store'
 //! the core abstraction workers leverage for mapping content identifiers to policies
+use crate::entish::intents::Intent;
 use anyhow::Result;
 use async_trait::async_trait;
 use cid::Cid;
-use crate::entish::intents::Intent;
 
 pub mod contract_store;
 pub mod local_store;
 
 /// the raw data type for storage
 type Data = Vec<u8>;
-
 
 /// The SharedStore manages key-value mappings against some shared storage backend
 #[async_trait]
@@ -31,7 +30,7 @@ pub trait DocStore: Send + Sync + SharedStore<Cid, Data> {}
 
 /// shared statement storage to associate CID (data) to intent
 #[async_trait]
-pub trait IntentStore {
+pub trait IntentStore: Send + Sync {
     async fn register_intent(&self, cid: &Cid, intent: &Intent) -> Result<()>;
     async fn get_intent(&self, cid: &Cid) -> Result<Option<Intent>>;
     async fn remove_intent(&self, cid: &Cid) -> Result<()>;
@@ -42,3 +41,26 @@ pub trait PlaintextStore {
     async fn read_plaintext(&self, message_dir: &String) -> Result<String>;
     async fn write_to_pt_store(&self, filename: &String, data: &Vec<u8>) -> Result<()>;
 }
+
+// Now you can compose them as needed:
+pub struct AppStore<D: DocStore, I: IntentStore, P: PlaintextStore> {
+    pub doc_store: D,
+    pub intent_store: I,
+    pub pt_store: P,
+}
+
+impl<D: DocStore, I: IntentStore, P: PlaintextStore> AppStore<D, I, P> {
+    pub fn new(
+        doc_store: D,
+        intent_store: I,
+        pt_store: P,
+    ) -> Self {
+        Self {
+            doc_store,
+            intent_store,
+            pt_store,
+        }
+    }
+}
+
+

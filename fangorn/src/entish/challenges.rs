@@ -6,7 +6,6 @@ use super::{Statement, utils};
 use anyhow::Result;
 use multihash_codetable::{Code, MultihashDigest};
 
-
 pub trait Challenge {
     fn create_challenge_statement(question: &Vec<u8>, answer: &Vec<u8>) -> Result<Statement>;
 }
@@ -14,13 +13,11 @@ pub trait Challenge {
 pub struct LocalFileLocationChallenge;
 
 impl Challenge for LocalFileLocationChallenge {
-
     // Question: What is the key that reveals the file's name and location?
-    fn create_challenge_statement(file_location: &Vec<u8>, key: &Vec<u8>, ) -> Result<Statement> {
+    fn create_challenge_statement(file_location: &Vec<u8>, key: &Vec<u8>) -> Result<Statement> {
         let statement = utils::xor_padded(key, file_location);
         Ok(Statement(statement.to_vec()))
     }
-
 }
 
 pub struct PasswordChallenge;

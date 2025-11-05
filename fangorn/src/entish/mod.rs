@@ -1,8 +1,7 @@
-
-pub mod utils;
 pub mod challenges;
 pub mod intents;
 pub mod solutions;
+pub mod utils;
 pub mod verifiers;
 
 // for now, we assume it is only asset ownership

@@ -5,8 +5,8 @@ use cid::Cid;
 use jsonrpsee::{core::client::ClientT, http_client::HttpClientBuilder};
 use sp_core::crypto::AccountId32;
 use subxt::ext::codec::Encode;
-use subxt::{dynamic, OnlineClient, PolkadotConfig};
-use subxt_signer::sr25519::{dev, Keypair};
+use subxt::{OnlineClient, PolkadotConfig, dynamic};
+use subxt_signer::sr25519::{Keypair, dev};
 
 pub struct ContractIntentStore {
     client: OnlineClient<PolkadotConfig>,
@@ -16,8 +16,7 @@ pub struct ContractIntentStore {
 }
 
 impl ContractIntentStore {
-    pub async fn new(rpc_url: impl Into<String>, contract_address: [u8; 32]) -> Result<Self> {
-        let rpc_url = rpc_url.into();
+    pub async fn new(rpc_url: String, contract_address: [u8; 32]) -> Result<Self> {
         let client = OnlineClient::<PolkadotConfig>::from_url(&rpc_url).await?;
         let signer = dev::alice();
 
@@ -43,6 +42,8 @@ impl ContractIntentStore {
 #[async_trait]
 impl IntentStore for ContractIntentStore {
     async fn register_intent(&self, cid: &Cid, intent: &Intent) -> Result<()> {
+        // derive the filename on the fly for now...
+        // realistically this shoud be determined by the user though
         let filename = self.cid_to_filename(cid);
         let cid_bytes = cid.to_bytes().to_vec();
         let intent_bytes = intent.to_bytes();

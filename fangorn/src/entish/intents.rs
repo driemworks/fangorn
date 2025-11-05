@@ -5,10 +5,9 @@ use super::challenges::Challenge;
 use crate::entish::challenges::PasswordChallenge;
 use multihash_codetable::{Code, MultihashDigest};
 use nom::{
+    IResult, Parser,
     bytes::complete::{tag, take_until},
     sequence::delimited,
-    IResult,
-    Parser,
 };
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
@@ -57,7 +56,7 @@ impl Intent {
     pub fn to_bytes(&self) -> Vec<u8> {
         serde_json::to_vec(self).unwrap()
     }
-    
+
     /// Create an NP-hard problem
     pub fn create_intent<C: Challenge>(
         question: &Vec<u8>,
@@ -97,7 +96,6 @@ impl Intent {
     }
 }
 
-
 impl From<Vec<u8>> for Intent {
     fn from(bytes: Vec<u8>) -> Self {
         serde_json::from_slice(&bytes).unwrap()
@@ -108,11 +106,11 @@ impl From<Vec<u8>> for Intent {
 fn parse_intent_string(input: &str) -> Result<(&str, &str), nom::Err<nom::error::Error<&str>>> {
     let (input, intent_type) = take_until("(")(input)?;
     let (input, _) = tag("(")(input)?;
-    
+
     // Find the matching closing paren by counting
     let mut depth = 1;
     let mut end_pos = 0;
-    
+
     // so passwords can contain parens
     for (i, c) in input.char_indices() {
         if c == '(' {
@@ -125,15 +123,15 @@ fn parse_intent_string(input: &str) -> Result<(&str, &str), nom::Err<nom::error:
             }
         }
     }
-    
+
     let password = &input[..end_pos];
     let remaining = &input[end_pos + 1..];
-    
+
     // // error if there's leftover input
     // if !remaining.is_empty() {
     //     return Err(nom::Err::Error(nom::error::Error::new(remaining, nom::error::ErrorKind::Eof)));
     // }
-    
+
     Ok((intent_type, password))
 }
 

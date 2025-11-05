@@ -55,7 +55,12 @@ async fn main() -> Result<()> {
         }) => {
             quickbeam::handle_encrypt(config_dir, message_dir, intent).await;
         }
-        Some(Commands::Decrypt { config_dir, cid, witness , pt_filename}) => {
+        Some(Commands::Decrypt {
+            config_dir,
+            cid,
+            witness,
+            pt_filename,
+        }) => {
             quickbeam::handle_decrypt(config_dir, cid, witness, pt_filename).await;
         }
         None => {

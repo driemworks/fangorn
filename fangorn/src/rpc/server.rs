@@ -2,11 +2,18 @@ use anyhow::Result;
 
 use ark_ec::pairing::Pairing;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext};
 use cid::Cid;
+use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext};
 use std::str::FromStr;
 
-use crate::{storage::{*, local_store::LocalStore}, types::*, entish::{Witness, Statement, verifiers::{Verifier, PasswordVerifier}}};
+use crate::{
+    entish::{
+        Statement, Witness,
+        verifiers::{PasswordVerifier, Verifier},
+    },
+    storage::{*, local_store::*},
+    types::*,
+};
 
 use tonic::{Request, Response, Status};
 
@@ -26,6 +33,7 @@ pub use rpc::{
 
 pub struct NodeServer<C: Pairing> {
     pub doc_store: Arc<dyn DocStore>,
+    pub intent_store: Arc<dyn IntentStore>,
     pub state: Arc<Mutex<State<C>>>,
     pub verifier: Arc<dyn Verifier>,
 }
@@ -83,9 +91,11 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let witness = Witness(hex::decode(req_ref.witness_hex.clone()).unwrap());
         println!("got witness");
 
-        let shared_store = LocalStore::new("tmp/docs", "tmp/intents", "temp/plaintexts");
-
-        let intent = shared_store.get_intent(&cid).await.expect("Something went wrong when looking for intent.").expect("Intent wasn't found");
+        let intent = self.intent_store
+            .get_intent(&cid)
+            .await
+            .expect("Something went wrong when looking for intent.")
+            .expect("Intent wasn't found");
         println!("found intent");
 
         let statement = Statement(intent.parameters);

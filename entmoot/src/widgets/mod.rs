@@ -1,2 +1,2 @@
-pub mod greeting;
 pub mod buttons;
+pub mod greeting;

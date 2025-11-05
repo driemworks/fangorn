@@ -3,20 +3,24 @@ pub mod widgets;
 use std::time::Duration;
 
 use color_eyre::Result;
-use crossterm::{event::{self, Event, KeyCode, poll}};
-use ratatui::{DefaultTerminal, Frame, layout::{Alignment, Constraint, Direction, Layout, Rect}, widgets::{Block, BorderType, Borders, Paragraph}};
+use crossterm::event::{self, Event, KeyCode, poll};
+use ratatui::{
+    DefaultTerminal, Frame,
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    widgets::{Block, BorderType, Borders, Paragraph},
+};
 
 use crate::widgets::buttons::{BLUE, Button, GREEN, State};
 
 #[derive(Debug, Default)]
 pub struct App {
-    menu_id: Menu
+    menu_id: Menu,
 }
 
 #[derive(Debug, Default)]
 pub enum Menu {
     #[default]
-    MainMenu
+    MainMenu,
 }
 
 fn main() -> Result<()> {
@@ -34,24 +38,21 @@ fn main() -> Result<()> {
 }
 
 impl App {
-
     fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         loop {
             terminal.draw(|frame| {
-                self.render(frame);       
+                self.render(frame);
             })?;
             if poll(Duration::from_millis(100))? {
                 // Poll every 100 ms for esc key to quit
                 // since event::read is a blocking event
                 match event::read()? {
-                    Event::Key(key) => {
-                        match key.code {
-                            KeyCode::Esc => {
-                                break;
-                            }
-                            _ => {}
+                    Event::Key(key) => match key.code {
+                        KeyCode::Esc => {
+                            break;
                         }
-                    }
+                        _ => {}
+                    },
                     _ => {}
                 }
             }
@@ -60,7 +61,6 @@ impl App {
     }
 
     fn render(&mut self, frame: &mut Frame) {
-
         let vertical_layout = Layout::vertical([
             Constraint::Percentage(40),
             Constraint::Percentage(33),
@@ -72,36 +72,41 @@ impl App {
 
         match self.menu_id {
             Menu::MainMenu => {
-                    render_title(title_vert, frame);
-                    render_buttons(buttons_vert, frame);
-            }
-            // _ => {}
+                render_title(title_vert, frame);
+                render_buttons(buttons_vert, frame);
+            } // _ => {}
         }
         // Always render box with title
-        frame.render_widget(Block::new().borders(Borders::ALL).border_type(BorderType::Double), frame.area());
-
+        frame.render_widget(
+            Block::new()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Double),
+            frame.area(),
+        );
     }
 }
 
-    fn render_buttons(buttons_vert: Rect, frame: &mut Frame) {
+fn render_buttons(buttons_vert: Rect, frame: &mut Frame) {
+    let layout = Layout::horizontal([
+        Constraint::Percentage(20),
+        Constraint::Percentage(20),
+        Constraint::Percentage(20),
+        Constraint::Percentage(20),
+        Constraint::Percentage(20),
+    ]);
 
-        let layout = Layout::horizontal([Constraint::Percentage(20), Constraint::Percentage(20), Constraint::Percentage(20), Constraint::Percentage(20), Constraint::Percentage(20)]);
+    let encrypt_button = Button::new("Encrypt", BLUE, State::Active);
+    let decrypt_btton = Button::new("Decrypt", GREEN, State::Normal);
 
-        let encrypt_button = Button::new("Encrypt", BLUE, State::Active);
-        let decrypt_btton = Button::new("Decrypt", GREEN, State::Normal);
+    let [_, enc, _, dec, _] = layout.areas(buttons_vert);
 
-        let [_, enc, _, dec, _] = layout.areas(buttons_vert);
-
-        frame.render_widget(encrypt_button, enc);
-        frame.render_widget(decrypt_btton, dec);
-
-        
-
+    frame.render_widget(encrypt_button, enc);
+    frame.render_widget(decrypt_btton, dec);
 }
 
 fn render_title(title_area: Rect, frame: &mut Frame) {
-
-    let logo = Paragraph::new("  
+    let logo = Paragraph::new(
+        "  
              _                         _   
             | |                       | |  
    ___ _ __ | |_ _ __ ___   ___   ___ | |_ 
@@ -109,9 +114,9 @@ fn render_title(title_area: Rect, frame: &mut Frame) {
  |  __/ | | | |_| | | | | | (_) | (_) | |_ 
   \\___|_| |_|\\__|_| |_| |_|\\___/ \\___/ \\__|
                                by Ideal Labs
-  ").centered();
+  ",
+    )
+    .centered();
 
-frame.render_widget(logo, title_area);
-
+    frame.render_widget(logo, title_area);
 }
-

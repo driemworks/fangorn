@@ -6,7 +6,7 @@ pub struct GreetingWidget {
 
 impl GreetingWidget {
     pub fn new(name: String) -> Self {
-        Self{name}
+        Self { name }
     }
 }
 
@@ -17,9 +17,9 @@ impl Widget for GreetingWidget {
         // want to have the text be centered itself. Therefore we take the length
         // of the text then divide it by two. We use this to offset the text
         // by the correct number of cells in the x direction at the center.
-        let offset = ((greeting.len() as u16) - 1)/2;
-        let x = area.width/2 - offset;
-        let y = area.height/2;
+        let offset = ((greeting.len() as u16) - 1) / 2;
+        let x = area.width / 2 - offset;
+        let y = area.height / 2;
         buf.set_string(x, y, greeting, Style::default());
     }
 }

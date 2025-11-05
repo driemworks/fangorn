@@ -1,14 +1,20 @@
 use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::{rand::rngs::OsRng, UniformRand};
-use fangorn::{entish::{
-    challenges::PasswordChallenge,
-    intents::Intent,
-    solutions::{PasswordSolution, Solution},
-}, storage::PlaintextStore};
+use ark_std::{UniformRand, rand::rngs::OsRng};
 use fangorn::rpc::server::*;
-use fangorn::storage::{local_store::LocalStore, IntentStore, SharedStore};
+use fangorn::storage::{
+    AppStore, DocStore, IntentStore, SharedStore, 
+    local_store::{LocalDocStore, LocalIntentStore, LocalPlaintextStore}
+};
 use fangorn::types::*;
+use fangorn::{
+    entish::{
+        challenges::PasswordChallenge,
+        intents::Intent,
+        solutions::{PasswordSolution, Solution},
+    },
+    storage::PlaintextStore,
+};
 use multihash_codetable::{Code, MultihashDigest};
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
@@ -41,24 +47,29 @@ pub async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_st
     let t = 1;
     let gamma_g2 = G2::rand(&mut OsRng);
 
-        // create docstore (same dir as in service.rs)
-    let shared_store = LocalStore::new("tmp/docs/", "tmp/intents/", "tmp/plaintexts/");
+    // create docstore (same dir as in service.rs)
+    let app_store = AppStore::new(
+        LocalDocStore::new("tmp/docs/"),
+        LocalIntentStore::new("tmp/intents/"),
+        LocalPlaintextStore::new("tmp/plaintexts/")
+    );
 
     // build the ciphertext
-    // let message =
-    //     fs::read_to_string(message_dir).expect("you must provide a path to a plaintext file.");
-    let message = shared_store.read_plaintext(message_dir).await.expect("Something went wrong while reading PT");
+    let message = app_store.pt_store
+        .read_plaintext(message_dir)
+        .await
+        .expect("Something went wrong while reading PT");
     let ct = encrypt::<E>(&ek, t, &config.crs, gamma_g2.into(), message.as_bytes()).unwrap();
     let mut ciphertext_bytes = Vec::new();
     ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
 
     // write the ciphertext
-    let cid = shared_store.add(&ciphertext_bytes).await.unwrap();
+    let cid = app_store.doc_store.add(&ciphertext_bytes).await.unwrap();
 
     // parse the intent
     let intent = Intent::try_from_string(intent_str).unwrap();
 
-    let _ = shared_store
+    let _ = app_store.intent_store
         .register_intent(&cid, &intent)
         .await
         .expect("An error occurred when registering intent in shared store");
@@ -67,17 +78,27 @@ pub async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_st
     println!("> Saved intent to /tmp/intents/{}.ents", &cid.to_string());
 }
 
-pub async fn handle_decrypt(config_dir: &String, cid_string: &String, witness_string: &String, pt_filename: &String) {
+pub async fn handle_decrypt(
+    config_dir: &String,
+    cid_string: &String,
+    witness_string: &String,
+    pt_filename: &String,
+) {
     // read the config
     let config_hex = fs::read_to_string(config_dir).expect("you must provide a valid config file.");
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
     // get the ciphertext
-    let doc_store = LocalStore::new("tmp/docs/", "tmp/intents/", "tmp/plaintexts/");
+    let app_store = AppStore::new(
+        LocalDocStore::new("tmp/docs/"),
+        LocalIntentStore::new("tmp/intents/"),
+        LocalPlaintextStore::new("tmp/plaintexts/")
+    );
+
     let cid = cid::Cid::from_str(cid_string).unwrap();
 
     // living dangerously...
-    let ciphertext_bytes = doc_store.fetch(&cid).await.unwrap().unwrap();
+    let ciphertext_bytes = app_store.doc_store.fetch(&cid).await.unwrap().unwrap();
     let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
     //  get the sys key (TODO: send this as a cli param instead?)
     let sys_key_request = tonic::Request::new(PreprocessRequest {});
@@ -150,6 +171,9 @@ pub async fn handle_decrypt(config_dir: &String, cid_string: &String, witness_st
         &config.crs,
     )
     .unwrap();
-    doc_store.write_to_pt_store(pt_filename, &plaintext).await.expect("Something went wrong with PT file persistence");
-    println!("OUT: {:?}", std::str::from_utf8(&plaintext).unwrap());
+
+    app_store.pt_store
+        .write_to_pt_store(pt_filename, &plaintext)
+        .await
+        .expect("Something went wrong with PT file persistence");
 }

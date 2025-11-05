@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use fangorn::cli::{FangornNodeCli as Cli, FangornNodeCommands as Commands};
-use fangorn::service::{build_full_service, ServiceConfig};
+use fangorn::service::{ServiceConfig, build_full_service};
 use fangorn::types::*;
 
 // https://hackmd.io/3968Gr5hSSmef-nptg2GRw
@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
             };
             // start the service
             // tokio::spawn(async move {
-            //     loop 
+            //     loop
             build_full_service::<E>(config, MAX_COMMITTEE_SIZE).await?;
             tokio::signal::ctrl_c().await?;
             // });
