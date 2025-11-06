@@ -34,7 +34,7 @@ From the root, run `cargo build`.
 > Note: for now we just take the first file in the keystore directory and try to use it as the seed
 > when encrypting a file, so you can only have one key in the store at a time right now
 
-./target/debug/quickbeam keygen --keystore-dir tmp/keystore 
+./target/debug/quickbeam keygen --keystore-dir tmp/keystore
 
 ##### Encrypt a message 
 

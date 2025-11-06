@@ -78,6 +78,7 @@ rand = "0.9.1"
 ark-bls12-381 = "0.5.0"
 rand_core = "0.9.3"
 jsonrpsee = { version = "0.24", features = ["http-client"] }
+bip39 = "2.2.0"
 
 # substrate
 sp-core = { version = "38.1.0", features = ["std", "full_crypto"] }

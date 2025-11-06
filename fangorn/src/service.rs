@@ -9,13 +9,13 @@ use core::str::FromStr;
 use futures::prelude::*;
 use iroh::{NodeAddr, PublicKey as IrohPublicKey};
 use iroh_docs::{
-    DocTicket,
     engine::LiveEvent,
     rpc::{
         client::docs::{Doc, ShareMode},
         proto::{Request, Response},
     },
     store::{FlatQuery, QueryBuilder},
+    DocTicket,
 };
 use quic_rpc::transport::flume::FlumeConnector;
 use std::sync::Arc;
@@ -25,11 +25,13 @@ use tonic::transport::Server;
 
 use crate::node::*;
 use crate::rpc::server::{NodeServer, RpcServer};
-use crate::types::*;
 use crate::storage::{
-    AppStore, DocStore, IntentStore, SharedStore, 
-    local_store::{LocalDocStore, LocalIntentStore, LocalPlaintextStore}
+    contract_store::ContractIntentStore,
+    local_store::{LocalDocStore, LocalIntentStore, LocalPlaintextStore},
+    AppStore, DocStore, IntentStore, SharedStore,
 };
+use crate::types::*;
+use crate::utils::decode_contract_addr;
 
 /// Configuration for starting a full node service
 pub struct ServiceConfig {
@@ -375,13 +377,23 @@ async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u1
     let addr = addr_str.parse().unwrap();
 
     let doc_store = Arc::new(LocalDocStore::new("tmp/docs/"));
-    let intent_store = Arc::new(LocalIntentStore::new("tmp/intents/"));
+    let contract_addr_bytes =
+        decode_contract_addr("12ZdteAorGAVtUXrzY2w8hsVBepPRfwFFUpziAzq8TAyf8AW");
+    let intent_store = Arc::new(
+        ContractIntentStore::new(
+            "ws://localhost:9933".to_string(),
+            contract_addr_bytes,
+            "//Alice", // dummy mnemonic
+        )
+        .await
+        .unwrap(),
+    );
+    // let intent_store = Arc::new(LocalIntentStore::new("tmp/intents/"));
 
     // a dummy verifier that always returns true (for now...)
     // this should be some kind of "modular gadget factory"
     // since we want to be able to swap verification on demand
-    let verifier = Arc::new(crate::entish::verifiers::PolkadotVerifier::new());
-
+    let verifier = Arc::new(crate::entish::verifiers::PasswordVerifier::new());
     let server = NodeServer::<C> {
         doc_store,
         intent_store,

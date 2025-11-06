@@ -3,10 +3,18 @@ use crate::entish::intents::Intent;
 use async_trait::async_trait;
 use cid::Cid;
 use jsonrpsee::{core::client::ClientT, http_client::HttpClientBuilder};
-use sp_core::{crypto::AccountId32, Pair};
+use sp_core::Pair;
+use sp_weights::Weight;
 use subxt::ext::codec::Encode;
-use subxt::{dynamic, OnlineClient, PolkadotConfig};
+use subxt::{
+    config::polkadot::AccountId32, dynamic, utils::MultiAddress, OnlineClient, PolkadotConfig,
+};
 use subxt_signer::sr25519::{dev, Keypair};
+
+#[subxt::subxt(
+    runtime_metadata_path = "/home/driemworks/ideal/fangorn/fangorn/src/storage/metadata.scale"
+)]
+pub mod idn {}
 
 pub struct ContractIntentStore {
     client: OnlineClient<PolkadotConfig>,
@@ -25,12 +33,13 @@ impl ContractIntentStore {
         // Convert to subxt Keypair
         let keypair_bytes: [u8; 64] = pair.to_raw_vec().try_into().unwrap();
         // .map_err(|_| anyhow::anyhow!("Invalid secret key length"))?;
-        let secret_key: [u8; 32] = keypair_bytes[..32].try_into().unwrap();
+        // let secret_key: [u8; 32] = keypair_bytes[..32].try_into().unwrap();
 
-        let signer = Keypair::from_secret_key(secret_key).unwrap();
+        let mnemonic = bip39::Mnemonic::parse(seed).unwrap();
+        let signer = Keypair::from_phrase(&mnemonic, None).unwrap();
+        // let signer = Keypair::from_phrase(seed, None).unwrap();
+        // let signer = Keypair::from_secret_key(secret_key).unwrap();
         // .map_err(|e| anyhow::anyhow!("Failed to create signer: {:?}", e))?;
-
-        // let signer = dev::alice();
 
         Ok(Self {
             client,
@@ -51,6 +60,8 @@ impl ContractIntentStore {
     }
 }
 
+use sp_application_crypto::Ss58Codec;
+
 #[async_trait]
 impl IntentStore for ContractIntentStore {
     async fn register_intent(&self, cid: &Cid, intent: &Intent) -> Result<()> {
@@ -60,43 +71,33 @@ impl IntentStore for ContractIntentStore {
         let cid_bytes = cid.to_bytes().to_vec();
         let intent_bytes = intent.to_bytes();
 
+        // let register_tx = idn_runtime::tx().contract().call();
+
         let mut data = Self::selector("register").to_vec();
         data.extend(filename.encode());
         data.extend(cid_bytes.encode());
         data.extend(intent_bytes.encode());
 
-        let call = dynamic::tx(
-            "Contracts",
-            "call",
-            vec![
-                // 0: dest
-                dynamic::Value::unnamed_variant(
-                    "Id",
-                    [dynamic::Value::from_bytes(self.contract_address.clone())],
-                ),
-                // 1: value
-                dynamic::Value::u128(0),
-                // 2: gas limit
-                dynamic::Value::unnamed_composite([
-                    dynamic::Value::u128(10_000_000_000),
-                    dynamic::Value::u128(5_000_000),
-                ]),
-                // 3: storage deposit limit
-                dynamic::Value::unnamed_variant("None", []),
-                // 4: input data
-                dynamic::Value::from_bytes(&data),
-            ],
+        let call = idn::tx().contracts().call(
+            MultiAddress::Id(self.contract_address.clone()),
+            0u128, // value
+            idn::runtime_types::sp_weights::weight_v2::Weight {
+                ref_time: 1_000_000_000,
+                proof_size: 500_000,
+            },
+            None, // storage_deposit_limit
+            data,
         );
 
         let tx = self
             .client
             .tx()
-            .sign_and_submit_then_watch(&call, &self.signer, Default::default())
+            // .sign_and_submit_then_watch_default(&call, &dev::alice())
+            .sign_and_submit_then_watch_default(&call, &self.signer)
             .await?;
 
         let result = tx.wait_for_finalized_success().await?;
 
-        // println!("Intent registered in block: {:?}", result.block_hash());
         Ok(())
     }
 
@@ -149,7 +150,7 @@ impl IntentStore for ContractIntentStore {
             "call",
             vec![
                 dynamic::Value::from_bytes(&self.contract_address),
-                dynamic::Value::u128(0),
+                dynamic::Value::u128(1),
                 dynamic::Value::unnamed_composite([
                     dynamic::Value::u128(10_000_000_000),
                     dynamic::Value::u128(1_000_000),

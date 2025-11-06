@@ -101,10 +101,8 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let statement = Statement(intent.parameters);
         println!("created statement");
 
-        let verifier = PasswordVerifier::new();
-
         println!("verifying witness");
-        match verifier.verify_witness(witness, statement).await {
+        match self.verifier.verify_witness(witness, statement).await {
             Ok(true) => {
                 println!("Witness verification succeeded");
                 if let Some(ciphertext_bytes) = self.doc_store.fetch(&cid).await.unwrap() {

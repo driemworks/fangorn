@@ -24,6 +24,7 @@ sp-application-crypto.workspace = true
 sp-runtime.workspace = true
 sp-weights.workspace = true
 jsonrpsee.workspace = true
+bip39.workspace = true
 
 ark-std.workspace = true
 ark-ec.workspace = true

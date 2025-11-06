@@ -13,6 +13,7 @@ use crate::{
         solutions::{PasswordSolution, Solution},
     },
     storage::PlaintextStore,
+    utils::decode_contract_addr,
 };
 use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -57,17 +58,9 @@ pub async fn handle_encrypt(
     let t = 1;
     let gamma_g2 = G2::rand(&mut OsRng);
 
-    // create docstore (same dir as in service.rs)
-    let mut contract_addr_bytes: [u8; 32] = [0; 32];
-    if let Ok(contract_address) =
-        sp_core::sr25519::Public::from_ss58check("1gsRE7dVeozo4rQHtBEDRmKXz8EpoRYudyikxx4QDn4age4")
-    {
-        contract_addr_bytes = *contract_address.as_array_ref();
-    } else {
-        panic!("invalid contract address provided: not ss58 format");
-    }
-
     let seed = load_mnemonic(keystore_path);
+
+    let contract_addr_bytes = decode_contract_addr("12ZdteAorGAVtUXrzY2w8hsVBepPRfwFFUpziAzq8TAyf8AW");
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
         ContractIntentStore::new(
@@ -77,7 +70,6 @@ pub async fn handle_encrypt(
         )
         .await
         .unwrap(),
-        // LocalIntentStore::new("tmp/intents/"),
         LocalPlaintextStore::new("tmp/plaintexts/"),
     );
 
@@ -102,8 +94,8 @@ pub async fn handle_encrypt(
         .await
         .expect("An error occurred when registering intent in shared store");
 
-    println!("> Saved ciphertext to /tmp/{}.dat", &cid.to_string());
-    println!("> Saved intent to /tmp/intents/{}.ents", &cid.to_string());
+    println!("> Saved ciphertext to /tmp/{}", &cid.to_string());
+    println!("> Saved intent to /tmp/intents/{}", &cid.to_string());
 }
 
 fn load_mnemonic(keystore_path: &String) -> String {

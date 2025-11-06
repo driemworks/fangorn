@@ -66,7 +66,11 @@ async fn main() -> Result<()> {
         }) => {
             let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
             let public = keystore.generate_key().unwrap();
-            println!("generated secret with pubkey: {:?}", keystore.to_ss58(&public));
+            // println!("generated secret with pubkey: {:?}", keystore.to_ss58(&public));
+
+            // Immediately list keys and check
+            let keys = keystore.list_keys()?;
+            println!("Keys in keystore: {:?}", keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>());
         },
         Some(Commands::Encrypt {
             message_path,
