@@ -28,16 +28,24 @@ From the root, run `cargo build`.
 
 
 #### Using Quickbeam
+
+##### Generate a new keypair
+
+> Note: for now we just take the first file in the keystore directory and try to use it as the seed
+> when encrypting a file, so you can only have one key in the store at a time right now
+
+./target/debug/quickbeam keygen --keystore-dir tmp/keystore 
+
 ##### Encrypt a message 
 
 > hardcoded to save to ciphertext.txt for now
 > you must delete the file if you want to encrypt a new message... needs work
 
-./target/debug/quickbeam encrypt --message-dir test.txt --config-dir config.txt --intent "Password(test)"
+./target/debug/quickbeam encrypt --message-path test.txt --config-path config.txt --keystore-dir tmp/keystore --intent "Password(test)"
 
 ##### Decrypt a message 
 
-./target/debug/quickbeam decrypt --cid bafkreihtg6e2w2fa2b2nkoecohdlvrd4j5bv2rr23xajn7rcy24x2oacje --config-dir config.txt --witness test --pt_filename test
+./target/debug/quickbeam decrypt --cid bafkreihtg6e2w2fa2b2nkoecohdlvrd4j5bv2rr23xajn7rcy24x2oacje --config-path config.txt --witness test --pt_filename test
 
 ##### To run UI
 1. From the root run: `cargo run -p entmoot`

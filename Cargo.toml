@@ -68,8 +68,8 @@ iroh-gossip = { version = "0.34.1", features = ["rpc"] }
 n0-future = "0.1.2"
 
 #crypto
-silent-threshold-encryption = { git = "https://github.com/driemworks/silent-threshold-encryption.git", branch = "dev", default-features = false }
-# silent-threshold-encryption = { path = "../silent-threshold-encryption", default-features = false }
+# silent-threshold-encryption = { git = "https://github.com/driemworks/silent-threshold-encryption.git", branch = "dev", default-features = false }
+silent-threshold-encryption = { path = "../silent-threshold-encryption", default-features = false }
 ark-serialize = "0.5.0"
 ark-std = "0.5.0"
 ark-ec = "0.5.0"
@@ -89,6 +89,7 @@ subxt-signer = "0.44.0"
 sc-keystore = "38.0.0"
 sp-keyring = "44.0.0"
 sp-keystore = "0.44.1"
+sp-runtime = "44.0.0"
 
 # ratatui
 color-eyre = "0.6"

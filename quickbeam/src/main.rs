@@ -1,6 +1,10 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use fangorn::crypto::cipher::{handle_encrypt, handle_decrypt};
+use fangorn::crypto::{
+    FANGORN,
+    keystore::{Keystore,  Sr25519Keystore},
+    cipher::{handle_encrypt, handle_decrypt}
+};
 
 #[derive(Parser, Debug)]
 #[command(name = "quickbeam", version = "1.0")]
@@ -12,14 +16,22 @@ struct Cli {
 /// Define available subcommands
 #[derive(Subcommand, Debug)]
 enum Commands {
+    Keygen {
+        // the keystore directory
+        #[arg(long)]
+        keystore_dir: String,
+    },
     /// encrypt a message under a 'policy' and then 'register' it
     Encrypt {
-        /// the directory of the plaintext
+        /// the path to the plaintext
         #[arg(long)]
-        message_dir: String,
-        /// the directory of the kzg params (fangorn config)
+        message_path: String,
+        /// the path to the file containing the kzg params (fangorn config)
         #[arg(long)]
-        config_dir: String,
+        config_path: String,
+        /// the keystore directory
+        #[arg(long)]
+        keystore_dir: String,
         /// the intent for encrypting the message
         #[arg(long)]
         intent: String,
@@ -30,7 +42,7 @@ enum Commands {
     Decrypt {
         /// the directory of the kzg params
         #[arg(long)]
-        config_dir: String,
+        config_path: String,
         /// the content identifier
         #[arg(long)]
         cid: String,
@@ -49,20 +61,28 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
 
     match &args.command {
+        Some(Commands::Keygen {
+            keystore_dir
+        }) => {
+            let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
+            let public = keystore.generate_key().unwrap();
+            println!("generated secret with pubkey: {:?}", keystore.to_ss58(&public));
+        },
         Some(Commands::Encrypt {
-            message_dir,
-            config_dir,
+            message_path,
+            config_path,
+            keystore_dir,
             intent,
         }) => {
-            handle_encrypt(config_dir, message_dir, intent).await;
+            handle_encrypt(config_path, message_path, keystore_dir, intent).await;
         }
         Some(Commands::Decrypt {
-            config_dir,
+            config_path,
             cid,
             witness,
             pt_filename,
         }) => {
-            handle_decrypt(config_dir, cid, witness, pt_filename).await;
+            handle_decrypt(config_path, cid, witness, pt_filename).await;
         }
         None => {
             // do nothing

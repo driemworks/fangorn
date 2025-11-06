@@ -2914,6 +2914,8 @@ dependencies = [
  "sp-core-hashing",
  "sp-keyring 44.0.0",
  "sp-keystore 0.44.1",
+ "sp-runtime 44.0.0",
+ "sp-weights 33.1.0",
  "subxt 0.44.0",
  "subxt-signer 0.44.0",
  "tarpc",
@@ -9613,7 +9615,6 @@ dependencies = [
 [[package]]
 name = "silent-threshold-encryption"
 version = "0.1.0"
-source = "git+https://github.com/driemworks/silent-threshold-encryption.git?branch=dev#ff226d2a6058ac5a01a9a7ddd6ce6f73777d491e"
 dependencies = [
  "aes-gcm",
  "ark-bls12-381 0.5.0",

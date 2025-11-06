@@ -212,8 +212,8 @@ impl LocalPlaintextStore {
 
 #[async_trait]
 impl PlaintextStore for LocalPlaintextStore {
-    async fn read_plaintext(&self, message_dir: &String) -> Result<String> {
-        let plaintext = fs::read_to_string(message_dir)
+    async fn read_plaintext(&self, message_path: &String) -> Result<String> {
+        let plaintext = fs::read_to_string(message_path)
             .await
             .expect("you must provide a path to a plaintext file.");
 

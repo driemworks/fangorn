@@ -9,7 +9,7 @@ use sc_keystore::LocalKeystore;
 use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
-
+ 
 #[derive(Error, Debug)]
 pub enum KeystoreError {
     #[error("Keystore error: {0}")]

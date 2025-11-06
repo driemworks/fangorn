@@ -1,13 +1,12 @@
-use ark_bls12_381::G2Affine as G2;
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::{UniformRand, rand::rngs::OsRng};
 use crate::rpc::server::*;
 use crate::storage::{
-    AppStore, DocStore, IntentStore, SharedStore, 
-    local_store::{LocalDocStore, LocalIntentStore, LocalPlaintextStore}
+    contract_store::ContractIntentStore,
+    local_store::{LocalDocStore, LocalIntentStore, LocalPlaintextStore},
+    AppStore, DocStore, IntentStore, SharedStore,
 };
 use crate::types::*;
 use crate::{
+    crypto::keystore::{Keystore, Sr25519Keystore},
     entish::{
         challenges::PasswordChallenge,
         intents::Intent,
@@ -15,18 +14,29 @@ use crate::{
     },
     storage::PlaintextStore,
 };
+use ark_bls12_381::G2Affine as G2;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+use ark_std::{rand::rngs::OsRng, UniformRand};
 use multihash_codetable::{Code, MultihashDigest};
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
     setup::PartialDecryption, types::Ciphertext,
 };
+use sp_application_crypto::Ss58Codec;
 use std::fs;
 use std::str::FromStr;
 
 const MAX_COMMITTEE_SIZE: usize = 2;
 
-pub async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_str: &String) {
-    let config_hex = fs::read_to_string(config_dir).expect("you must provide a valid config file.");
+/// encrypt the message located at message_path
+pub async fn handle_encrypt(
+    config_path: &String,
+    message_path: &String,
+    keystore_path: &String,
+    intent_str: &String,
+) {
+    let config_hex =
+        fs::read_to_string(config_path).expect("you must provide a valid config file.");
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
 
@@ -43,20 +53,38 @@ pub async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_st
     let subset = vec![0, 1];
     // we could just read `ek` from the request
     let (_ak, ek) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
-    // t = 1 , n = MAX, k = 1
+    // t = 1 , n = MAX, k = 1*
     let t = 1;
     let gamma_g2 = G2::rand(&mut OsRng);
 
     // create docstore (same dir as in service.rs)
+    let mut contract_addr_bytes: [u8; 32] = [0; 32];
+    if let Ok(contract_address) =
+        sp_core::sr25519::Public::from_ss58check("1gsRE7dVeozo4rQHtBEDRmKXz8EpoRYudyikxx4QDn4age4")
+    {
+        contract_addr_bytes = *contract_address.as_array_ref();
+    } else {
+        panic!("invalid contract address provided: not ss58 format");
+    }
+
+    let seed = load_mnemonic(keystore_path);
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
-        LocalIntentStore::new("tmp/intents/"),
-        LocalPlaintextStore::new("tmp/plaintexts/")
+        ContractIntentStore::new(
+            "ws://localhost:9933".to_string(),
+            contract_addr_bytes,
+            &seed,
+        )
+        .await
+        .unwrap(),
+        // LocalIntentStore::new("tmp/intents/"),
+        LocalPlaintextStore::new("tmp/plaintexts/"),
     );
 
     // build the ciphertext
-    let message = app_store.pt_store
-        .read_plaintext(message_dir)
+    let message = app_store
+        .pt_store
+        .read_plaintext(message_path)
         .await
         .expect("Something went wrong while reading PT");
     let ct = encrypt::<E>(&ek, t, &config.crs, gamma_g2.into(), message.as_bytes()).unwrap();
@@ -65,11 +93,11 @@ pub async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_st
 
     // write the ciphertext
     let cid = app_store.doc_store.add(&ciphertext_bytes).await.unwrap();
-
     // parse the intent
     let intent = Intent::try_from_string(intent_str).unwrap();
-
-    let _ = app_store.intent_store
+    // register it
+    let _ = app_store
+        .intent_store
         .register_intent(&cid, &intent)
         .await
         .expect("An error occurred when registering intent in shared store");
@@ -78,21 +106,36 @@ pub async fn handle_encrypt(config_dir: &String, message_dir: &String, intent_st
     println!("> Saved intent to /tmp/intents/{}.ents", &cid.to_string());
 }
 
+fn load_mnemonic(keystore_path: &String) -> String {
+    // going dumb and simple for now: just read the first file in the dir
+    let mut files: Vec<_> = fs::read_dir(keystore_path).unwrap()
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| entry.path().is_file())
+        .collect();
+
+    let seed = fs::read_to_string(files[0].path()).expect("Issue reading keystore");
+    let formatted = seed.trim().trim_matches('"');
+    formatted.to_string()
+}
+
+/// decryption!
+
 pub async fn handle_decrypt(
-    config_dir: &String,
+    config_path: &String,
     cid_string: &String,
     witness_string: &String,
     pt_filename: &String,
 ) {
     // read the config
-    let config_hex = fs::read_to_string(config_dir).expect("you must provide a valid config file.");
+    let config_hex =
+        fs::read_to_string(config_path).expect("you must provide a valid config file.");
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
     // get the ciphertext
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
         LocalIntentStore::new("tmp/intents/"),
-        LocalPlaintextStore::new("tmp/plaintexts/")
+        LocalPlaintextStore::new("tmp/plaintexts/"),
     );
 
     let cid = cid::Cid::from_str(cid_string).unwrap();
@@ -172,7 +215,8 @@ pub async fn handle_decrypt(
     )
     .unwrap();
 
-    app_store.pt_store
+    app_store
+        .pt_store
         .write_to_pt_store(pt_filename, &plaintext)
         .await
         .expect("Something went wrong with PT file persistence");

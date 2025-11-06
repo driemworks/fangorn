@@ -3,10 +3,10 @@ use crate::entish::intents::Intent;
 use async_trait::async_trait;
 use cid::Cid;
 use jsonrpsee::{core::client::ClientT, http_client::HttpClientBuilder};
-use sp_core::crypto::AccountId32;
+use sp_core::{crypto::AccountId32, Pair};
 use subxt::ext::codec::Encode;
-use subxt::{OnlineClient, PolkadotConfig, dynamic};
-use subxt_signer::sr25519::{Keypair, dev};
+use subxt::{dynamic, OnlineClient, PolkadotConfig};
+use subxt_signer::sr25519::{dev, Keypair};
 
 pub struct ContractIntentStore {
     client: OnlineClient<PolkadotConfig>,
@@ -16,9 +16,21 @@ pub struct ContractIntentStore {
 }
 
 impl ContractIntentStore {
-    pub async fn new(rpc_url: String, contract_address: [u8; 32]) -> Result<Self> {
+    pub async fn new(rpc_url: String, contract_address: [u8; 32], seed: &str) -> Result<Self> {
         let client = OnlineClient::<PolkadotConfig>::from_url(&rpc_url).await?;
-        let signer = dev::alice();
+
+        let pair = sp_core::sr25519::Pair::from_string(seed, None).unwrap();
+        // .map_err(|e| anyhow::anyhow!("Failed to create pair: {:?}", e))?;
+
+        // Convert to subxt Keypair
+        let keypair_bytes: [u8; 64] = pair.to_raw_vec().try_into().unwrap();
+        // .map_err(|_| anyhow::anyhow!("Invalid secret key length"))?;
+        let secret_key: [u8; 32] = keypair_bytes[..32].try_into().unwrap();
+
+        let signer = Keypair::from_secret_key(secret_key).unwrap();
+        // .map_err(|e| anyhow::anyhow!("Failed to create signer: {:?}", e))?;
+
+        // let signer = dev::alice();
 
         Ok(Self {
             client,
@@ -49,19 +61,29 @@ impl IntentStore for ContractIntentStore {
         let intent_bytes = intent.to_bytes();
 
         let mut data = Self::selector("register").to_vec();
-        data.extend((filename, cid_bytes, intent_bytes).encode());
+        data.extend(filename.encode());
+        data.extend(cid_bytes.encode());
+        data.extend(intent_bytes.encode());
 
         let call = dynamic::tx(
             "Contracts",
             "call",
             vec![
-                dynamic::Value::from_bytes(&self.contract_address),
+                // 0: dest
+                dynamic::Value::unnamed_variant(
+                    "Id",
+                    [dynamic::Value::from_bytes(self.contract_address.clone())],
+                ),
+                // 1: value
                 dynamic::Value::u128(0),
+                // 2: gas limit
                 dynamic::Value::unnamed_composite([
                     dynamic::Value::u128(10_000_000_000),
-                    dynamic::Value::u128(1_000_000),
+                    dynamic::Value::u128(5_000_000),
                 ]),
-                dynamic::Value::unnamed_composite([]),
+                // 3: storage deposit limit
+                dynamic::Value::unnamed_variant("None", []),
+                // 4: input data
                 dynamic::Value::from_bytes(&data),
             ],
         );
@@ -69,7 +91,7 @@ impl IntentStore for ContractIntentStore {
         let tx = self
             .client
             .tx()
-            .sign_and_submit_then_watch_default(&call, &self.signer)
+            .sign_and_submit_then_watch(&call, &self.signer, Default::default())
             .await?;
 
         let result = tx.wait_for_finalized_success().await?;

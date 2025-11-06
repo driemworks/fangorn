@@ -21,6 +21,8 @@ sc-keystore.workspace = true
 sp-keyring.workspace = true
 sp-keystore.workspace = true
 sp-application-crypto.workspace = true
+sp-runtime.workspace = true
+sp-weights.workspace = true
 jsonrpsee.workspace = true
 
 ark-std.workspace = true
