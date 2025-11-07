@@ -12,7 +12,7 @@ use subxt::{
 use subxt_signer::sr25519::{dev, Keypair};
 
 #[subxt::subxt(
-    runtime_metadata_path = "/home/driemworks/ideal/fangorn/fangorn/src/storage/metadata.scale"
+    runtime_metadata_path = "../fangorn/src/storage/metadata.scale"
 )]
 pub mod idn {}
 
