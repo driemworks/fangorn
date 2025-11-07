@@ -27,7 +27,7 @@ use crate::node::*;
 use crate::rpc::server::{NodeServer, RpcServer};
 use crate::storage::{
     contract_store::ContractIntentStore,
-    local_store::{LocalDocStore, LocalIntentStore, LocalPlaintextStore},
+    local_store::{LocalDocStore, LocalPlaintextStore},
     AppStore, DocStore, IntentStore, SharedStore,
 };
 use crate::types::*;
@@ -378,14 +378,14 @@ async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u1
 
     let doc_store = Arc::new(LocalDocStore::new("tmp/docs/"));
     let contract_addr_bytes =
-        decode_contract_addr("12ZdteAorGAVtUXrzY2w8hsVBepPRfwFFUpziAzq8TAyf8AW");
+        decode_contract_addr(crate::CONTRACT_ADDR);
     let intent_store = Arc::new(
         ContractIntentStore::new(
             "ws://localhost:9933".to_string(),
             contract_addr_bytes,
-            "//Alice", // dummy mnemonic
+            None,
         )
-        .await
+        .await 
         .unwrap(),
     );
     // let intent_store = Arc::new(LocalIntentStore::new("tmp/intents/"));

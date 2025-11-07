@@ -22,7 +22,7 @@ message PreprocessResponse {
 
 // request a partial decryption from a node
 message PartDecRequest {
-  string cid = 1;
+  string filename = 1;
   string witness_hex = 2;
 }
 // the partial decryption response

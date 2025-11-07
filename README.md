@@ -19,13 +19,13 @@ From the root, run `cargo build`.
 2. start a second peer (copy/paste pubkey and ticket)
     > Note: pubkey is written to pubkey.txt and ticket is written to ticket.txt
 
-    ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey d5241466abbd753d3124416dceaf8e96b806fa5f1c4cc816cea432393e09437d --bootstrap-ip 172.31.149.62:9944 --ticket docaaacbb5qoi6exqm2tzh3eqqb6zap2jmppocn3udv3qvbpz7jwvnnzpc7ahksifdgvo6xkpjreraw3tvpr2llqbx2l4oezsawz2sdeoj6bfbx2ajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagdmdehlnomayavqolfpoyju --index 1
+    ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey 00ed7c1a96885f0766caa059c7d976700f1362b1cf1a1ceff65af5d3ef0d2e10 --bootstrap-ip 172.31.149.62:9944 --ticket docaaacaph2rq2itptlxb22mss3tfrzf6czfvhzepvfzgd4ni5dzw5qvxsdaeao27a2s2ef6b3gzkqftr6zozya6e3cwhhruhhp6znplu7pbuxbaajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55rugmpyayavqolfpoyju --index 1
 
 ### Option B: Automatically start two instances
-0. Install gnome-terminalL `sudo apt install gnome-terminal`
+0. Install gnome-terminal `sudo apt install gnome-terminal`
 1. Ensure start_instances.sh has execute priveleges: `chmod +x start_servers.sh`
 2. From the root, run start_instances.sh: `./start_instances.sh`
-
+ 
 
 #### Using Quickbeam
 
@@ -41,11 +41,16 @@ From the root, run `cargo build`.
 > hardcoded to save to ciphertext.txt for now
 > you must delete the file if you want to encrypt a new message... needs work
 
-./target/debug/quickbeam encrypt --message-path test.txt --config-path config.txt --keystore-dir tmp/keystore --intent "Password(test)"
+./target/debug/quickbeam encrypt \
+--message-path test.txt \
+--filename ibd.txt \
+--config-path config.txt \
+--keystore-dir tmp/keystore \
+--intent "Password(test)"
 
 ##### Decrypt a message 
 
-./target/debug/quickbeam decrypt --cid bafkreihtg6e2w2fa2b2nkoecohdlvrd4j5bv2rr23xajn7rcy24x2oacje --config-path config.txt --witness test --pt_filename test
+./target/debug/quickbeam decrypt --filename ibd.txt --config-path config.txt --witness test --pt-filename test
 
 ##### To run UI
 1. From the root run: `cargo run -p entmoot`

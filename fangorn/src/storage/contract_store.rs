@@ -24,22 +24,27 @@ pub struct ContractIntentStore {
 }
 
 impl ContractIntentStore {
-    pub async fn new(rpc_url: String, contract_address: [u8; 32], seed: &str) -> Result<Self> {
+    pub async fn new(
+        rpc_url: String,
+        contract_address: [u8; 32],
+        seed: Option<&str>,
+    ) -> Result<Self> {
         let client = OnlineClient::<PolkadotConfig>::from_url(&rpc_url).await?;
-
-        let pair = sp_core::sr25519::Pair::from_string(seed, None).unwrap();
-        // .map_err(|e| anyhow::anyhow!("Failed to create pair: {:?}", e))?;
-
-        // Convert to subxt Keypair
-        let keypair_bytes: [u8; 64] = pair.to_raw_vec().try_into().unwrap();
         // .map_err(|_| anyhow::anyhow!("Invalid secret key length"))?;
         // let secret_key: [u8; 32] = keypair_bytes[..32].try_into().unwrap();
 
-        let mnemonic = bip39::Mnemonic::parse(seed).unwrap();
-        let signer = Keypair::from_phrase(&mnemonic, None).unwrap();
-        // let signer = Keypair::from_phrase(seed, None).unwrap();
-        // let signer = Keypair::from_secret_key(secret_key).unwrap();
-        // .map_err(|e| anyhow::anyhow!("Failed to create signer: {:?}", e))?;
+        // default to alice if no signer is provided
+        let mut signer = dev::alice();
+
+        if let Some(raw) = seed {
+            let pair = sp_core::sr25519::Pair::from_string(raw, None).unwrap();
+            // .map_err(|e| anyhow::anyhow!("Failed to create pair: {:?}", e))?;
+
+            // Convert to subxt Keypair
+            let keypair_bytes: [u8; 64] = pair.to_raw_vec().try_into().unwrap();
+            let mnemonic = bip39::Mnemonic::parse(raw).unwrap();
+            signer = Keypair::from_phrase(&mnemonic, None).unwrap();
+        }
 
         Ok(Self {
             client,
@@ -64,14 +69,10 @@ use sp_application_crypto::Ss58Codec;
 
 #[async_trait]
 impl IntentStore for ContractIntentStore {
-    async fn register_intent(&self, cid: &Cid, intent: &Intent) -> Result<()> {
-        // derive the filename on the fly for now...
-        // realistically this shoud be determined by the user though
-        let filename = self.cid_to_filename(cid);
+    async fn register_intent(&self, filename: &[u8], cid: &Cid, intent: &Intent) -> Result<()> {
+        let filename = filename.to_vec();
         let cid_bytes = cid.to_bytes().to_vec();
         let intent_bytes = intent.to_bytes();
-
-        // let register_tx = idn_runtime::tx().contract().call();
 
         let mut data = Self::selector("register").to_vec();
         data.extend(filename.encode());
@@ -92,7 +93,6 @@ impl IntentStore for ContractIntentStore {
         let tx = self
             .client
             .tx()
-            // .sign_and_submit_then_watch_default(&call, &dev::alice())
             .sign_and_submit_then_watch_default(&call, &self.signer)
             .await?;
 
@@ -101,47 +101,61 @@ impl IntentStore for ContractIntentStore {
         Ok(())
     }
 
-    async fn get_intent(&self, cid: &Cid) -> Result<Option<Intent>> {
+    async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Intent)>> {
         use subxt::ext::codec::Decode;
 
-        let filename = self.cid_to_filename(cid);
         let mut data = Self::selector("read").to_vec();
-        data.extend(filename.encode());
+        data.extend(filename.to_vec().encode());
 
-        let http_client = HttpClientBuilder::default().build(&self.rpc_url)?;
-
-        // Use tuple approach - simpler and works
-        let result: serde_json::Value = http_client
-            .request(
-                "contracts_call",
-                (
-                    format!("0x{}", hex::encode(self.contract_address.as_ref() as &[u8])),
-                    format!("0x{}", hex::encode(&data)),
-                    0u128,
-                    Option::<u64>::None,
-                    Option::<u128>::None,
-                ),
-            )
+        // // build storage query
+        // let contract_address: AccountId32 = // ... your contract address
+        let contract_info_query = self.client
+            .storage()
+            .contracts()
+            .contract_info_of(&self.contract_address.into());
+        let contract_info = self.client
+            .storage()
+            .at_latest()
+            .await?
+            .fetch(&contract_info_query)
             .await?;
 
-        if let Some(output) = result.get("result").and_then(|r| r.get("Ok")) {
-            if let Some(data_hex) = output.get("data").and_then(|d| d.as_str()) {
-                let data_bytes = hex::decode(data_hex.trim_start_matches("0x"))?;
-
-                if let Ok(Some((_, intent_bytes))) =
-                    <Option<(Vec<u8>, Vec<u8>)>>::decode(&mut &data_bytes[..])
-                {
-                    let intent: Intent = intent_bytes.into();
-                    return Ok(Some(intent));
-                }
-            }
+        if let Some(info) = contract_info {
+            println!("Contract Info: {:?}", info);
+        } else {
+            println!("Contract not found.");
         }
+        // let query = idn::storage()::contracts::
+        // let result = self
+        //     .client
+        //     .rpc()
+        //     .request(
+        //         "contracts_call",
+        //         rpc_params![
+        //             self.contract_address,
+        //             data,
+        //             0u128,
+        //             Option::<u64>::None,
+        //             Option::<u128>::None,
+        //         ],
+        //     )
+        // 1.await?;
 
+        // // Parse the RPC response
+        // let output: serde_json::Value = result;
+        // let data_hex = output["result"]["Ok"]["data"]
+        //     .as_str()
+        //     .ok_or_else(|| anyhow::anyhow!("Contract call failed: {:?}", output))?;
+
+        // let data_bytes = hex::decode(data_hex.trim_start_matches("0x"))?;
+        // let decoded = <Option<Entry>>::decode(&mut &data_bytes[..])?;
+
+        // Ok(decoded.map(|entry| (Cid::try_from(entry.cid).unwrap(), entry.intent.into())))
         Ok(None)
     }
 
-    async fn remove_intent(&self, cid: &Cid) -> Result<()> {
-        let filename = self.cid_to_filename(cid);
+    async fn remove_intent(&self, filename: &[u8]) -> Result<()> {
+        let filename = filename.to_vec();
         let mut data = Self::selector("remove").to_vec();
         data.extend(filename.encode());
 

@@ -31,9 +31,9 @@ pub trait DocStore: Send + Sync + SharedStore<Cid, Data> {}
 /// shared statement storage to associate CID (data) to intent
 #[async_trait]
 pub trait IntentStore: Send + Sync {
-    async fn register_intent(&self, cid: &Cid, intent: &Intent) -> Result<()>;
-    async fn get_intent(&self, cid: &Cid) -> Result<Option<Intent>>;
-    async fn remove_intent(&self, cid: &Cid) -> Result<()>;
+    async fn register_intent(&self, filename: &[u8], cid: &Cid, intent: &Intent) -> Result<()>;
+    async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Intent)>>;
+    async fn remove_intent(&self, filename: &[u8]) -> Result<()>;
 }
 
 #[async_trait]

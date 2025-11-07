@@ -85,14 +85,14 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let mut bytes = Vec::new();
         // try to fetch the ciphertext based on the cid
         // recover cid
-        let cid_string = req_ref.cid.clone();
-        println!("got cid: {}", cid_string.clone());
-        let cid = Cid::from_str(&cid_string).unwrap();
+        let filename = req_ref.filename.clone().into_bytes();
+        // println!("got cid: {}", cid_string.clone());
+        // let cid = Cid::from_str(&cid_string).unwrap();
         let witness = Witness(hex::decode(req_ref.witness_hex.clone()).unwrap());
         println!("got witness");
 
-        let intent = self.intent_store
-            .get_intent(&cid)
+        let (cid, intent) = self.intent_store
+            .get_intent(&filename)
             .await
             .expect("Something went wrong when looking for intent.")
             .expect("Intent wasn't found");

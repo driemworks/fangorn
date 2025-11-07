@@ -1,7 +1,7 @@
 use crate::rpc::server::*;
 use crate::storage::{
     contract_store::ContractIntentStore,
-    local_store::{LocalDocStore, LocalIntentStore, LocalPlaintextStore},
+    local_store::{LocalDocStore, LocalPlaintextStore},
     AppStore, DocStore, IntentStore, SharedStore,
 };
 use crate::types::*;
@@ -31,8 +31,9 @@ const MAX_COMMITTEE_SIZE: usize = 2;
 
 /// encrypt the message located at message_path
 pub async fn handle_encrypt(
-    config_path: &String,
     message_path: &String,
+    filename: &String,
+    config_path: &String,
     keystore_path: &String,
     intent_str: &String,
 ) {
@@ -60,13 +61,14 @@ pub async fn handle_encrypt(
 
     let seed = load_mnemonic(keystore_path);
 
-    let contract_addr_bytes = decode_contract_addr("12ZdteAorGAVtUXrzY2w8hsVBepPRfwFFUpziAzq8TAyf8AW");
+    let contract_addr_bytes =
+        decode_contract_addr(crate::CONTRACT_ADDR);
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
         ContractIntentStore::new(
             "ws://localhost:9933".to_string(),
             contract_addr_bytes,
-            &seed,
+            Some(&seed),
         )
         .await
         .unwrap(),
@@ -87,20 +89,24 @@ pub async fn handle_encrypt(
     let cid = app_store.doc_store.add(&ciphertext_bytes).await.unwrap();
     // parse the intent
     let intent = Intent::try_from_string(intent_str).unwrap();
+    // format filename
+    let filename_bytes = filename.clone().into_bytes();
     // register it
     let _ = app_store
         .intent_store
-        .register_intent(&cid, &intent)
+        .register_intent(&filename_bytes, &cid, &intent)
         .await
         .expect("An error occurred when registering intent in shared store");
 
     println!("> Saved ciphertext to /tmp/{}", &cid.to_string());
-    println!("> Saved intent to /tmp/intents/{}", &cid.to_string());
 }
 
+/// try to load the mnemomic from the file
+/// not secure
 fn load_mnemonic(keystore_path: &String) -> String {
     // going dumb and simple for now: just read the first file in the dir
-    let mut files: Vec<_> = fs::read_dir(keystore_path).unwrap()
+    let mut files: Vec<_> = fs::read_dir(keystore_path)
+        .unwrap()
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.path().is_file())
         .collect();
@@ -114,7 +120,7 @@ fn load_mnemonic(keystore_path: &String) -> String {
 
 pub async fn handle_decrypt(
     config_path: &String,
-    cid_string: &String,
+    filename: &String,
     witness_string: &String,
     pt_filename: &String,
 ) {
@@ -124,13 +130,23 @@ pub async fn handle_decrypt(
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
     // get the ciphertext
+    let contract_addr_bytes =
+        decode_contract_addr(crate::CONTRACT_ADDR);
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
-        LocalIntentStore::new("tmp/intents/"),
+        ContractIntentStore::new("ws://localhost:9933".to_string(), contract_addr_bytes, None)
+            .await
+            .unwrap(),
         LocalPlaintextStore::new("tmp/plaintexts/"),
     );
 
-    let cid = cid::Cid::from_str(cid_string).unwrap();
+    // TODO: fetch the cid and intent from filename
+    let (cid, _intent)  = app_store
+        .intent_store
+        .get_intent(&filename.clone().into_bytes())
+        .await
+        .unwrap()
+        .unwrap();
 
     // living dangerously...
     let ciphertext_bytes = app_store.doc_store.fetch(&cid).await.unwrap().unwrap();
@@ -166,8 +182,9 @@ pub async fn handle_decrypt(
         let mut client = RpcClient::connect(format!("http://127.0.0.1:{}", rpc_port))
             .await
             .unwrap();
+
         let request = tonic::Request::new(PartDecRequest {
-            cid: cid.to_string(),
+            filename: filename.clone(),
             witness_hex: witness_hex.clone(),
         });
 

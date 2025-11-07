@@ -35,6 +35,7 @@ mod pass_store {
     pub struct PasswordBasedDocStore {
         owner: AccountId,
         registry: Mapping<Filename, Entry>,
+        meta: Vec<Filename>,
     }
 
     impl PasswordBasedDocStore {
@@ -43,7 +44,14 @@ mod pass_store {
             Self {
                 owner,
                 registry: Mapping::default(),
+                meta: Vec::new(),
             }
+        }
+
+        #[ink(message)]
+        pub fn read_all(&self) -> Vec<Filename> {
+            // this should really be bounded and paginated, but w/e
+            self.meta.clone()
         }
 
         /// register a cid <> intent mapping
@@ -51,6 +59,8 @@ mod pass_store {
         pub fn register(&mut self, filename: Filename, cid: CID, intent: Intent) {
             // TODO: Check owner
             let entry = Entry { cid, intent };
+            // TODO: duplicate filename check
+            self.meta.push(filename.clone());
             self.registry.insert(filename, &entry);
             // TODO: emit event
         }

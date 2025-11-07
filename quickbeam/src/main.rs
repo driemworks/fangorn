@@ -26,6 +26,9 @@ enum Commands {
         /// the path to the plaintext
         #[arg(long)]
         message_path: String,
+        /// the filename to assign to the document
+        #[arg(long)]
+        filename: String,
         /// the path to the file containing the kzg params (fangorn config)
         #[arg(long)]
         config_path: String,
@@ -43,9 +46,9 @@ enum Commands {
         /// the directory of the kzg params
         #[arg(long)]
         config_path: String,
-        /// the content identifier
+        /// the filename
         #[arg(long)]
-        cid: String,
+        filename: String,
         /// A witness that satisfies the intent associated with the CID
         #[arg(long)]
         witness: String,
@@ -65,28 +68,26 @@ async fn main() -> Result<()> {
             keystore_dir
         }) => {
             let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
-            let public = keystore.generate_key().unwrap();
-            // println!("generated secret with pubkey: {:?}", keystore.to_ss58(&public));
-
-            // Immediately list keys and check
+            keystore.generate_key().unwrap();
             let keys = keystore.list_keys()?;
             println!("Keys in keystore: {:?}", keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>());
         },
         Some(Commands::Encrypt {
             message_path,
+            filename,
             config_path,
             keystore_dir,
             intent,
         }) => {
-            handle_encrypt(config_path, message_path, keystore_dir, intent).await;
+            handle_encrypt(message_path, filename, config_path, keystore_dir, intent).await;
         }
         Some(Commands::Decrypt {
             config_path,
-            cid,
+            filename,
             witness,
             pt_filename,
         }) => {
-            handle_decrypt(config_path, cid, witness, pt_filename).await;
+            handle_decrypt(config_path, filename, witness, pt_filename).await;
         }
         None => {
             // do nothing
