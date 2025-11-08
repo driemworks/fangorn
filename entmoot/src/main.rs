@@ -1,17 +1,33 @@
 use color_eyre::Result;
-use crossterm::event::{self, Event, KeyCode, poll};
+use crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
+use fangorn::crypto::{
+    cipher::{handle_decrypt, handle_encrypt},
+    keystore::{Keystore, Sr25519Keystore},
+    FANGORN,
+};
 use ratatui::{
-    DefaultTerminal, Frame,
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
+    text::Text,
     widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
+    DefaultTerminal, Frame,
 };
 use std::time::Duration;
+
+// 1. New Enum to manage the active screen/view
+#[derive(Debug)]
+pub enum CurrentScreen {
+    Main,
+    KeyResults,
+}
 
 #[derive(Debug)]
 pub struct App {
     menu_state: ListState,
     menu_items: Vec<&'static str>,
+    // 2. New State fields
+    current_screen: CurrentScreen,
+    generated_pubkey: Option<String>,
 }
 
 impl Default for App {
@@ -22,6 +38,9 @@ impl Default for App {
         Self {
             menu_state: state,
             menu_items: vec!["Generate Keys", "Inspect Keys", "Encrypt", "Decrypt"],
+            // Initial screen is Main
+            current_screen: CurrentScreen::Main,
+            generated_pubkey: None,
         }
     }
 }
@@ -37,33 +56,48 @@ fn main() -> Result<()> {
 impl App {
     fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         loop {
+            // --- DRAW PHASE ---
             terminal.draw(|frame| {
                 self.render(frame);
             })?;
 
+            // --- EVENT HANDLING PHASE ---
             if poll(Duration::from_millis(100))? {
-                match event::read()? {
-                    Event::Key(key) => match key.code {
-                        KeyCode::Esc | KeyCode::Char('q') => {
-                            break;
-                        }
-                        KeyCode::Up | KeyCode::Char('k') => {
-                            self.previous();
-                        }
-                        KeyCode::Down | KeyCode::Char('j') => {
-                            self.next();
-                        }
-                        KeyCode::Enter => {
-                            self.select();
-                        }
-                        _ => {}
-                    },
-                    _ => {}
+                if let Event::Key(key) = event::read()? {
+                    // Ignore key release events
+                    if key.kind != KeyEventKind::Press {
+                        continue;
+                    }
+
+                    match self.current_screen {
+                        CurrentScreen::Main => match key.code {
+                            KeyCode::Esc | KeyCode::Char('q') => {
+                                // Quit the whole application
+                                break;
+                            }
+                            KeyCode::Up | KeyCode::Char('k') => self.previous(),
+                            KeyCode::Down | KeyCode::Char('j') => self.next(),
+                            KeyCode::Enter => self.select(),
+                            _ => {}
+                        },
+                        CurrentScreen::KeyResults => match key.code {
+                            // 5. Input to handle the 'Close' button
+                            KeyCode::Esc | KeyCode::Char('c') => {
+                                // Close the results screen and return to main
+                                self.current_screen = CurrentScreen::Main;
+                                self.generated_pubkey = None; // Clear the data
+                            }
+                            // Add logic for 'Copy' button (e.g., KeyCode::Char('y')) here
+                            _ => {}
+                        },
+                    }
                 }
             }
         }
         Ok(())
     }
+
+    // ... (previous() and next() methods are unchanged)
 
     fn next(&mut self) {
         let i = match self.menu_state.selected() {
@@ -93,46 +127,45 @@ impl App {
         self.menu_state.select(Some(i));
     }
 
-    fn select(&self) {
+    // 4. Implement screen switching logic
+    fn select(&mut self) {
         if let Some(selected) = self.menu_state.selected() {
-            // For now, just print what was selected (we'll wire this up later)
             match selected {
                 0 => {
-                    // Generate Keys
+                    // generate the keys
+                    let keystore = Sr25519Keystore::new("tmp/keystore".into(), FANGORN).unwrap();
+                    keystore.generate_key().unwrap();
+                    let key = keystore.list_keys().unwrap()[0];
+
+                    let pubkey = format!("Public: {:?}", keystore.to_ss58(&key));
+
+                    // Update state and switch screen
+                    self.generated_pubkey = Some(pubkey);
+                    self.current_screen = CurrentScreen::KeyResults;
                 }
                 1 => {
-                    // Inspect Keys
-                }
-                2 => {
-                    // Encrypt
-                }
-                3 => {
-                    // Decrypt
-                }
+                    let keystore = Sr25519Keystore::new("tmp/keystore".into(), FANGORN).unwrap();
+                    if let Ok(keys) = keystore.list_keys() {
+                        let pubkey = format!("Public: {:?}", keystore.to_ss58(&keys[0]));
+                        self.generated_pubkey = Some(pubkey);
+                        self.current_screen = CurrentScreen::KeyResults;
+                    }
+                } // Inspect Keys
+                2 => {} // Encrypt
+                3 => {} // Decrypt
                 _ => {}
             }
         }
     }
 
+    // 6. Use current_screen to choose which view to render
     fn render(&mut self, frame: &mut Frame) {
-        let vertical_layout = Layout::vertical([
-            Constraint::Length(10), // Title
-            Constraint::Min(10),    // Menu
-            Constraint::Length(3),  // Footer
-        ]);
+        match self.current_screen {
+            CurrentScreen::Main => self.render_main_screen(frame),
+            CurrentScreen::KeyResults => self.render_key_results_screen(frame),
+        }
 
-        let [title_area, menu_area, footer_area] = vertical_layout.areas(frame.area());
-
-        // Render title
-        render_title(title_area, frame);
-
-        // Render menu
-        render_menu(menu_area, frame, &self.menu_items, &mut self.menu_state);
-
-        // Render footer
-        render_footer(footer_area, frame);
-
-        // Outer border
+        // Outer border (kept for both screens, but often you'd put this in the main function)
         frame.render_widget(
             Block::new()
                 .borders(Borders::ALL)
@@ -141,7 +174,61 @@ impl App {
             frame.area(),
         );
     }
+
+    fn render_main_screen(&mut self, frame: &mut Frame) {
+        let vertical_layout = Layout::vertical([
+            Constraint::Length(10), // Title
+            Constraint::Min(10),    // Menu
+            Constraint::Length(3),  // Footer
+        ]);
+
+        let [title_area, menu_area, footer_area] = vertical_layout.areas(frame.area());
+
+        render_title(title_area, frame);
+        render_menu(menu_area, frame, &self.menu_items, &mut self.menu_state);
+        render_footer(footer_area, frame);
+    }
+
+    // render the results screen for keys
+    fn render_key_results_screen(&mut self, frame: &mut Frame) {
+        let areas = Layout::vertical([
+            Constraint::Length(3), // Title
+            Constraint::Min(5),    // Key Results
+            Constraint::Length(3), // Buttons
+        ])
+        .split(frame.area());
+
+        // --- Title Block ---
+        let title_block = Block::new()
+            .title(" 🔑 Generated Keys ")
+            .title_alignment(Alignment::Center)
+            .borders(Borders::BOTTOM)
+            .border_style(Style::default().fg(Color::Cyan));
+        frame.render_widget(title_block, areas[0]);
+
+        // --- Key Results Paragraph ---
+        let key_content = self
+            .generated_pubkey
+            .as_deref()
+            .unwrap_or("Error: Keys not found.");
+        let key_paragraph = Paragraph::new(Text::from(key_content))
+            .wrap(ratatui::widgets::Wrap { trim: true })
+            .block(Block::default().padding(ratatui::widgets::Padding::uniform(1)));
+        frame.render_widget(key_paragraph, areas[1]);
+
+        // --- Buttons ---
+        let button_layout = Layout::horizontal([Constraint::Percentage(100)]).split(areas[2]);
+
+        // Close Button
+        let close_button = Paragraph::new(" [ C / Esc: Close ] ")
+            .style(Style::default().fg(Color::Black).bg(Color::Red))
+            .alignment(Alignment::Center)
+            .block(Block::default().padding(ratatui::widgets::Padding::horizontal(1)));
+        frame.render_widget(close_button, button_layout[0]);
+    }
 }
+
+// ... (render_title, render_menu, render_footer functions are unchanged)
 
 fn render_title(title_area: Rect, frame: &mut Frame) {
     let logo = Paragraph::new(
@@ -187,7 +274,7 @@ fn render_menu(area: Rect, frame: &mut Frame, items: &[&str], state: &mut ListSt
                 3 => ">",
                 _ => "•",
             };
-            ListItem::new(format!("  {}  {}", icon, item)).style(Style::default().fg(Color::White))
+            ListItem::new(format!("  {}  {}", icon, item)).style(Style::default().fg(Color::White))
         })
         .collect();
 
@@ -207,7 +294,7 @@ fn render_menu(area: Rect, frame: &mut Frame, items: &[&str], state: &mut ListSt
 }
 
 fn render_footer(area: Rect, frame: &mut Frame) {
-    let footer = Paragraph::new("↑↓/j/k: Navigate  │  Enter: Select  │  Esc/q: Quit")
+    let footer = Paragraph::new("↑↓/j/k: Navigate  │  Enter: Select  │  Esc/q: Quit")
         .style(Style::default().fg(Color::DarkGray))
         .alignment(Alignment::Center);
     frame.render_widget(footer, area);

@@ -134,7 +134,6 @@ impl IntentStore for ContractIntentStore {
                 let mut data = exec_result.data;
                 data.remove(0);
                 let decoded = <Option<Entry>>::decode(&mut &data[..])?;
-                println!("Decoded result: {:?}", decoded);
 
                 Ok(decoded.map(|entry| {
                     (

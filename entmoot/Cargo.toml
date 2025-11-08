@@ -10,3 +10,4 @@ color-eyre.workspace = true
 crossterm.workspace = true
 ratatui.workspace = true
 ratatui-explorer = "0.2.1"
+fangorn.workspace = true

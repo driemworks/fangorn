@@ -1,4 +1,4 @@
-pub static CONTRACT_ADDR: &str = "5CXu35HvZV5EBsa2NAMuqu8kqapZSv4QUWymchRUEuVzKBEw";
+pub static CONTRACT_ADDR: &str = "5DCzDAj1Gs4gBN92dDGj82B8FNxPZE4E27xTRU4jJhTi1qky";
 pub static WS_URL: &str = "ws://localhost:9944";
 
 pub mod cli;

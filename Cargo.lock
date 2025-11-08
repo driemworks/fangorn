@@ -2703,6 +2703,7 @@ version = "0.1.0"
 dependencies = [
  "color-eyre",
  "crossterm 0.29.0",
+ "fangorn",
  "ratatui",
  "ratatui-explorer",
 ]

@@ -104,7 +104,7 @@ From the root, run `cargo build`.
 ### Hackathon Scope
 
 #### Project Name
-Iris: Intent-Bound Data on Polkadot
+Fangorn
 
 Track: Track 1 - dApp Track?
 Track: Track 3 - tinkerer track?
@@ -112,6 +112,14 @@ Track: Track 3 - tinkerer track?
 #### Description
 
 Intent-bound data is revolutionizes access control for web3.
+
+This is a tool for a post-platform economy for:
+- digital property rights: own what you buy instead of renting access. 
+- creatory soverignty: truly control content distribution, not platforms
+- user privacy: no databases, no tracking, no data collection
+- permissionless & decentralized: can't be shut down, censored, or controlled
+- convivial tech: value flows to creators and consumers, not parasitic intermediaries
+- resilience: no 'company' that can mishandle the data, no platform to enshittify
 
 Today, web3 is capable of handling cryptographically provably ownership and identity, yet it lacks clear access control mechanisms. 
 
@@ -123,6 +131,8 @@ Instead of relying on centralized systems to act as arbiters of data access, thr
 - decentralized access control
 - censorship resistance
 - ransomware resistance
+
+### Use Cases
 
 The general idea:
 Access control in a smart contract

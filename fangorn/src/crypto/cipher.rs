@@ -128,7 +128,6 @@ pub async fn handle_decrypt(
         .unwrap()
         .unwrap();
 
-    println!("CID we are searching on {:?}", cid);
     // living dangerously...
     let ciphertext_bytes = app_store.doc_store.fetch(&cid).await.unwrap().unwrap();
     let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
