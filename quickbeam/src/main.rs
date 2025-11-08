@@ -1,10 +1,11 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use fangorn::crypto::{
+    cipher::{handle_decrypt, handle_encrypt},
+    keystore::{Keystore, Sr25519Keystore},
     FANGORN,
-    keystore::{Keystore,  Sr25519Keystore},
-    cipher::{handle_encrypt, handle_decrypt}
 };
+use fangorn::utils::load_mnemonic;
 
 #[derive(Parser, Debug)]
 #[command(name = "quickbeam", version = "1.0")]
@@ -17,6 +18,11 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     Keygen {
+        // the keystore directory
+        #[arg(long)]
+        keystore_dir: String,
+    },
+    Inspect {
         // the keystore directory
         #[arg(long)]
         keystore_dir: String,
@@ -64,14 +70,23 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
 
     match &args.command {
-        Some(Commands::Keygen {
-            keystore_dir
-        }) => {
+        Some(Commands::Keygen { keystore_dir }) => {
             let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
             keystore.generate_key().unwrap();
             let keys = keystore.list_keys()?;
-            println!("Keys in keystore: {:?}", keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>());
-        },
+            println!(
+                "Keys in keystore: {:?}",
+                keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
+            );
+        }
+        Some(Commands::Inspect { keystore_dir }) => {
+            let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
+            let keys = keystore.list_keys()?;
+            println!(
+                "Keys in keystore: {:?}",
+                keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
+            );
+        }
         Some(Commands::Encrypt {
             message_path,
             filename,

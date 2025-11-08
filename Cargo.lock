@@ -2704,6 +2704,7 @@ dependencies = [
  "color-eyre",
  "crossterm 0.29.0",
  "ratatui",
+ "ratatui-explorer",
 ]
 
 [[package]]
@@ -8148,6 +8149,16 @@ dependencies = [
  "unicode-segmentation",
  "unicode-truncate",
  "unicode-width 0.2.0",
+]
+
+[[package]]
+name = "ratatui-explorer"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5135951c1bf2ef7ce25b46c53eacf45f1a3e6b283669229008d6744a9ca1332"
+dependencies = [
+ "educe 0.6.0",
+ "ratatui",
 ]
 
 [[package]]

@@ -1,38 +1,40 @@
-pub mod widgets;
-
 use std::time::Duration;
-
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, poll};
 use ratatui::{
     DefaultTerminal, Frame,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
-    widgets::{Block, BorderType, Borders, Paragraph},
+    layout::{Alignment, Constraint, Layout, Rect},
+    style::{Color, Style, Stylize},
+    widgets::{Block, BorderType, Borders, Paragraph, List, ListItem, ListState},
 };
 
-use crate::widgets::buttons::{BLUE, Button, GREEN, State};
-
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct App {
-    menu_id: Menu,
+    menu_state: ListState,
+    menu_items: Vec<&'static str>,
 }
 
-#[derive(Debug, Default)]
-pub enum Menu {
-    #[default]
-    MainMenu,
+impl Default for App {
+    fn default() -> Self {
+        let mut state = ListState::default();
+        state.select(Some(0));
+        
+        Self {
+            menu_state: state,
+            menu_items: vec![
+                "Generate Keys",
+                "Inspect Keys",
+                "Encrypt",
+                "Decrypt",
+            ],
+        }
+    }
 }
 
 fn main() -> Result<()> {
-    color_eyre::install()?;
-    // enable_raw_mode()?;
-    // execute!(stdout(), EnterAlternateScreen, EnableMouseCapture)?;
+    // color_eyre::install()?;
     let mut terminal = ratatui::init();
-    // let result = run(terminal);
     let app_result = App::default().run(&mut terminal);
-    // execute!(stdout(), DisableMouseCapture, LeaveAlternateScreen)?;
-    // disable_raw_mode()?;
-    // doing manual cleanup so no need to calll this
     ratatui::restore();
     app_result
 }
@@ -43,13 +45,21 @@ impl App {
             terminal.draw(|frame| {
                 self.render(frame);
             })?;
+            
             if poll(Duration::from_millis(100))? {
-                // Poll every 100 ms for esc key to quit
-                // since event::read is a blocking event
                 match event::read()? {
                     Event::Key(key) => match key.code {
-                        KeyCode::Esc => {
+                        KeyCode::Esc | KeyCode::Char('q') => {
                             break;
+                        }
+                        KeyCode::Up | KeyCode::Char('k') => {
+                            self.previous();
+                        }
+                        KeyCode::Down | KeyCode::Char('j') => {
+                            self.next();
+                        }
+                        KeyCode::Enter => {
+                            self.select();
                         }
                         _ => {}
                     },
@@ -60,48 +70,82 @@ impl App {
         Ok(())
     }
 
+    fn next(&mut self) {
+        let i = match self.menu_state.selected() {
+            Some(i) => {
+                if i >= self.menu_items.len() - 1 {
+                    0
+                } else {
+                    i + 1
+                }
+            }
+            None => 0,
+        };
+        self.menu_state.select(Some(i));
+    }
+
+    fn previous(&mut self) {
+        let i = match self.menu_state.selected() {
+            Some(i) => {
+                if i == 0 {
+                    self.menu_items.len() - 1
+                } else {
+                    i - 1
+                }
+            }
+            None => 0,
+        };
+        self.menu_state.select(Some(i));
+    }
+
+    fn select(&self) {
+        if let Some(selected) = self.menu_state.selected() {
+            // For now, just print what was selected (we'll wire this up later)
+            match selected {
+                0 => {
+                    // Generate Keys
+                }
+                1 => {
+                    // Inspect Keys
+                }
+                2 => {
+                    // Encrypt
+                }
+                3 => {
+                    // Decrypt
+                }
+                _ => {}
+            }
+        }
+    }
+
     fn render(&mut self, frame: &mut Frame) {
         let vertical_layout = Layout::vertical([
-            Constraint::Percentage(40),
-            Constraint::Percentage(33),
-            Constraint::Percentage(27),
-            Constraint::Min(0), // ignore remaining space
+            Constraint::Length(10),  // Title
+            Constraint::Min(10),     // Menu
+            Constraint::Length(3),   // Footer
         ]);
+        
+        let [title_area, menu_area, footer_area] = vertical_layout.areas(frame.area());
 
-        let [title_vert, buttons_vert, _, _] = vertical_layout.areas(frame.area());
+        // Render title
+        render_title(title_area, frame);
 
-        match self.menu_id {
-            Menu::MainMenu => {
-                render_title(title_vert, frame);
-                render_buttons(buttons_vert, frame);
-            } // _ => {}
-        }
-        // Always render box with title
+        // Render menu
+        render_menu(menu_area, frame, &self.menu_items, &mut self.menu_state);
+
+        // Render footer
+        render_footer(footer_area, frame);
+
+        // Outer border
         frame.render_widget(
             Block::new()
                 .borders(Borders::ALL)
-                .border_type(BorderType::Double),
+                .border_type(BorderType::Double)
+                .border_style(Style::default().fg(Color::Cyan)),
             frame.area(),
         );
     }
-}
-
-fn render_buttons(buttons_vert: Rect, frame: &mut Frame) {
-    let layout = Layout::horizontal([
-        Constraint::Percentage(20),
-        Constraint::Percentage(20),
-        Constraint::Percentage(20),
-        Constraint::Percentage(20),
-        Constraint::Percentage(20),
-    ]);
-
-    let encrypt_button = Button::new("Encrypt", BLUE, State::Active);
-    let decrypt_btton = Button::new("Decrypt", GREEN, State::Normal);
-
-    let [_, enc, _, dec, _] = layout.areas(buttons_vert);
-
-    frame.render_widget(encrypt_button, enc);
-    frame.render_widget(decrypt_btton, dec);
 }
 
 fn render_title(title_area: Rect, frame: &mut Frame) {
@@ -116,7 +160,66 @@ fn render_title(title_area: Rect, frame: &mut Frame) {
                                by Ideal Labs
   ",
     )
-    .centered();
-
+    .centered()
+    .style(Style::default().fg(Color::Cyan));
     frame.render_widget(logo, title_area);
+}
+
+fn render_menu(area: Rect, frame: &mut Frame, items: &[&str], state: &mut ListState) {
+    // Center the menu
+    let menu_layout = Layout::vertical([
+        Constraint::Percentage(30),
+        Constraint::Length((items.len() * 3) as u16),
+        Constraint::Percentage(30),
+    ]);
+    let [_, menu_area, _] = menu_layout.areas(area);
+
+    let horizontal_layout = Layout::horizontal([
+        Constraint::Percentage(25),
+        Constraint::Percentage(50),
+        Constraint::Percentage(25),
+    ]);
+    let [_, centered_menu, _] = horizontal_layout.areas(menu_area);
+
+    let menu_items: Vec<ListItem> = items
+        .iter()
+        .enumerate()
+        .map(|(i, item)| {
+            let icon = match i {
+                0 => "> generate key",
+                1 => "> inspect key",
+                2 => "> encrypt",
+                3 => "> decrypt",
+                _ => "•",
+            };
+            ListItem::new(format!("  {}  {}", icon, item))
+                .style(Style::default().fg(Color::White))
+        })
+        .collect();
+
+    let list = List::new(menu_items)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(Color::Cyan))
+                .title(" Main Menu ")
+                .title_alignment(Alignment::Center)
+        )
+        .highlight_style(
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Cyan)
+                .bold()
+        )
+        .highlight_symbol("▶ ");
+
+    frame.render_stateful_widget(list, centered_menu, state);
+}
+
+fn render_footer(area: Rect, frame: &mut Frame) {
+    let footer = Paragraph::new("↑↓/j/k: Navigate  │  Enter: Select  │  Esc/q: Quit")
+        .style(Style::default().fg(Color::DarkGray))
+        .alignment(Alignment::Center);
+    frame.render_widget(footer, area);
 }

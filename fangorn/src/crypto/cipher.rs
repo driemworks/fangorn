@@ -13,7 +13,7 @@ use crate::{
         solutions::{PasswordSolution, Solution},
     },
     storage::PlaintextStore,
-    utils::decode_contract_addr,
+    utils::{decode_contract_addr, load_mnemonic},
 };
 use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -99,21 +99,6 @@ pub async fn handle_encrypt(
         .expect("An error occurred when registering intent in shared store");
 
     println!("> Saved ciphertext to /tmp/{}", &cid.to_string());
-}
-
-/// try to load the mnemomic from the file
-/// not secure
-fn load_mnemonic(keystore_path: &String) -> String {
-    // going dumb and simple for now: just read the first file in the dir
-    let mut files: Vec<_> = fs::read_dir(keystore_path)
-        .unwrap()
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().is_file())
-        .collect();
-
-    let seed = fs::read_to_string(files[0].path()).expect("Issue reading keystore");
-    let formatted = seed.trim().trim_matches('"');
-    formatted.to_string()
 }
 
 /// decryption!

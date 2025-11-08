@@ -5,7 +5,11 @@
 
 ## Setup Guide
 
-0. Build the binaries
+### Prerequisites
+
+Install the substrate contracts node: `cargo install contracts-node`. It can be run locally by running `substrate-contracts-node`, starting the contracts node on port 9944 by default.
+
+1. Build the binaries
 
 From the root, run `cargo build`.
 
@@ -34,23 +38,36 @@ From the root, run `cargo build`.
 > Note: for now we just take the first file in the keystore directory and try to use it as the seed
 > when encrypting a file, so you can only have one key in the store at a time right now
 
+``` sh
 ./target/debug/quickbeam keygen --keystore-dir tmp/keystore
+```
+
+#### Inspect keys
+
+
+``` sh
+./target/debug/quickbeam inspect --keystore-dir tmp/keystore
+```
 
 ##### Encrypt a message 
 
 > hardcoded to save to ciphertext.txt for now
 > you must delete the file if you want to encrypt a new message... needs work
 
+``` sh
 ./target/debug/quickbeam encrypt \
 --message-path test.txt \
 --filename ibd.txt \
 --config-path config.txt \
 --keystore-dir tmp/keystore \
 --intent "Password(test)"
+```
 
 ##### Decrypt a message 
 
+``` sh
 ./target/debug/quickbeam decrypt --filename ibd.txt --config-path config.txt --witness test --pt-filename test
+```
 
 ##### To run UI
 1. From the root run: `cargo run -p entmoot`

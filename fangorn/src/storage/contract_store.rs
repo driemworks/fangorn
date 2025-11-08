@@ -11,9 +11,7 @@ use subxt::{
 };
 use subxt_signer::sr25519::{dev, Keypair};
 
-#[subxt::subxt(
-    runtime_metadata_path = "../fangorn/src/storage/metadata.scale"
-)]
+#[subxt::subxt(runtime_metadata_path = "../fangorn/src/storage/metadata.scale")]
 pub mod idn {}
 
 pub struct ContractIntentStore {
@@ -104,54 +102,49 @@ impl IntentStore for ContractIntentStore {
     async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Intent)>> {
         use subxt::ext::codec::Decode;
 
+        // Prepare the contract call data
         let mut data = Self::selector("read").to_vec();
         data.extend(filename.to_vec().encode());
 
-        // // build storage query
-        // let contract_address: AccountId32 = // ... your contract address
-        let contract_info_query = self.client
-            .storage()
-            .contracts()
-            .contract_info_of(&self.contract_address.into());
-        let contract_info = self.client
-            .storage()
-            .at_latest()
-            .await?
-            .fetch(&contract_info_query)
+        // Use jsonrpsee to call the contract (this is the standard way)
+        let http_url = self.rpc_url.replace("ws://", "http://").replace("wss://", "https://");
+        let http_client = HttpClientBuilder::default().build(&http_url)?;
+
+        let result: serde_json::Value = http_client
+            .request(
+                "contracts_call",
+                (
+                    format!("0x{}", hex::encode::<&[u8]>(self.contract_address.as_ref())),
+                    format!("0x{}", hex::encode::<&[u8]>(&data)),
+                    0u128,
+                    Option::<u64>::None,
+                    Option::<u128>::None,
+                ),
+            )
             .await?;
 
-        if let Some(info) = contract_info {
-            println!("Contract Info: {:?}", info);
-        } else {
-            println!("Contract not found.");
+        // Extract and decode the result
+        let data_hex = result["result"]["Ok"]["data"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Contract call failed: {:?}", result))?;
+
+        let data_bytes = hex::decode(data_hex.trim_start_matches("0x"))?;
+
+        // Decode the Option<Entry> from your contract
+        #[derive(Decode)]
+        struct Entry {
+            cid: Vec<u8>,
+            intent: Vec<u8>,
         }
-        // let query = idn::storage()::contracts::
-        // let result = self
-        //     .client
-        //     .rpc()
-        //     .request(
-        //         "contracts_call",
-        //         rpc_params![
-        //             self.contract_address,
-        //             data,
-        //             0u128,
-        //             Option::<u64>::None,
-        //             Option::<u128>::None,
-        //         ],
-        //     )
-        // 1.await?;
 
-        // // Parse the RPC response
-        // let output: serde_json::Value = result;
-        // let data_hex = output["result"]["Ok"]["data"]
-        //     .as_str()
-        //     .ok_or_else(|| anyhow::anyhow!("Contract call failed: {:?}", output))?;
+        let decoded = <Option<Entry>>::decode(&mut &data_bytes[..])?;
 
-        // let data_bytes = hex::decode(data_hex.trim_start_matches("0x"))?;
-        // let decoded = <Option<Entry>>::decode(&mut &data_bytes[..])?;
-
-        // Ok(decoded.map(|entry| (Cid::try_from(entry.cid).unwrap(), entry.intent.into())))
-        Ok(None)
+        Ok(decoded.map(|entry| {
+            (
+                Cid::try_from(entry.cid).expect("Invalid CID"),
+                entry.intent.into(),
+            )
+        }))
     }
 
     async fn remove_intent(&self, filename: &[u8]) -> Result<()> {
