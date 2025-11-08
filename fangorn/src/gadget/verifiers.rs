@@ -26,8 +26,6 @@ impl std::fmt::Display for VerificationError {
 
 #[async_trait]
 pub trait Verifier: Send + Sync {
-    // ToDo; make blocks generic
-    async fn get_latest_finalized_block(&self) -> Result<Vec<u8>, VerificationError>;
     async fn verify_witness(
         &self,
         witness: Witness,
@@ -45,9 +43,6 @@ impl PasswordVerifier {
 
 #[async_trait]
 impl Verifier for PasswordVerifier {
-    async fn get_latest_finalized_block(&self) -> Result<Vec<u8>, VerificationError> {
-        Ok(vec![])
-    }
     async fn verify_witness(&self, w: Witness, s: Statement) -> Result<bool, VerificationError> {
         let proposed_password = w.0;
         let known_hash = s.0;
@@ -58,23 +53,5 @@ impl Verifier for PasswordVerifier {
         } else {
             Err(VerificationError::PasswordVerificationError)
         }
-    }
-}
-
-pub struct PolkadotVerifier;
-
-impl PolkadotVerifier {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-#[async_trait]
-impl Verifier for PolkadotVerifier {
-    async fn get_latest_finalized_block(&self) -> Result<Vec<u8>, VerificationError> {
-        Ok(vec![])
-    }
-    async fn verify_witness(&self, _w: Witness, _s: Statement) -> Result<bool, VerificationError> {
-        Ok(true)
     }
 }

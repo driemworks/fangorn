@@ -1,12 +1,12 @@
-use std::time::Duration;
 use color_eyre::Result;
 use crossterm::event::{self, Event, KeyCode, poll};
 use ratatui::{
     DefaultTerminal, Frame,
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
-    widgets::{Block, BorderType, Borders, Paragraph, List, ListItem, ListState},
+    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
 };
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct App {
@@ -18,15 +18,10 @@ impl Default for App {
     fn default() -> Self {
         let mut state = ListState::default();
         state.select(Some(0));
-        
+
         Self {
             menu_state: state,
-            menu_items: vec![
-                "Generate Keys",
-                "Inspect Keys",
-                "Encrypt",
-                "Decrypt",
-            ],
+            menu_items: vec!["Generate Keys", "Inspect Keys", "Encrypt", "Decrypt"],
         }
     }
 }
@@ -45,7 +40,7 @@ impl App {
             terminal.draw(|frame| {
                 self.render(frame);
             })?;
-            
+
             if poll(Duration::from_millis(100))? {
                 match event::read()? {
                     Event::Key(key) => match key.code {
@@ -121,11 +116,11 @@ impl App {
 
     fn render(&mut self, frame: &mut Frame) {
         let vertical_layout = Layout::vertical([
-            Constraint::Length(10),  // Title
-            Constraint::Min(10),     // Menu
-            Constraint::Length(3),   // Footer
+            Constraint::Length(10), // Title
+            Constraint::Min(10),    // Menu
+            Constraint::Length(3),  // Footer
         ]);
-        
+
         let [title_area, menu_area, footer_area] = vertical_layout.areas(frame.area());
 
         // Render title
@@ -186,14 +181,13 @@ fn render_menu(area: Rect, frame: &mut Frame, items: &[&str], state: &mut ListSt
         .enumerate()
         .map(|(i, item)| {
             let icon = match i {
-                0 => "> generate key",
-                1 => "> inspect key",
-                2 => "> encrypt",
-                3 => "> decrypt",
+                0 => ">",
+                1 => ">",
+                2 => ">",
+                3 => ">",
                 _ => "•",
             };
-            ListItem::new(format!("  {}  {}", icon, item))
-                .style(Style::default().fg(Color::White))
+            ListItem::new(format!("  {}  {}", icon, item)).style(Style::default().fg(Color::White))
         })
         .collect();
 
@@ -204,14 +198,9 @@ fn render_menu(area: Rect, frame: &mut Frame, items: &[&str], state: &mut ListSt
                 .border_type(BorderType::Rounded)
                 .border_style(Style::default().fg(Color::Cyan))
                 .title(" Main Menu ")
-                .title_alignment(Alignment::Center)
+                .title_alignment(Alignment::Center),
         )
-        .highlight_style(
-            Style::default()
-                .fg(Color::Black)
-                .bg(Color::Cyan)
-                .bold()
-        )
+        .highlight_style(Style::default().fg(Color::Black).bg(Color::Cyan).bold())
         .highlight_symbol("▶ ");
 
     frame.render_stateful_widget(list, centered_menu, state);

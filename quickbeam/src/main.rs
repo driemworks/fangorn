@@ -1,11 +1,10 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use fangorn::crypto::{
+    FANGORN,
     cipher::{handle_decrypt, handle_encrypt},
     keystore::{Keystore, Sr25519Keystore},
-    FANGORN,
 };
-use fangorn::utils::load_mnemonic;
 
 #[derive(Parser, Debug)]
 #[command(name = "quickbeam", version = "1.0")]

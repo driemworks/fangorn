@@ -1,5 +1,5 @@
 use super::*;
-use crate::entish::intents::Intent;
+use crate::gadget::intents::Intent;
 use async_trait::async_trait;
 use cid::Cid;
 use multihash_codetable::{Code, MultihashDigest};
@@ -17,7 +17,9 @@ pub struct LocalDocStore {
 
 impl LocalDocStore {
     pub fn new(docs_dir: &str) -> Self {
-        Self { docs_dir: docs_dir.to_string() }
+        Self {
+            docs_dir: docs_dir.to_string(),
+        }
     }
 
     /// Ensure the docs directory exists
@@ -185,7 +187,9 @@ pub struct LocalPlaintextStore {
 
 impl LocalPlaintextStore {
     pub fn new(pt_dir: &str) -> Self {
-        Self { pt_dir: pt_dir.to_string() }
+        Self {
+            pt_dir: pt_dir.to_string(),
+        }
     }
 
     /// Ensure the plaintext directory exists

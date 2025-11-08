@@ -1,15 +1,15 @@
+use sc_keystore::LocalKeystore;
+use sp_application_crypto::RuntimePublic;
 use sp_core::{
+    Pair as PairT,
     crypto::{KeyTypeId, Ss58Codec},
     sr25519,
-    Pair as PairT,
 };
 use sp_keystore::{Keystore as SubstrateKeystore, KeystorePtr};
-use sp_application_crypto::RuntimePublic;
-use sc_keystore::LocalKeystore;
 use std::path::PathBuf;
 use std::sync::Arc;
 use thiserror::Error;
- 
+
 #[derive(Error, Debug)]
 pub enum KeystoreError {
     #[error("Keystore error: {0}")]
@@ -28,10 +28,10 @@ pub enum KeystoreError {
 pub trait Keystore {
     /// The public key type
     type Public: Clone + PartialEq + std::fmt::Debug;
-    
+
     /// The signature type
     type Signature: Clone + PartialEq + std::fmt::Debug;
-    
+
     /// The pair type (private + public key)
     type Pair: PairT;
 
@@ -51,7 +51,8 @@ pub trait Keystore {
     fn has_key(&self, public: &Self::Public) -> bool;
 
     /// Sign a message with the specified public key
-    fn sign(&self, public: &Self::Public, message: &[u8]) -> Result<Self::Signature, KeystoreError>;
+    fn sign(&self, public: &Self::Public, message: &[u8])
+    -> Result<Self::Signature, KeystoreError>;
 
     /// Verify a signature (can be static since verification only needs the public key)
     fn verify(public: &Self::Public, message: &[u8], signature: &Self::Signature) -> bool;
@@ -77,7 +78,7 @@ impl Sr25519Keystore {
         std::fs::create_dir_all(&path).unwrap();
         let keystore = LocalKeystore::open(path, None)
             .map_err(|e| KeystoreError::Keystore(format!("{:?}", e)))?;
-        
+
         Ok(Self {
             keystore: Arc::new(keystore),
             key_type,
@@ -94,7 +95,7 @@ impl Sr25519Keystore {
     //     let password_protected = password.map(|p| secrecy::SecretString::from(p.to_string()));
     //     let keystore = LocalKeystore::open(path, password_protected)
     //         .map_err(|e| KeystoreError::Keystore(format!("{:?}", e)))?;
-        
+
     //     Ok(Self {
     //         keystore: Arc::new(keystore),
     //         key_type,
@@ -132,10 +133,15 @@ impl Keystore for Sr25519Keystore {
     }
 
     fn has_key(&self, public: &Self::Public) -> bool {
-        self.keystore.has_keys(&[(public.to_raw_vec(), self.key_type)])
+        self.keystore
+            .has_keys(&[(public.to_raw_vec(), self.key_type)])
     }
 
-    fn sign(&self, public: &Self::Public, message: &[u8]) -> Result<Self::Signature, KeystoreError> {
+    fn sign(
+        &self,
+        public: &Self::Public,
+        message: &[u8],
+    ) -> Result<Self::Signature, KeystoreError> {
         self.keystore
             .sr25519_sign(self.key_type, public, message)
             .map_err(|e| KeystoreError::Keystore(format!("{:?}", e)))?

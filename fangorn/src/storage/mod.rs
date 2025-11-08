@@ -1,6 +1,6 @@
 //! a generic policy 'store'
 //! the core abstraction workers leverage for mapping content identifiers to policies
-use crate::entish::intents::Intent;
+use crate::gadget::intents::Intent;
 use anyhow::Result;
 use async_trait::async_trait;
 use cid::Cid;
@@ -50,11 +50,7 @@ pub struct AppStore<D: DocStore, I: IntentStore, P: PlaintextStore> {
 }
 
 impl<D: DocStore, I: IntentStore, P: PlaintextStore> AppStore<D, I, P> {
-    pub fn new(
-        doc_store: D,
-        intent_store: I,
-        pt_store: P,
-    ) -> Self {
+    pub fn new(doc_store: D, intent_store: I, pt_store: P) -> Self {
         Self {
             doc_store,
             intent_store,
@@ -62,5 +58,3 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> AppStore<D, I, P> {
         }
     }
 }
-
-

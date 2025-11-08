@@ -1,5 +1,5 @@
 use super::*;
-use crate::entish::intents::Intent;
+use crate::gadget::intents::Intent;
 use async_trait::async_trait;
 use cid::Cid;
 use jsonrpsee::{core::client::ClientT, http_client::HttpClientBuilder};
@@ -7,12 +7,12 @@ use sp_core::Pair;
 use sp_weights::Weight;
 use subxt::ext::codec::Encode;
 use subxt::{
-    config::polkadot::AccountId32, dynamic, utils::MultiAddress, OnlineClient, PolkadotConfig,
+    OnlineClient, PolkadotConfig, config::polkadot::AccountId32, dynamic, utils::MultiAddress,
 };
-use subxt_signer::sr25519::{dev, Keypair};
+use subxt_signer::sr25519::{Keypair, dev};
 
 #[subxt::subxt(runtime_metadata_path = "../fangorn/src/storage/metadata.scale")]
-pub mod idn {}
+pub mod runtime {}
 
 pub struct ContractIntentStore {
     client: OnlineClient<PolkadotConfig>,
@@ -77,10 +77,10 @@ impl IntentStore for ContractIntentStore {
         data.extend(cid_bytes.encode());
         data.extend(intent_bytes.encode());
 
-        let call = idn::tx().contracts().call(
+        let call = runtime::tx().contracts().call(
             MultiAddress::Id(self.contract_address.clone()),
             0u128, // value
-            idn::runtime_types::sp_weights::weight_v2::Weight {
+            runtime::runtime_types::sp_weights::weight_v2::Weight {
                 ref_time: 1_000_000_000,
                 proof_size: 500_000,
             },
@@ -102,49 +102,49 @@ impl IntentStore for ContractIntentStore {
     async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Intent)>> {
         use subxt::ext::codec::Decode;
 
-        // Prepare the contract call data
         let mut data = Self::selector("read").to_vec();
         data.extend(filename.to_vec().encode());
 
-        // Use jsonrpsee to call the contract (this is the standard way)
-        let http_url = self.rpc_url.replace("ws://", "http://").replace("wss://", "https://");
-        let http_client = HttpClientBuilder::default().build(&http_url)?;
+        let call_request = runtime::apis().contracts_api().call(
+            self.signer.public_key().into(),
+            self.contract_address.clone(),
+            0u128,
+            None,
+            None,
+            data,
+        );
 
-        let result: serde_json::Value = http_client
-            .request(
-                "contracts_call",
-                (
-                    format!("0x{}", hex::encode::<&[u8]>(self.contract_address.as_ref())),
-                    format!("0x{}", hex::encode::<&[u8]>(&data)),
-                    0u128,
-                    Option::<u64>::None,
-                    Option::<u128>::None,
-                ),
-            )
+        let result = self
+            .client
+            .runtime_api()
+            .at_latest()
+            .await?
+            .call(call_request)
             .await?;
 
-        // Extract and decode the result
-        let data_hex = result["result"]["Ok"]["data"]
-            .as_str()
-            .ok_or_else(|| anyhow::anyhow!("Contract call failed: {:?}", result))?;
+        match result.result {
+            Ok(exec_result) => {
+                // TODO: use the same struct here and in the contract, exactly
+                #[derive(Decode, Debug)]
+                struct Entry {
+                    cid: Vec<u8>,
+                    intent: Vec<u8>,
+                }
 
-        let data_bytes = hex::decode(data_hex.trim_start_matches("0x"))?;
+                let mut data = exec_result.data;
+                data.remove(0);
+                let decoded = <Option<Entry>>::decode(&mut &data[..])?;
+                println!("Decoded result: {:?}", decoded);
 
-        // Decode the Option<Entry> from your contract
-        #[derive(Decode)]
-        struct Entry {
-            cid: Vec<u8>,
-            intent: Vec<u8>,
+                Ok(decoded.map(|entry| {
+                    (
+                        Cid::try_from(entry.cid).expect("Invalid CID"),
+                        entry.intent.into(),
+                    )
+                }))
+            }
+            Err(e) => Err(anyhow::anyhow!("Contract call failed: {:?}", e)),
         }
-
-        let decoded = <Option<Entry>>::decode(&mut &data_bytes[..])?;
-
-        Ok(decoded.map(|entry| {
-            (
-                Cid::try_from(entry.cid).expect("Invalid CID"),
-                entry.intent.into(),
-            )
-        }))
     }
 
     async fn remove_intent(&self, filename: &[u8]) -> Result<()> {

@@ -2,7 +2,7 @@
 // intents allow users to associate data access
 // with an np-hard problem
 use super::challenges::Challenge;
-use crate::entish::challenges::PasswordChallenge;
+use crate::gadget::challenges::PasswordChallenge;
 use multihash_codetable::{Code, MultihashDigest};
 use nom::{
     IResult, Parser,

@@ -7,11 +7,11 @@ use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext
 use std::str::FromStr;
 
 use crate::{
-    entish::{
+    gadget::{
         Statement, Witness,
         verifiers::{PasswordVerifier, Verifier},
     },
-    storage::{*, local_store::*},
+    storage::{local_store::*, *},
     types::*,
 };
 
@@ -91,7 +91,8 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let witness = Witness(hex::decode(req_ref.witness_hex.clone()).unwrap());
         println!("got witness");
 
-        let (cid, intent) = self.intent_store
+        let (cid, intent) = self
+            .intent_store
             .get_intent(&filename)
             .await
             .expect("Something went wrong when looking for intent.")

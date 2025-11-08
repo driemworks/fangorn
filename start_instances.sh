@@ -72,8 +72,8 @@ if [ -f "$SIGNAL_FILE.second_pid" ]; then
 fi
 
 # Start the first instance in the background of current terminal
-echo "Starting first instance: ./target/debug/fangorn run --bind-port 9944 --rpc-port 30333 --is-bootstrap --index 0"
-./target/debug/fangorn run --bind-port 9944 --rpc-port 30333 --is-bootstrap --index 0 &
+echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0"
+./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 &
 FIRST_PID=$!
 echo "PID of first instance: $FIRST_PID"
 
@@ -114,8 +114,8 @@ cleanup_second() {
 
 trap cleanup_second SIGINT
 
-echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9944 --ticket $TICKET_CONTENT --index 1'
-./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9944 --ticket $TICKET_CONTENT --index 1 &
+echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1'
+./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 &
 SECOND_SERVER_PID=\$!
 echo \"PID: \$SECOND_SERVER_PID\"
 echo \"\$SECOND_SERVER_PID\" > \"$SIGNAL_FILE.second_pid\"

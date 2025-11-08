@@ -1,13 +1,13 @@
 use crate::rpc::server::*;
 use crate::storage::{
+    AppStore, DocStore, IntentStore, SharedStore,
     contract_store::ContractIntentStore,
     local_store::{LocalDocStore, LocalPlaintextStore},
-    AppStore, DocStore, IntentStore, SharedStore,
 };
 use crate::types::*;
 use crate::{
     crypto::keystore::{Keystore, Sr25519Keystore},
-    entish::{
+    gadget::{
         challenges::PasswordChallenge,
         intents::Intent,
         solutions::{PasswordSolution, Solution},
@@ -17,7 +17,8 @@ use crate::{
 };
 use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::{rand::rngs::OsRng, UniformRand};
+use ark_std::{UniformRand, rand::rngs::OsRng};
+use codec::Encode;
 use multihash_codetable::{Code, MultihashDigest};
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
@@ -47,7 +48,7 @@ pub async fn handle_encrypt(
     // get the sys key
     let sys_key_request = tonic::Request::new(PreprocessRequest {});
     // from first node
-    let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
+    let mut client = RpcClient::connect("http://127.0.0.1:30332").await.unwrap();
     let response = client.preprocess(sys_key_request).await.unwrap();
     let hex = response.into_inner().hex_serialized_sys_key;
     let bytes = hex::decode(&hex[..]).unwrap();
@@ -61,17 +62,12 @@ pub async fn handle_encrypt(
 
     let seed = load_mnemonic(keystore_path);
 
-    let contract_addr_bytes =
-        decode_contract_addr(crate::CONTRACT_ADDR);
+    let contract_addr_bytes = decode_contract_addr(crate::CONTRACT_ADDR);
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
-        ContractIntentStore::new(
-            "ws://localhost:9933".to_string(),
-            contract_addr_bytes,
-            Some(&seed),
-        )
-        .await
-        .unwrap(),
+        ContractIntentStore::new(crate::WS_URL.to_string(), contract_addr_bytes, Some(&seed))
+            .await
+            .unwrap(),
         LocalPlaintextStore::new("tmp/plaintexts/"),
     );
 
@@ -115,24 +111,24 @@ pub async fn handle_decrypt(
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
     // get the ciphertext
-    let contract_addr_bytes =
-        decode_contract_addr(crate::CONTRACT_ADDR);
+    let contract_addr_bytes = decode_contract_addr(crate::CONTRACT_ADDR);
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
-        ContractIntentStore::new("ws://localhost:9933".to_string(), contract_addr_bytes, None)
+        ContractIntentStore::new(crate::WS_URL.to_string(), contract_addr_bytes, None)
             .await
             .unwrap(),
         LocalPlaintextStore::new("tmp/plaintexts/"),
     );
 
     // TODO: fetch the cid and intent from filename
-    let (cid, _intent)  = app_store
+    let (cid, _intent) = app_store
         .intent_store
         .get_intent(&filename.clone().into_bytes())
         .await
         .unwrap()
         .unwrap();
 
+    println!("CID we are searching on {:?}", cid);
     // living dangerously...
     let ciphertext_bytes = app_store.doc_store.fetch(&cid).await.unwrap().unwrap();
     let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
@@ -145,7 +141,7 @@ pub async fn handle_decrypt(
     let witness_hex = hex::encode(witness.0);
 
     // from first node
-    let mut client = RpcClient::connect("http://127.0.0.1:30333").await.unwrap();
+    let mut client = RpcClient::connect("http://127.0.0.1:30332").await.unwrap();
     let response = client.preprocess(sys_key_request).await.unwrap();
     let hex = response.into_inner().hex_serialized_sys_key;
     let bytes = hex::decode(&hex[..]).unwrap();
@@ -154,16 +150,18 @@ pub async fn handle_decrypt(
     let subset = vec![0, 1];
     let (ak, _ek) = sys_keys.get_aggregate_key(&subset, &config.crs, &config.lag_polys);
 
+    // a map to hold partial decs
     let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
 
     for i in 0..1 {
         let node_id = ak.lag_pks[i].id;
         let rpc_port = match node_id {
-            0 => 30333,
+            0 => 30332,
             1 => 30334,
             _ => panic!("Unknown node"),
         };
 
+        println!("Sending query against rpc port: {:?}", rpc_port);
         let mut client = RpcClient::connect(format!("http://127.0.0.1:{}", rpc_port))
             .await
             .unwrap();
