@@ -1,33 +1,43 @@
 use color_eyre::Result;
-use crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
 use fangorn::crypto::{
     cipher::{handle_decrypt, handle_encrypt},
     keystore::{Keystore, Sr25519Keystore},
     FANGORN,
 };
+use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
+    prelude::*,
     style::{Color, Style, Stylize},
     text::Text,
     widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
     DefaultTerminal, Frame,
 };
+use ratatui_explorer::{FileExplorer, Theme};
 use std::time::Duration;
+use tui_textarea::TextArea;
 
-// 1. New Enum to manage the active screen/view
+// 1. Enum to manage the active screen/view
 #[derive(Debug)]
 pub enum CurrentScreen {
     Main,
     KeyResults,
+    FileExplorer,
+    PasswordSelection,
 }
 
 #[derive(Debug)]
 pub struct App {
     menu_state: ListState,
     menu_items: Vec<&'static str>,
-    // 2. New State fields
     current_screen: CurrentScreen,
     generated_pubkey: Option<String>,
+    // the file explorer: todo - this could probably be an option, load it when we select the screen
+    file_explorer: FileExplorer,
+    // the file path of the message to be encrypted (plaintext)
+    file_path: Option<String>,
+    /// the text area for password input
+    input: Option<TextArea<'static>>,
 }
 
 impl Default for App {
@@ -35,18 +45,30 @@ impl Default for App {
         let mut state = ListState::default();
         state.select(Some(0));
 
+        // Create the file explorer with a theme
+        let theme = Theme::default().add_default_title().with_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded)
+                .border_style(Style::default().fg(Color::Cyan)),
+        );
+        let file_explorer =
+            FileExplorer::with_theme(theme).expect("Failed to create file explorer");
+
         Self {
             menu_state: state,
             menu_items: vec!["Generate Keys", "Inspect Keys", "Encrypt", "Decrypt"],
-            // Initial screen is Main
             current_screen: CurrentScreen::Main,
             generated_pubkey: None,
+            file_explorer,
+            file_path: None,
+            input: None,
         }
     }
 }
 
 fn main() -> Result<()> {
-    // color_eyre::install()?;
+    color_eyre::install()?;
     let mut terminal = ratatui::init();
     let app_result = App::default().run(&mut terminal);
     ratatui::restore();
@@ -63,7 +85,8 @@ impl App {
 
             // --- EVENT HANDLING PHASE ---
             if poll(Duration::from_millis(100))? {
-                if let Event::Key(key) = event::read()? {
+                let event = event::read()?;
+                if let Event::Key(key) = event {
                     // Ignore key release events
                     if key.kind != KeyEventKind::Press {
                         continue;
@@ -81,14 +104,54 @@ impl App {
                             _ => {}
                         },
                         CurrentScreen::KeyResults => match key.code {
-                            // 5. Input to handle the 'Close' button
+                            // Input to handle the 'Close' button
                             KeyCode::Esc | KeyCode::Char('c') => {
-                                // Close the results screen and return to main
                                 self.current_screen = CurrentScreen::Main;
                                 self.generated_pubkey = None; // Clear the data
                             }
-                            // Add logic for 'Copy' button (e.g., KeyCode::Char('y')) here
                             _ => {}
+                        },
+                        CurrentScreen::FileExplorer => match key.code {
+                            KeyCode::Esc | KeyCode::Char('c') => {
+                                self.current_screen = CurrentScreen::Main;
+                                self.generated_pubkey = None;
+                            }
+                            KeyCode::Enter => {
+                                // copy file into memory
+                                let selected = self.file_explorer.current();
+                                if selected.is_file() {
+                                    // User selected a file - do something with it
+                                    let _file_path = selected.path().display().to_string();
+                                    // For now, just go back to main menu
+                                    // You can store the selected file path and use it later
+                                    self.current_screen = CurrentScreen::PasswordSelection;
+                                    // initialize the password input
+                                    self.input = Some(TextArea::default());
+                                }
+                            }
+                            _ => {
+                                self.file_explorer.handle(&event)?;
+                            }
+                        },
+                        CurrentScreen::PasswordSelection => match key.code {
+                            KeyCode::Esc | KeyCode::Char('c') => {
+                                self.current_screen = CurrentScreen::Main;
+                                self.generated_pubkey = None;
+                            }
+                            KeyCode::Enter => {
+                                // Get the input and handle confirmation logic
+                                // assuming the input element is already initialized...
+                                let password = self.input.as_mut().unwrap().lines().join("\n");
+                                //  use password for encryption
+                                // Clear state and move on
+                                self.input = None;
+                                self.current_screen = CurrentScreen::Main;
+                            }
+                            _ => {
+                                if let Some(input) = self.input.as_mut() {
+                                    input.input(key);
+                                }
+                            }
                         },
                     }
                 }
@@ -96,8 +159,6 @@ impl App {
         }
         Ok(())
     }
-
-    // ... (previous() and next() methods are unchanged)
 
     fn next(&mut self) {
         let i = match self.menu_state.selected() {
@@ -127,10 +188,10 @@ impl App {
         self.menu_state.select(Some(i));
     }
 
-    // 4. Implement screen switching logic
     fn select(&mut self) {
         if let Some(selected) = self.menu_state.selected() {
             match selected {
+                // gen keys
                 0 => {
                     // generate the keys
                     let keystore = Sr25519Keystore::new("tmp/keystore".into(), FANGORN).unwrap();
@@ -143,29 +204,43 @@ impl App {
                     self.generated_pubkey = Some(pubkey);
                     self.current_screen = CurrentScreen::KeyResults;
                 }
+                // inspect keys
                 1 => {
                     let keystore = Sr25519Keystore::new("tmp/keystore".into(), FANGORN).unwrap();
                     if let Ok(keys) = keystore.list_keys() {
-                        let pubkey = format!("Public: {:?}", keystore.to_ss58(&keys[0]));
-                        self.generated_pubkey = Some(pubkey);
-                        self.current_screen = CurrentScreen::KeyResults;
+                        if !keys.is_empty() {
+                            let pubkey = format!("Public: {:?}", keystore.to_ss58(&keys[0]));
+                            self.generated_pubkey = Some(pubkey);
+                            self.current_screen = CurrentScreen::KeyResults;
+                        } else {
+                            self.generated_pubkey = Some("No keys found in keystore".to_string());
+                            self.current_screen = CurrentScreen::KeyResults;
+                        }
                     }
-                } // Inspect Keys
-                2 => {} // Encrypt
-                3 => {} // Decrypt
+                }
+                // encrypt
+                2 => {
+                    self.current_screen = CurrentScreen::FileExplorer;
+                }
+                // decrypt
+                3 => {
+                    // self.current_screen = CurrentScreen::FileExplorer;
+                }
                 _ => {}
             }
         }
     }
 
-    // 6. Use current_screen to choose which view to render
+    // use current_screen to choose which view to render
     fn render(&mut self, frame: &mut Frame) {
         match self.current_screen {
             CurrentScreen::Main => self.render_main_screen(frame),
             CurrentScreen::KeyResults => self.render_key_results_screen(frame),
+            CurrentScreen::FileExplorer => self.render_file_explorer_screen(frame),
+            CurrentScreen::PasswordSelection => self.render_password_selection(frame),
         }
 
-        // Outer border (kept for both screens, but often you'd put this in the main function)
+        // Outer border
         frame.render_widget(
             Block::new()
                 .borders(Borders::ALL)
@@ -189,7 +264,6 @@ impl App {
         render_footer(footer_area, frame);
     }
 
-    // render the results screen for keys
     fn render_key_results_screen(&mut self, frame: &mut Frame) {
         let areas = Layout::vertical([
             Constraint::Length(3), // Title
@@ -226,9 +300,57 @@ impl App {
             .block(Block::default().padding(ratatui::widgets::Padding::horizontal(1)));
         frame.render_widget(close_button, button_layout[0]);
     }
-}
 
-// ... (render_title, render_menu, render_footer functions are unchanged)
+    fn render_file_explorer_screen(&mut self, frame: &mut Frame) {
+        let vertical_layout = Layout::vertical([
+            Constraint::Length(3), // Instructions
+            Constraint::Min(10),   // File explorer
+            Constraint::Length(3), // Footer
+        ]);
+
+        let [instructions_area, explorer_area, footer_area] = vertical_layout.areas(frame.area());
+
+        // Instructions
+        let instructions = Paragraph::new("Select a file and press Enter")
+            .style(Style::default().fg(Color::Cyan))
+            .alignment(Alignment::Center)
+            .block(
+                Block::default()
+                    .borders(Borders::BOTTOM)
+                    .border_style(Style::default().fg(Color::DarkGray)),
+            );
+        frame.render_widget(instructions, instructions_area);
+
+        // Render the file explorer widget
+        frame.render_widget(&self.file_explorer.widget(), explorer_area);
+
+        // Footer with navigation instructions
+        let footer = Paragraph::new("↑↓: Navigate  │  ← →: Dirs  │  Enter: Select  │  Esc: Back")
+            .style(Style::default().fg(Color::DarkGray))
+            .alignment(Alignment::Center);
+        frame.render_widget(footer, footer_area);
+    }
+
+    pub fn render_password_selection(&mut self, frame: &mut Frame) {
+        let area = frame.area();
+        let input = self.input.as_mut().unwrap();
+        let block = Block::bordered()
+            .title("Enter Password")
+            .title_alignment(Alignment::Center)
+            .border_style(Color::Yellow);
+
+        input.set_block(block);
+
+        frame.render_widget(input.widget(), area);
+        let (row, col) = input.cursor();
+        frame.set_cursor(
+            // X: area start (0) + border (1) + text column offset
+            area.x + 1 + col as u16,
+            // Y: area start (0) + border (1) + text row offset
+            area.y + 1 + row as u16,
+        );
+    }
+}
 
 fn render_title(title_area: Rect, frame: &mut Frame) {
     let logo = Paragraph::new(
@@ -274,7 +396,7 @@ fn render_menu(area: Rect, frame: &mut Frame, items: &[&str], state: &mut ListSt
                 3 => ">",
                 _ => "•",
             };
-            ListItem::new(format!("  {}  {}", icon, item)).style(Style::default().fg(Color::White))
+            ListItem::new(format!("  {}  {}", icon, item)).style(Style::default().fg(Color::White))
         })
         .collect();
 
@@ -294,7 +416,7 @@ fn render_menu(area: Rect, frame: &mut Frame, items: &[&str], state: &mut ListSt
 }
 
 fn render_footer(area: Rect, frame: &mut Frame) {
-    let footer = Paragraph::new("↑↓/j/k: Navigate  │  Enter: Select  │  Esc/q: Quit")
+    let footer = Paragraph::new("↑↓/j/k: Navigate  │  Enter: Select  │  Esc/q: Quit")
         .style(Style::default().fg(Color::DarkGray))
         .alignment(Alignment::Center);
     frame.render_widget(footer, area);

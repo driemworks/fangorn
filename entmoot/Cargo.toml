@@ -11,3 +11,5 @@ crossterm.workspace = true
 ratatui.workspace = true
 ratatui-explorer = "0.2.1"
 fangorn.workspace = true
+ratatui-textarea = "0.4.1"
+tui-textarea = "0.7.0"
