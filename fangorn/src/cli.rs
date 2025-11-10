@@ -31,6 +31,8 @@ pub enum FangornNodeCommands {
         /// The ticket to connect to a swarm
         #[arg(long, default_value = "")]
         ticket: String,
+        #[arg(long, default_value=None)]
+        contract_addr: String,
         /// The bootsrap node public key
         #[arg(long, default_value=None)]
         bootstrap_pubkey: Option<String>,

@@ -38,6 +38,7 @@ pub async fn handle_encrypt(
     config_path: &String,
     keystore_path: &String,
     intent_str: &String,
+    contract_addr: &String,
     gadget_registry: &GadgetRegistry,
 ) {
     let config_hex =
@@ -64,7 +65,7 @@ pub async fn handle_encrypt(
 
     let seed = load_mnemonic(keystore_path);
 
-    let contract_addr_bytes = decode_contract_addr(crate::CONTRACT_ADDR);
+    let contract_addr_bytes = decode_contract_addr(contract_addr);
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
         ContractIntentStore::new(crate::WS_URL.to_string(), contract_addr_bytes, Some(&seed))
@@ -104,11 +105,19 @@ pub async fn handle_encrypt(
     println!("> Saved ciphertext to /tmp/{}", &cid.to_string());
 }
 
+// // todo: create generic encrypt and decrypt function here
+// async fn encrypt<A: AppStore, G: GadgetRegistry>(
+//     ek: 
+// ) [
+
+// ]
+
 pub async fn handle_decrypt(
     config_path: &String,
     filename: &String,
     witness_string: &String,
     pt_filename: &String,
+    contract_addr: &String,
 ) {
     // read the config
     let config_hex =
@@ -116,7 +125,7 @@ pub async fn handle_decrypt(
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
     // get the ciphertext
-    let contract_addr_bytes = decode_contract_addr(crate::CONTRACT_ADDR);
+    let contract_addr_bytes = decode_contract_addr(contract_addr);
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
         ContractIntentStore::new(crate::WS_URL.to_string(), contract_addr_bytes, None)

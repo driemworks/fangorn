@@ -42,7 +42,6 @@ pub trait PlaintextStore {
     async fn write_to_pt_store(&self, filename: &String, data: &Vec<u8>) -> Result<()>;
 }
 
-// Now you can compose them as needed:
 pub struct AppStore<D: DocStore, I: IntentStore, P: PlaintextStore> {
     pub doc_store: D,
     pub intent_store: I,

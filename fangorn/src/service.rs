@@ -42,6 +42,7 @@ pub struct ServiceConfig {
     pub is_bootstrap: bool,
     pub ticket: Option<String>,
     pub bootstrap_peers: Option<Vec<NodeAddr>>,
+    pub contract_addr: String,
 }
 
 impl ServiceConfig {
@@ -136,7 +137,7 @@ pub async fn build_full_service<C: Pairing>(
         .await
         .unwrap();
 
-    spawn_rpc_service(arc_state_clone, config.rpc_port)
+    spawn_rpc_service(arc_state_clone, config.rpc_port, &config.contract_addr)
         .await
         .unwrap();
 
@@ -373,13 +374,13 @@ async fn run_state_sync<C: Pairing>(
 }
 
 /// Spawn the RPC server
-async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u16) -> Result<()> {
+async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u16, contract_addr: &str) -> Result<()> {
     let addr_str = format!("127.0.0.1:{}", rpc_port);
     let addr = addr_str.parse().unwrap();
 
     let doc_store = Arc::new(LocalDocStore::new("tmp/docs/"));
 
-    let contract_addr_bytes = decode_contract_addr(crate::CONTRACT_ADDR);
+    let contract_addr_bytes = decode_contract_addr(contract_addr);
     let intent_store = Arc::new(
         ContractIntentStore::new(crate::WS_URL.to_string(), contract_addr_bytes, None)
             .await

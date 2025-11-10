@@ -46,6 +46,8 @@ enum Commands {
         /// the intent for encrypting the message
         #[arg(long)]
         intent: String,
+        #[arg(long)]
+        contract_addr: String
     },
     /// request to decrypt a message
     /// prepare a witness + send to t-of-n node RPCs
@@ -64,6 +66,8 @@ enum Commands {
         /// the decrypted text to
         #[arg(long)]
         pt_filename: String,
+        #[arg(long)]
+        contract_addr: String
     },
 }
 
@@ -95,6 +99,7 @@ async fn main() -> Result<()> {
             config_path,
             keystore_dir,
             intent,
+            contract_addr,
         }) => {
             let mut registry = GadgetRegistry::new();
             registry.register(PasswordGadget {});
@@ -104,6 +109,7 @@ async fn main() -> Result<()> {
                 config_path,
                 keystore_dir,
                 intent,
+                contract_addr,
                 &registry,
             )
             .await;
@@ -113,8 +119,9 @@ async fn main() -> Result<()> {
             filename,
             witness,
             pt_filename,
+            contract_addr,
         }) => {
-            handle_decrypt(config_path, filename, witness, pt_filename).await;
+            handle_decrypt(config_path, filename, witness, pt_filename, contract_addr).await;
         }
         None => {
             // do nothing

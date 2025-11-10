@@ -39,14 +39,15 @@ This is a guide to run fangorn locally.
 #### Option A: Manually starting the instances
 1. start a bootstrap node
 
-    ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0
+    ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0  --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
 
 > This will save the randomly generated config to config.txt
 
 2. start a second peer (copy/paste pubkey and ticket)
     > Note: pubkey is written to pubkey.txt and ticket is written to ticket.txt
 
-    ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey 3c3372360e2871a8a521596e08daf410482bb4b7824f5921b36d72a2d24ab12a --bootstrap-ip 172.31.149.62:9944 --ticket docaaacagehgiuqcbit4twrjwk2kubiym3x6fnmnp5o2lz32t5m366r25rtaffe3kqsri7ud2nwcmcwzegmac65lgpur6joji4gu6avamrgwyxkuajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55rugr5yayavqolfponju --index 1
+    ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey 2ec177c3b8442215520052b55d2f9cef09ae0a65d35769a3f63b3659c099ccb2 --bootstrap-ip 172.31.149.62:9944 --ticket docaaacbsx4px23g66nfvyg4olvhsbm4s4477sj6c4b33lutfev6ym4ap7iaexmc56dxbccefksabjlkxjpttxqtlqkmxjvo2nd6y5tmwoathgleajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55ruhj52ayavqolfponju --index 1 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
+
 
 #### Option B: Automatically start two instances
 0. Install gnome-terminal `sudo apt install gnome-terminal`
@@ -82,13 +83,19 @@ This is a guide to run fangorn locally.
 --filename test.txt \
 --config-path config.txt \
 --keystore-dir tmp/keystore \
---intent "Password(test)"
+--intent "Password(test)" \
+--contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
 ```
 
 ##### Decrypt a message 
 
 ``` sh
-./target/debug/quickbeam decrypt --filename test.txt --config-path config.txt --witness test --pt-filename test
+./target/debug/quickbeam decrypt \
+--filename test.txt \
+--config-path config.txt \
+--witness test \
+--pt-filename test \
+--contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
 ```
 
 ##### To run UI

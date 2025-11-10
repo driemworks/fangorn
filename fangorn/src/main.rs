@@ -26,6 +26,7 @@ async fn main() -> Result<()> {
             bootstrap_ip,
             is_bootstrap,
             ticket,
+            contract_addr
         }) => {
             let config = ServiceConfig {
                 bind_port: *bind_port,
@@ -41,6 +42,7 @@ async fn main() -> Result<()> {
                     bootstrap_pubkey.clone(),
                     bootstrap_ip.clone(),
                 ),
+                contract_addr: contract_addr.to_string(),
             };
             // start the service
             // tokio::spawn(async move {

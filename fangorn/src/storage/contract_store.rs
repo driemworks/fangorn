@@ -147,32 +147,32 @@ impl IntentStore for ContractIntentStore {
     }
 
     async fn remove_intent(&self, filename: &[u8]) -> Result<()> {
-        let filename = filename.to_vec();
-        let mut data = Self::selector("remove").to_vec();
-        data.extend(filename.encode());
+        // let filename = filename.to_vec();
+        // let mut data = Self::selector("remove").to_vec();
+        // data.extend(filename.encode());
 
-        let call = dynamic::tx(
-            "Contracts",
-            "call",
-            vec![
-                dynamic::Value::from_bytes(&self.contract_address),
-                dynamic::Value::u128(1),
-                dynamic::Value::unnamed_composite([
-                    dynamic::Value::u128(10_000_000_000),
-                    dynamic::Value::u128(1_000_000),
-                ]),
-                dynamic::Value::unnamed_composite([]),
-                dynamic::Value::from_bytes(&data),
-            ],
-        );
+        // let call = dynamic::tx(
+        //     "Contracts",
+        //     "call",
+        //     vec![
+        //         dynamic::Value::from_bytes(&self.contract_address),
+        //         dynamic::Value::u128(1),
+        //         dynamic::Value::unnamed_composite([
+        //             dynamic::Value::u128(10_000_000_000),
+        //             dynamic::Value::u128(1_000_000),
+        //         ]),
+        //         dynamic::Value::unnamed_composite([]),
+        //         dynamic::Value::from_bytes(&data),
+        //     ],
+        // );
 
-        let tx = self
-            .client
-            .tx()
-            .sign_and_submit_then_watch_default(&call, &self.signer)
-            .await?;
+        // let tx = self
+        //     .client
+        //     .tx()
+        //     .sign_and_submit_then_watch_default(&call, &self.signer)
+        //     .await?;
 
-        let result = tx.wait_for_finalized_success().await?;
+        // let result = tx.wait_for_finalized_success().await?;
 
         // println!("Intent removed in block: {:?}", result.block_hash());
         Ok(())
