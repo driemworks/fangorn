@@ -377,18 +377,18 @@ async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u1
     let addr = addr_str.parse().unwrap();
 
     let doc_store = Arc::new(LocalDocStore::new("tmp/docs/"));
+
+    // let gadget = SmartContractGadget::new(contract_addr, intent_store, verifier)
     let contract_addr_bytes = decode_contract_addr(crate::CONTRACT_ADDR);
     let intent_store = Arc::new(
         ContractIntentStore::new(crate::WS_URL.to_string(), contract_addr_bytes, None)
             .await
             .unwrap(),
     );
-    // let intent_store = Arc::new(LocalIntentStore::new("tmp/intents/"));
-
-    // a dummy verifier that always returns true (for now...)
     // this should be some kind of "modular gadget factory"
     // since we want to be able to swap verification on demand
     let verifier = Arc::new(crate::gadget::verifiers::PasswordVerifier::new());
+
     let server = NodeServer::<C> {
         doc_store,
         intent_store,

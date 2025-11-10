@@ -44,14 +44,10 @@ impl fmt::Display for IntentType {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Intent {
     pub intent_type: IntentType,
-    pub parameters: Vec<u8>,
+    pub statement: Vec<u8>,
 }
 
 impl Intent {
-    /// convert a policy to an NP-statement
-    // pub fn to_statement(&self) -> Statement {
-    //     Statement(self.parameters.clone())
-    // }
 
     pub fn to_bytes(&self) -> Vec<u8> {
         serde_json::to_vec(self).unwrap()
@@ -67,7 +63,7 @@ impl Intent {
         let stmt_unwrap = stmt.expect("There was an issue unwrapping the statement");
         Self {
             intent_type: intent_type,
-            parameters: stmt_unwrap.0,
+            statement: stmt_unwrap.0,
         }
     }
 

@@ -99,7 +99,7 @@ impl<C: Pairing> Rpc for NodeServer<C> {
             .expect("Intent wasn't found");
         println!("found intent");
 
-        let statement = Statement(intent.parameters);
+        let statement = Statement(intent.statement);
         println!("created statement");
 
         println!("verifying witness");

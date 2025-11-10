@@ -331,6 +331,7 @@ impl App {
         frame.render_widget(footer, footer_area);
     }
 
+    // todo: https://github.com/rhysd/tui-textarea/blob/main/examples/password.rs
     pub fn render_password_selection(&mut self, frame: &mut Frame) {
         let area = frame.area();
         let input = self.input.as_mut().unwrap();
@@ -342,13 +343,6 @@ impl App {
         input.set_block(block);
 
         frame.render_widget(input.widget(), area);
-        let (row, col) = input.cursor();
-        frame.set_cursor(
-            // X: area start (0) + border (1) + text column offset
-            area.x + 1 + col as u16,
-            // Y: area start (0) + border (1) + text row offset
-            area.y + 1 + row as u16,
-        );
     }
 }
 

@@ -9,11 +9,11 @@ pub mod verifiers;
 pub struct Witness(pub Vec<u8>);
 pub struct Statement(pub Vec<u8>);
 
-// pub trait Gadget: Send + Sync {
-//     type Statement: Serialize + DeserializeOwned;
-//     type Witness: Serialize + DeserializeOwned;
+pub trait Gadget: Send + Sync {
+    type Statement: Serialize + DeserializeOwned;
+    type Witness: Serialize + DeserializeOwned;
 
-//     fn id() -> &'static str;
-//     fn create_statement(params: &[u8]) -> Result<Self::Statement>;
-//     fn verify(witness: &Self::Witness, statement: &Self::Statement) -> Result<bool>;
-// }
+    fn id() -> &'static str;
+    fn create_statement(params: &[u8]) -> Result<Self::Statement>;
+    fn verify(witness: &Self::Witness, statement: &Self::Statement) -> Result<bool>;
+}

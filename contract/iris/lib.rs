@@ -33,16 +33,14 @@ mod pass_store {
 
     #[ink(storage)]
     pub struct PasswordBasedDocStore {
-        owner: AccountId,
         registry: Mapping<Filename, Entry>,
         meta: Vec<Filename>,
     }
 
     impl PasswordBasedDocStore {
         #[ink(constructor)]
-        pub fn new(owner: AccountId) -> Self {
+        pub fn new() -> Self {
             Self {
-                owner,
                 registry: Mapping::default(),
                 meta: Vec::new(),
             }

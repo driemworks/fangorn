@@ -1,21 +1,42 @@
 # Fangorn 
 
-"Certainly the forest of Fangorn is perilous — not least to those that are too ready with their axes; and Fangorn himself, he is perilous too; yet he is wise and kindly nonetheless.”
-― J.R.R. Tolkien, The Lord of the Rings 
+> "Certainly the forest of Fangorn is perilous — not least to those that are too ready with their axes; and Fangorn himself, he is perilous too; yet he is wise and kindly nonetheless.”
+― J.R.R. Tolkien, The Lord of the Rings
+
+Fangorn is a p2p threshold encryption network that enables 'practical' witness encryption. 
+It enables decentralized conditional access control for generic data sets.
+
+It provides a mechanism to encrypt data for an *intent* (e.g. you must know the preimage of Sha256(_password_)), with decryption being allowed when a valid *witness* (e.g. the password) is provided. 
+
+It supports a modular and dynamic storage backend, which  can be customized for specialized plaintext locations, intent storage locations, and ciphertext download locations. 
+
+It boasts an extensible *gadgets* module that allows for the implementation of new kinds of... gadgets. 
 
 ## Setup Guide
 
-### Prerequisites
+This is a guide to run fangorn locally.
 
-Install the substrate contracts node: `cargo install contracts-node`. It can be run locally by running `substrate-contracts-node`, starting the contracts node on port 9944 by default.
+### Prerequisites (One Time Setup)
 
-Then generate metadata with `subxt metadata --url ws://localhost:9944 > metadata.scale`
+1. [Install cargo contract](https://github.com/use-ink/cargo-contract)
+2. Build the 'iris' contract locally (from the root):
+   ``` sh
+   cd contracts/iris
+   cargo contract build --release
+   ```
 
-1. Build the binaries
+3. Install the substrate contracts node: `cargo install contracts-node`. It can be run locally by running `substrate-contracts-node`, starting the contracts node on port 9944 by default.
+4. Then, from the project root, generate metadata with `subxt metadata --url ws://localhost:9944 > metadata.scale`
+5. Tear down the contracts node, then build the binaries. From the root, run: `cargo build`.
 
-From the root, run `cargo build`.
+### Start the Nodes
 
-### Option A: Manually starting the instances
+#### Substrate Contracts Node Setup
+1. Start the substrate-contracts-node again: `substrate-contracts-node` and deploy the `iris` contract with `cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y`.
+2. Copy the contract address (e.g. `5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD`) and configure `fangorn/src/lib.rs` to use the output address. 
+3. From the root, run `cargo build`
+
+#### Option A: Manually starting the instances
 1. start a bootstrap node
 
     ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0
@@ -27,12 +48,11 @@ From the root, run `cargo build`.
 
     ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey 3c3372360e2871a8a521596e08daf410482bb4b7824f5921b36d72a2d24ab12a --bootstrap-ip 172.31.149.62:9944 --ticket docaaacagehgiuqcbit4twrjwk2kubiym3x6fnmnp5o2lz32t5m366r25rtaffe3kqsri7ud2nwcmcwzegmac65lgpur6joji4gu6avamrgwyxkuajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55rugr5yayavqolfponju --index 1
 
-### Option B: Automatically start two instances
+#### Option B: Automatically start two instances
 0. Install gnome-terminal `sudo apt install gnome-terminal`
 1. Ensure start_instances.sh has execute priveleges: `chmod +x start_servers.sh`
 2. From the root, run start_instances.sh: `./start_instances.sh`
  
-
 #### Using Quickbeam
 
 ##### Generate a new keypair
