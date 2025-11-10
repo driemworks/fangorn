@@ -197,6 +197,15 @@ Seller:
 - I want to publish it once and then be able to go offline forever while still reaping benefit when copies are sold.
 Buyer: If I buy your book for $X, then I own it. I do not want to pay more fees to read it - I just pay one fee and am done forever.
 
+### NFT Types
+NFTs define data access priveleges
+1. Perpetual NFTs: An NFT that allows data access in perpetuity. So long as the ciphertext is accessible, users who own this NFT can access that data.
+  Use cases: Privileged roles and access management (admin, executive, developer,...), personal data ownership (music albums, movies, tv shows)
+2. Time gated NFTs: An NFT that allows data access over a period of time. Once time expires data access is lost.
+  Use cases: Temporary priveleged roles and access managent. Licensing of data (streaming services?)
+3. N-time access NFTs: An NFT that allows data access a total number of N times. Once data has been accessed N times using that NFT, data access is lost.
+  Use cases: IDK but I bet someone creative can come up with something :p
+
 #### TODOs
 
 - RPC
