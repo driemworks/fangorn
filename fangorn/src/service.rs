@@ -9,13 +9,13 @@ use core::str::FromStr;
 use futures::prelude::*;
 use iroh::{NodeAddr, PublicKey as IrohPublicKey};
 use iroh_docs::{
-    DocTicket,
     engine::LiveEvent,
     rpc::{
         client::docs::{Doc, ShareMode},
         proto::{Request, Response},
     },
     store::{FlatQuery, QueryBuilder},
+    DocTicket,
 };
 use quic_rpc::transport::flume::FlumeConnector;
 use std::sync::Arc;
@@ -23,12 +23,13 @@ use std::{fs::OpenOptions, io::Write, thread, time::Duration};
 use tokio::sync::Mutex;
 use tonic::transport::Server;
 
+use crate::gadget::{password::PasswordGadget, GadgetRegistry};
 use crate::node::*;
 use crate::rpc::server::{NodeServer, RpcServer};
 use crate::storage::{
-    AppStore, DocStore, IntentStore, SharedStore,
     contract_store::ContractIntentStore,
     local_store::{LocalDocStore, LocalPlaintextStore},
+    AppStore, DocStore, IntentStore, SharedStore,
 };
 use crate::types::*;
 use crate::utils::decode_contract_addr;
@@ -378,22 +379,23 @@ async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u1
 
     let doc_store = Arc::new(LocalDocStore::new("tmp/docs/"));
 
-    // let gadget = SmartContractGadget::new(contract_addr, intent_store, verifier)
     let contract_addr_bytes = decode_contract_addr(crate::CONTRACT_ADDR);
     let intent_store = Arc::new(
         ContractIntentStore::new(crate::WS_URL.to_string(), contract_addr_bytes, None)
             .await
             .unwrap(),
     );
-    // this should be some kind of "modular gadget factory"
-    // since we want to be able to swap verification on demand
-    let verifier = Arc::new(crate::gadget::verifiers::PasswordVerifier::new());
+
+    // register gadgets here
+    let mut registry = GadgetRegistry::new();
+    registry.register(PasswordGadget {});
+    let gadget_registry = Arc::new(Mutex::new(registry));
 
     let server = NodeServer::<C> {
         doc_store,
         intent_store,
         state,
-        verifier,
+        gadget_registry,
     };
 
     n0_future::task::spawn(async move {

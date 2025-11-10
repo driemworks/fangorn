@@ -1,5 +1,5 @@
 use super::*;
-use crate::gadget::intents::Intent;
+use crate::gadget::Intent;
 use async_trait::async_trait;
 use cid::Cid;
 use multihash_codetable::{Code, MultihashDigest};

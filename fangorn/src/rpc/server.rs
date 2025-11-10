@@ -8,8 +8,9 @@ use std::str::FromStr;
 
 use crate::{
     gadget::{
-        Statement, Witness,
-        verifiers::{PasswordVerifier, Verifier},
+        GadgetRegistry,
+        // Statement, Witness,
+        // verifiers::{PasswordVerifier, Verifier},
     },
     storage::{local_store::*, *},
     types::*,
@@ -35,7 +36,7 @@ pub struct NodeServer<C: Pairing> {
     pub doc_store: Arc<dyn DocStore>,
     pub intent_store: Arc<dyn IntentStore>,
     pub state: Arc<Mutex<State<C>>>,
-    pub verifier: Arc<dyn Verifier>,
+    pub gadget_registry: Arc<Mutex<GadgetRegistry>>
 }
 
 #[tonic::async_trait]
@@ -83,13 +84,9 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let req_ref = request.get_ref();
 
         let mut bytes = Vec::new();
-        // try to fetch the ciphertext based on the cid
-        // recover cid
+
         let filename = req_ref.filename.clone().into_bytes();
-        // println!("got cid: {}", cid_string.clone());
-        // let cid = Cid::from_str(&cid_string).unwrap();
-        let witness = Witness(hex::decode(req_ref.witness_hex.clone()).unwrap());
-        println!("got witness");
+        let witness = hex::decode(req_ref.witness_hex.clone()).unwrap();
 
         let (cid, intent) = self
             .intent_store
@@ -97,21 +94,17 @@ impl<C: Pairing> Rpc for NodeServer<C> {
             .await
             .expect("Something went wrong when looking for intent.")
             .expect("Intent wasn't found");
-        println!("found intent");
 
-        let statement = Statement(intent.statement);
-        println!("created statement");
-
-        println!("verifying witness");
-        match self.verifier.verify_witness(witness, statement).await {
+        println!("found (cid, intent)");
+        
+        let registry = self.gadget_registry.lock().await;
+        match registry.verify_intent(&intent, &witness).await {
             Ok(true) => {
-                println!("Witness verification succeeded");
+                println!("Witness verification succeeded! ");
                 if let Some(ciphertext_bytes) = self.doc_store.fetch(&cid).await.unwrap() {
                     let ciphertext =
                         Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
-
-                    println!("recovered the ciphertext");
-
+                        
                     let state = self.state.lock().await;
                     let partial_decryption = state.sk.partial_decryption(&ciphertext);
 

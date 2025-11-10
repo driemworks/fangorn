@@ -1,5 +1,5 @@
 use super::*;
-use crate::gadget::intents::Intent;
+use crate::gadget::Intent;
 use async_trait::async_trait;
 use cid::Cid;
 use jsonrpsee::{core::client::ClientT, http_client::HttpClientBuilder};

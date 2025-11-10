@@ -8,9 +8,10 @@ use crate::types::*;
 use crate::{
     crypto::keystore::{Keystore, Sr25519Keystore},
     gadget::{
-        challenges::PasswordChallenge,
-        intents::Intent,
-        solutions::{PasswordSolution, Solution},
+        GadgetRegistry
+        // challenges::PasswordChallenge,
+        // intents::Intent,
+        // solutions::{PasswordSolution, Solution},
     },
     storage::PlaintextStore,
     utils::{decode_contract_addr, load_mnemonic},
@@ -37,6 +38,7 @@ pub async fn handle_encrypt(
     config_path: &String,
     keystore_path: &String,
     intent_str: &String,
+    gadget_registry: &GadgetRegistry,
 ) {
     let config_hex =
         fs::read_to_string(config_path).expect("you must provide a valid config file.");
@@ -77,6 +79,7 @@ pub async fn handle_encrypt(
         .read_plaintext(message_path)
         .await
         .expect("Something went wrong while reading PT");
+
     let ct = encrypt::<E>(&ek, t, &config.crs, gamma_g2.into(), message.as_bytes()).unwrap();
     let mut ciphertext_bytes = Vec::new();
     ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
@@ -84,7 +87,11 @@ pub async fn handle_encrypt(
     // write the ciphertext
     let cid = app_store.doc_store.add(&ciphertext_bytes).await.unwrap();
     // parse the intent
-    let intent = Intent::try_from_string(intent_str).unwrap();
+    let intent = gadget_registry
+        .parse_intent(intent_str)
+        .await
+        .unwrap();
+        // .map_err(|e| EncryptionError::IntentError(e))?;
     // format filename
     let filename_bytes = filename.clone().into_bytes();
     // register it
@@ -96,8 +103,6 @@ pub async fn handle_encrypt(
 
     println!("> Saved ciphertext to /tmp/{}", &cid.to_string());
 }
-
-/// decryption!
 
 pub async fn handle_decrypt(
     config_path: &String,
@@ -136,8 +141,7 @@ pub async fn handle_decrypt(
 
     // encode witness
     let password_vec = witness_string.as_bytes().to_vec();
-    let witness = PasswordSolution::prepare_witness(password_vec);
-    let witness_hex = hex::encode(witness.0);
+    let witness_hex = hex::encode(password_vec);
 
     // from first node
     let mut client = RpcClient::connect("http://127.0.0.1:30332").await.unwrap();

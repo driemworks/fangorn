@@ -1,6 +1,6 @@
 //! a generic policy 'store'
 //! the core abstraction workers leverage for mapping content identifiers to policies
-use crate::gadget::intents::Intent;
+use crate::gadget::Intent;
 use anyhow::Result;
 use async_trait::async_trait;
 use cid::Cid;

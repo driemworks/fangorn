@@ -1,9 +1,12 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use fangorn::crypto::{
-    FANGORN,
-    cipher::{handle_decrypt, handle_encrypt},
-    keystore::{Keystore, Sr25519Keystore},
+use fangorn::{
+    crypto::{
+        cipher::{handle_decrypt, handle_encrypt},
+        keystore::{Keystore, Sr25519Keystore},
+        FANGORN,
+    },
+    gadget::{password::PasswordGadget, GadgetRegistry},
 };
 
 #[derive(Parser, Debug)]
@@ -93,7 +96,17 @@ async fn main() -> Result<()> {
             keystore_dir,
             intent,
         }) => {
-            handle_encrypt(message_path, filename, config_path, keystore_dir, intent).await;
+            let mut registry = GadgetRegistry::new();
+            registry.register(PasswordGadget {});
+            handle_encrypt(
+                message_path,
+                filename,
+                config_path,
+                keystore_dir,
+                intent,
+                &registry,
+            )
+            .await;
         }
         Some(Commands::Decrypt {
             config_path,
