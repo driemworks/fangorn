@@ -33,7 +33,8 @@ This is a guide to run fangorn locally.
 
 #### Option A: Manually starting the instances
 #### Substrate Contracts Node Setup
-1. Start the substrate-contracts-node again: `substrate-contracts-node` and deploy the `iris` contract with `cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y`.
+1. Start the substrate-contracts-node again: `substrate-contracts-node` and deploy the `iris` contract with 
+   `cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y`
 2. Copy the contract address (e.g. `5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD`)
 3. start a bootstrap node
 
@@ -75,6 +76,8 @@ This is a guide to run fangorn locally.
 > hardcoded to save to ciphertext.txt for now
 > you must delete the file if you want to encrypt a new message... needs work
 
+e.g. using the password intent
+
 ``` sh
 ./target/debug/quickbeam encrypt \
 --message-path test.txt \
@@ -85,7 +88,21 @@ This is a guide to run fangorn locally.
 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
 ```
 
+e.g. using the Psp22 intent
+
+``` sh
+./target/debug/quickbeam encrypt \
+--message-path test.txt \
+--filename test.txt \
+--config-path config.txt \
+--keystore-dir tmp/keystore \
+--intent "Psp22(5CAJFogAMrCE8MuRYG1Jo2gzJqKez28AnBkFVmPYaRxDfLnP, 1)" \
+--contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
+```
+
 ##### Decrypt a message 
+
+e.g. Using the password intent
 
 ``` sh
 ./target/debug/quickbeam decrypt \
@@ -96,37 +113,24 @@ This is a guide to run fangorn locally.
 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
 ```
 
+e.g. using the Psp22 intent
+``` sh
+./target/debug/quickbeam decrypt \
+--filename test.txt \
+--config-path config.txt \
+--witness 5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3 \
+--pt-filename test \
+--contract-addr 5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7
+```
+
 ##### To run UI
 1. From the root run: `cargo run -p entmoot`
 
 2. To quit hit the ESC key
-   
-
-## TODOs
-
-- add proper keygen and secure keystore
-- add x25519 support
-  - X25519 + AES_GCM for encrypting partial decryptions
-- investigate usage of a TEE for secure computations
-- investigate secure partial decryption store
-  - verify part decs + recover signature
-- investigate usage of twine-rs
-  - add CRDT support + verifable tixels
-  - then we can use it for verifiable logging between nodes + for divulging partdecs
-- add IPFS support
-  - add ciphertexts to IPFS
-  - read ciphertexts from IPFS
-- investigate zk proving system
-- investigate inclusion of blockchain light clients for proving states
-  - start with Smoldot (Polkadot)
-- investigate metadata storage system 
-  - using iroh doc store
-  - register via RPC?
-  - [CID -> {CONDITION, OWNER}]
-- add wasm support for multi-language bindings (enc/dec in js for example)# iris
-
 
 ### Hackathon Scope
+
+TODO: https://github.com/Brushfam/openbrush-contracts/blob/main/contracts/src/token/Psp22/Psp22.rs
 
 #### Project Name
 Fangorn
@@ -134,7 +138,16 @@ Fangorn
 Track: Track 1 - dApp Track?
 Track: Track 3 - tinkerer track?
 
+-  contracts are built using https://forum.polkadot.network/t/pendzl-a-smart-contract-library/5975
+
 #### Description
+Fangorn is a p2p threshold encryption network that enables 'practical' witness encryption. 
+
+It enables decentralized conditional access control for generic data sets.
+
+It acts as a decentralized key management system for Polkadot. 
+Unlike LIT: 
+- more decentralized, permissionless + open protocol
 
 Intent-bound data is revolutionizes access control for web3.
 

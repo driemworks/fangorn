@@ -36,7 +36,7 @@ pub struct NodeServer<C: Pairing> {
     pub doc_store: Arc<dyn DocStore>,
     pub intent_store: Arc<dyn IntentStore>,
     pub state: Arc<Mutex<State<C>>>,
-    pub gadget_registry: Arc<Mutex<GadgetRegistry>>
+    pub gadget_registry: Arc<Mutex<GadgetRegistry>>,
 }
 
 #[tonic::async_trait]
@@ -80,6 +80,7 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         &self,
         request: Request<PartDecRequest>,
     ) -> Result<Response<PartDecResponse>, Status> {
+        println!("called part decrypt");
         // build the witness (signature checks out)
         let req_ref = request.get_ref();
 
@@ -96,7 +97,7 @@ impl<C: Pairing> Rpc for NodeServer<C> {
             .expect("Intent wasn't found");
 
         println!("found (cid, intent)");
-        
+
         let registry = self.gadget_registry.lock().await;
         match registry.verify_intent(&intent, &witness).await {
             Ok(true) => {
@@ -104,7 +105,7 @@ impl<C: Pairing> Rpc for NodeServer<C> {
                 if let Some(ciphertext_bytes) = self.doc_store.fetch(&cid).await.unwrap() {
                     let ciphertext =
                         Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
-                        
+
                     let state = self.state.lock().await;
                     let partial_decryption = state.sk.partial_decryption(&ciphertext);
 

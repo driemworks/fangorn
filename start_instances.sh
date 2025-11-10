@@ -3,6 +3,9 @@
 # Create a unique signal file
 SIGNAL_FILE="/tmp/fangorn_signal_$$"
 
+# the ink! smart contract address
+CONTRACT_ADDR="5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
+
 # Cleanup function to be called on exit
 cleanup() {
     echo ""
@@ -128,8 +131,8 @@ fi
 cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y
 
 # Start the first instance in the background of current terminal
-echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD""
-./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD" &
+echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --contract-addr "$CONTRACT_ADDR""
+./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --contract-addr "$CONTRACT_ADDR" &
 FIRST_PID=$!
 echo "PID of first instance: $FIRST_PID"
 
@@ -169,8 +172,8 @@ cleanup_second() {
 
 trap cleanup_second SIGINT
 
-echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"'
-./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD" &
+echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "$CONTRACT_ADDR"'
+./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "$CONTRACT_ADDR" &
 SECOND_SERVER_PID=\$!
 echo \"PID: \$SECOND_SERVER_PID\"
 echo \"\$SECOND_SERVER_PID\" > \"$SIGNAL_FILE.second_pid\"

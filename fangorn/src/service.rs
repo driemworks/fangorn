@@ -9,13 +9,13 @@ use core::str::FromStr;
 use futures::prelude::*;
 use iroh::{NodeAddr, PublicKey as IrohPublicKey};
 use iroh_docs::{
+    DocTicket,
     engine::LiveEvent,
     rpc::{
         client::docs::{Doc, ShareMode},
         proto::{Request, Response},
     },
     store::{FlatQuery, QueryBuilder},
-    DocTicket,
 };
 use quic_rpc::transport::flume::FlumeConnector;
 use std::sync::Arc;
@@ -23,16 +23,16 @@ use std::{fs::OpenOptions, io::Write, thread, time::Duration};
 use tokio::sync::Mutex;
 use tonic::transport::Server;
 
-use crate::gadget::{password::PasswordGadget, GadgetRegistry};
+use crate::backend::{BlockchainBackend, SubstrateBackend};
+use crate::gadget::{GadgetRegistry, Psp22Gadget, password::PasswordGadget};
 use crate::node::*;
 use crate::rpc::server::{NodeServer, RpcServer};
 use crate::storage::{
+    AppStore, DocStore, IntentStore, SharedStore,
     contract_store::ContractIntentStore,
     local_store::{LocalDocStore, LocalPlaintextStore},
-    AppStore, DocStore, IntentStore, SharedStore,
 };
 use crate::types::*;
-use crate::utils::decode_contract_addr;
 
 /// Configuration for starting a full node service
 pub struct ServiceConfig {
@@ -93,7 +93,6 @@ pub async fn build_full_service<C: Pairing>(
 
     let mut node = Node::build(params, rx, arc_state).await;
 
-    // panic!("{:?}", node.get_pk().await);
     node.try_connect_peers(config.bootstrap_peers.clone())
         .await
         .unwrap();
@@ -374,23 +373,30 @@ async fn run_state_sync<C: Pairing>(
 }
 
 /// Spawn the RPC server
-async fn spawn_rpc_service<C: Pairing>(state: Arc<Mutex<State<C>>>, rpc_port: u16, contract_addr: &str) -> Result<()> {
+async fn spawn_rpc_service<C: Pairing>(
+    state: Arc<Mutex<State<C>>>,
+    rpc_port: u16,
+    contract_addr: &str,
+) -> Result<()> {
     let addr_str = format!("127.0.0.1:{}", rpc_port);
     let addr = addr_str.parse().unwrap();
 
     let doc_store = Arc::new(LocalDocStore::new("tmp/docs/"));
 
-    let contract_addr_bytes = decode_contract_addr(contract_addr);
-    let intent_store = Arc::new(
-        ContractIntentStore::new(crate::WS_URL.to_string(), contract_addr_bytes, None)
-            .await
-            .unwrap(),
-    );
+    // initialize backend (todo: add param to config node url instead of hardcoding it)
+    let backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), None).await?);
+
+    let intent_store = Arc::new(ContractIntentStore::new(
+        contract_addr.to_string(),
+        backend.clone(),
+    ));
 
     // register gadgets here
-    let mut registry = GadgetRegistry::new();
-    registry.register(PasswordGadget {});
-    let gadget_registry = Arc::new(Mutex::new(registry));
+    let mut gadget_registry = GadgetRegistry::new();
+    // registry.register(PasswordGadget {});
+    gadget_registry.register(Psp22Gadget::new(contract_addr.to_string(), backend.clone()));
+
+    let gadget_registry = Arc::new(Mutex::new(gadget_registry));
 
     let server = NodeServer::<C> {
         doc_store,

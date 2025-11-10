@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: MIT
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::prelude::vec::Vec;
 
-/// content identifier
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
+#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 pub struct Filename(pub Vec<u8>);
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -17,157 +18,102 @@ pub struct CID(pub Vec<u8>);
 #[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 pub struct Intent(pub Vec<u8>);
 
+/// Entry that can reference external PSP22 contracts
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 #[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 pub struct Entry {
-    cid: CID,
-    intent: Intent,
+    pub cid: CID,
+    pub intent: Intent,
+    // pub token_contract: AccountId,
+    // pub minimum_balance: Balance,
 }
 
 #[ink::contract]
-mod pass_store {
-
+pub mod fangorn_registry {
     use super::*;
+    use ink::prelude::vec;
     use ink::storage::Mapping;
 
     #[ink(storage)]
-    pub struct PasswordBasedDocStore {
+    pub struct Contract {
+        /// Map filename to entry
         registry: Mapping<Filename, Entry>,
-        meta: Vec<Filename>,
+        /// List of all registered filenames
+        filenames: Vec<Filename>,
     }
 
-    impl PasswordBasedDocStore {
+    #[derive(Debug, PartialEq, Eq)]
+    #[ink::scale_derive(Encode, Decode, TypeInfo)]
+    pub enum Error {
+        FilenameAlreadyExists,
+        FilenameNotFound,
+        Unauthorized,
+    }
+
+    impl Contract {
         #[ink(constructor)]
         pub fn new() -> Self {
             Self {
                 registry: Mapping::default(),
-                meta: Vec::new(),
+                filenames: vec![],
             }
         }
 
+        /// Register a file with a PSP22 token requirement
         #[ink(message)]
-        pub fn read_all(&self) -> Vec<Filename> {
-            // this should really be bounded and paginated, but w/e
-            self.meta.clone()
-        }
+        pub fn register(
+            &mut self,
+            filename: Filename,
+            cid: CID,
+            intent: Intent,
+        ) -> Result<(), Error> {
+            // check duplicate filenames
+            if self.registry.contains(&filename) {
+                return Err(Error::FilenameAlreadyExists);
+            }
 
-        /// register a cid <> intent mapping
-        #[ink(message)]
-        pub fn register(&mut self, filename: Filename, cid: CID, intent: Intent) {
-            // TODO: Check owner
             let entry = Entry { cid, intent };
-            // TODO: duplicate filename check
-            self.meta.push(filename.clone());
-            self.registry.insert(filename, &entry);
-            // TODO: emit event
+
+            self.registry.insert(&filename, &entry);
+            self.filenames.push(filename);
+
+            Ok(())
         }
 
-        /// read cid and intent based on filename
+        /// Read entry by filename
         #[ink(message)]
         pub fn read(&self, filename: Filename) -> Option<Entry> {
-            self.registry.get(filename)
+            self.registry.get(&filename)
         }
 
+        /// List all registered filenames (todo: pagination)
         #[ink(message)]
-        pub fn remove(&mut self, filename: Filename) -> Option<Entry> {
-            self.registry.take(filename)
+        pub fn read_all(&self) -> Vec<Filename> {
+            self.filenames.clone()
+            // let start = start as usize;
+            // let end = core::cmp::min(start + limit as usize, self.filenames.len());
+
+            // if start >= self.filenames.len() {
+            //     return vec![];
+            // }
+
+            // self.filenames[start..end].to_vec()
+        }
+
+        /// Remove an entry
+        #[ink(message)]
+        pub fn remove(&mut self, filename: Filename) -> Result<Entry, Error> {
+            let entry = self
+                .registry
+                .take(&filename)
+                .ok_or(Error::FilenameNotFound)?;
+
+            if let Some(pos) = self.filenames.iter().position(|f| f == &filename) {
+                self.filenames.swap_remove(pos);
+            }
+
+            Ok(entry)
         }
     }
-
-    // /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-    // /// module and test functions are marked with a `#[test]` attribute.
-    // /// The below code is technically just normal Rust code.
-    // #[cfg(test)]
-    // mod tests {
-    //     /// Imports all the definitions from the outer scope so we can use them here.
-    //     use super::*;
-
-    //     /// We test if the default constructor does its job.
-    //     #[ink::test]
-    //     fn default_works() {
-    //         let iris = Iris::default();
-    //         assert_eq!(iris.get(), false);
-    //     }
-
-    //     /// We test a simple use case of our contract.
-    //     #[ink::test]
-    //     fn it_works() {
-    //         let mut iris = Iris::new(false);
-    //         assert_eq!(iris.get(), false);
-    //         iris.flip();
-    //         assert_eq!(iris.get(), true);
-    //     }
-    // }
-
-    // /// This is how you'd write end-to-end (E2E) or integration tests for ink! contracts.
-    // ///
-    // /// When running these you need to make sure that you:
-    // /// - Compile the tests with the `e2e-tests` feature flag enabled (`--features e2e-tests`)
-    // /// - Are running a Substrate node which contains `pallet-contracts` in the background
-    // #[cfg(all(test, feature = "e2e-tests"))]
-    // mod e2e_tests {
-    //     /// Imports all the definitions from the outer scope so we can use them here.
-    //     use super::*;
-
-    //     /// A helper function used for calling contract messages.
-    //     use ink_e2e::ContractsBackend;
-
-    //     /// The End-to-End test `Result` type.
-    //     type E2EResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
-
-    //     /// We test that we can upload and instantiate the contract using its default constructor.
-    //     #[ink_e2e::test]
-    //     async fn default_works(mut client: ink_e2e::Client<C, E>) -> E2EResult<()> {
-    //         // Given
-    //         let mut constructor = IrisRef::default();
-
-    //         // When
-    //         let contract = client
-    //             .instantiate("iris", &ink_e2e::alice(), &mut constructor)
-    //             .submit()
-    //             .await
-    //             .expect("instantiate failed");
-    //         let call_builder = contract.call_builder::<Iris>();
-
-    //         // Then
-    //         let get = call_builder.get();
-    //         let get_result = client.call(&ink_e2e::alice(), &get).dry_run().await?;
-    //         assert!(matches!(get_result.return_value(), false));
-
-    //         Ok(())
-    //     }
-
-    //     /// We test that we can read and write a value from the on-chain contract.
-    //     #[ink_e2e::test]
-    //     async fn it_works(mut client: ink_e2e::Client<C, E>) -> E2EResult<()> {
-    //         // Given
-    //         let mut constructor = IrisRef::new(false);
-    //         let contract = client
-    //             .instantiate("iris", &ink_e2e::bob(), &mut constructor)
-    //             .submit()
-    //             .await
-    //             .expect("instantiate failed");
-    //         let mut call_builder = contract.call_builder::<Iris>();
-
-    //         let get = call_builder.get();
-    //         let get_result = client.call(&ink_e2e::bob(), &get).dry_run().await?;
-    //         assert!(matches!(get_result.return_value(), false));
-
-    //         // When
-    //         let flip = call_builder.flip();
-    //         let _flip_result = client
-    //             .call(&ink_e2e::bob(), &flip)
-    //             .submit()
-    //             .await
-    //             .expect("flip failed");
-
-    //         // Then
-    //         let get = call_builder.get();
-    //         let get_result = client.call(&ink_e2e::bob(), &get).dry_run().await?;
-    //         assert!(matches!(get_result.return_value(), true));
-
-    //         Ok(())
-    //     }
-    // }
 }

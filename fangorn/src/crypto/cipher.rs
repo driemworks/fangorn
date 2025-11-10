@@ -6,15 +6,11 @@ use crate::storage::{
 };
 use crate::types::*;
 use crate::{
+    backend::{BlockchainBackend, SubstrateBackend},
     crypto::keystore::{Keystore, Sr25519Keystore},
-    gadget::{
-        GadgetRegistry
-        // challenges::PasswordChallenge,
-        // intents::Intent,
-        // solutions::{PasswordSolution, Solution},
-    },
+    gadget::{GadgetRegistry, Psp22Gadget},
     storage::PlaintextStore,
-    utils::{decode_contract_addr, load_mnemonic},
+    utils::load_mnemonic,
 };
 use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
@@ -28,6 +24,7 @@ use silent_threshold_encryption::{
 use sp_application_crypto::Ss58Codec;
 use std::fs;
 use std::str::FromStr;
+use std::sync::Arc;
 
 const MAX_COMMITTEE_SIZE: usize = 2;
 
@@ -39,7 +36,7 @@ pub async fn handle_encrypt(
     keystore_path: &String,
     intent_str: &String,
     contract_addr: &String,
-    gadget_registry: &GadgetRegistry,
+    // gadget_registry: &GadgetRegistry,
 ) {
     let config_hex =
         fs::read_to_string(config_path).expect("you must provide a valid config file.");
@@ -65,12 +62,19 @@ pub async fn handle_encrypt(
 
     let seed = load_mnemonic(keystore_path);
 
-    let contract_addr_bytes = decode_contract_addr(contract_addr);
-    let app_store = AppStore::new(
-        LocalDocStore::new("tmp/docs/"),
-        ContractIntentStore::new(crate::WS_URL.to_string(), contract_addr_bytes, Some(&seed))
+    // build the backend
+    let backend = Arc::new(
+        SubstrateBackend::new(crate::WS_URL.to_string(), Some(&seed))
             .await
             .unwrap(),
+    );
+    // configure the registry
+    let mut gadget_registry = GadgetRegistry::new();
+    gadget_registry.register(Psp22Gadget::new(contract_addr.to_string(), backend.clone()));
+
+    let app_store = AppStore::new(
+        LocalDocStore::new("tmp/docs/"),
+        ContractIntentStore::new(contract_addr.to_string(), backend),
         LocalPlaintextStore::new("tmp/plaintexts/"),
     );
 
@@ -88,11 +92,8 @@ pub async fn handle_encrypt(
     // write the ciphertext
     let cid = app_store.doc_store.add(&ciphertext_bytes).await.unwrap();
     // parse the intent
-    let intent = gadget_registry
-        .parse_intent(intent_str)
-        .await
-        .unwrap();
-        // .map_err(|e| EncryptionError::IntentError(e))?;
+    let intent = gadget_registry.parse_intent(intent_str).await.unwrap();
+    // .map_err(|e| EncryptionError::IntentError(e))?;
     // format filename
     let filename_bytes = filename.clone().into_bytes();
     // register it
@@ -107,7 +108,7 @@ pub async fn handle_encrypt(
 
 // // todo: create generic encrypt and decrypt function here
 // async fn encrypt<A: AppStore, G: GadgetRegistry>(
-//     ek: 
+//     ek:
 // ) [
 
 // ]
@@ -125,12 +126,19 @@ pub async fn handle_decrypt(
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
     // get the ciphertext
-    let contract_addr_bytes = decode_contract_addr(contract_addr);
-    let app_store = AppStore::new(
-        LocalDocStore::new("tmp/docs/"),
-        ContractIntentStore::new(crate::WS_URL.to_string(), contract_addr_bytes, None)
+    // build the backend
+    let backend = Arc::new(
+        SubstrateBackend::new(crate::WS_URL.to_string(), None)
             .await
             .unwrap(),
+    );
+    // configure the registry
+    let mut gadget_registry = GadgetRegistry::new();
+    gadget_registry.register(Psp22Gadget::new(contract_addr.to_string(), backend.clone()));
+
+    let app_store = AppStore::new(
+        LocalDocStore::new("tmp/docs/"),
+        ContractIntentStore::new(contract_addr.to_string(), backend),
         LocalPlaintextStore::new("tmp/plaintexts/"),
     );
 

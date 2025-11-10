@@ -2,11 +2,11 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use fangorn::{
     crypto::{
+        FANGORN,
         cipher::{handle_decrypt, handle_encrypt},
         keystore::{Keystore, Sr25519Keystore},
-        FANGORN,
     },
-    gadget::{password::PasswordGadget, GadgetRegistry},
+    gadget::{GadgetRegistry, password::PasswordGadget},
 };
 
 #[derive(Parser, Debug)]
@@ -47,7 +47,7 @@ enum Commands {
         #[arg(long)]
         intent: String,
         #[arg(long)]
-        contract_addr: String
+        contract_addr: String,
     },
     /// request to decrypt a message
     /// prepare a witness + send to t-of-n node RPCs
@@ -67,7 +67,7 @@ enum Commands {
         #[arg(long)]
         pt_filename: String,
         #[arg(long)]
-        contract_addr: String
+        contract_addr: String,
     },
 }
 
@@ -101,8 +101,11 @@ async fn main() -> Result<()> {
             intent,
             contract_addr,
         }) => {
-            let mut registry = GadgetRegistry::new();
-            registry.register(PasswordGadget {});
+            // let backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), None).await?);
+
+            // let mut registry = GadgetRegistry::new();
+            // registry.register(PasswordGadget {});
+
             handle_encrypt(
                 message_path,
                 filename,
@@ -110,7 +113,7 @@ async fn main() -> Result<()> {
                 keystore_dir,
                 intent,
                 contract_addr,
-                &registry,
+                // &registry,
             )
             .await;
         }

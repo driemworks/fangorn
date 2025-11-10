@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
             bootstrap_ip,
             is_bootstrap,
             ticket,
-            contract_addr
+            contract_addr,
         }) => {
             let config = ServiceConfig {
                 bind_port: *bind_port,

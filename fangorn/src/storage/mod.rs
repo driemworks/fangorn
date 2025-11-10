@@ -29,6 +29,8 @@ pub trait SharedStore<K, V>: Send + Sync {
 pub trait DocStore: Send + Sync + SharedStore<Cid, Data> {}
 
 /// shared statement storage to associate CID (data) to intent
+// TODO: we need to pass some kind of configurable metadata when registering the intent
+// e.g. the token_supply
 #[async_trait]
 pub trait IntentStore: Send + Sync {
     async fn register_intent(&self, filename: &[u8], cid: &Cid, intent: &Intent) -> Result<()>;

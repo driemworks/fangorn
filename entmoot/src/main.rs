@@ -1,17 +1,17 @@
 use color_eyre::Result;
 use fangorn::crypto::{
+    FANGORN,
     cipher::{handle_decrypt, handle_encrypt},
     keystore::{Keystore, Sr25519Keystore},
-    FANGORN,
 };
-use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
+use ratatui::crossterm::event::{self, Event, KeyCode, KeyEventKind, poll};
 use ratatui::{
+    DefaultTerminal, Frame,
     layout::{Alignment, Constraint, Layout, Rect},
     prelude::*,
     style::{Color, Style, Stylize},
     text::Text,
     widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
-    DefaultTerminal, Frame,
 };
 use ratatui_explorer::{FileExplorer, Theme};
 use std::time::Duration;
@@ -133,7 +133,9 @@ impl App {
                                     let constraints = [Constraint::Length(3), Constraint::Min(1)];
                                     let layout = Layout::default().constraints(constraints);
                                     textarea.set_style(Style::default().fg(Color::LightGreen));
-                                    textarea.set_block(Block::default().borders(Borders::ALL).title("Password"));
+                                    textarea.set_block(
+                                        Block::default().borders(Borders::ALL).title("Password"),
+                                    );
                                     self.input = Some(textarea);
                                 }
                             }
@@ -346,7 +348,7 @@ impl App {
     }
 }
 
-fn render_title(title_area: Rect, frame: &mut Frame) {`
+fn render_title(title_area: Rect, frame: &mut Frame) {
     let logo = Paragraph::new(
         "  
              _                         _   

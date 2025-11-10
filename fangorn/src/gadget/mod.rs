@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 pub mod password;
+pub mod psp22;
+pub use psp22::Psp22Gadget;
 
 #[async_trait]
 pub trait Gadget: Send + Sync + Debug {
@@ -158,4 +160,18 @@ fn parse_intent_string(input: &str) -> Result<(&str, &str), nom::Err<nom::error:
 
     let password = &input[..end_pos];
     Ok((intent_type, password))
+}
+
+#[cfg(test)]
+pub mod test {
+
+    use super::*;
+
+    #[test]
+    fn parse_intent_works_with_plain_string_data() {
+        let intent = "Password(this is my cool password_1235*(*()C11JKH))";
+        let (intent_type, password) = parse_intent_string(&intent).unwrap();
+        assert_eq!(intent_type, "Password");
+        assert_eq!(password, "this is my cool password_1235*(*()C11JKH)");
+    }
 }

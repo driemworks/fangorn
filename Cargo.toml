@@ -12,6 +12,7 @@ members = [
     "quickbeam",
     "entmoot",
     "contract/iris",
+    "contract/psp22",
 ]
 
 # [workspace.lints.rust]
