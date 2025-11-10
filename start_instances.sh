@@ -71,9 +71,65 @@ if [ -f "$SIGNAL_FILE.second_pid" ]; then
     rm "$SIGNAL_FILE.second_pid"
 fi
 
+# Start substrate-contracts node
+echo "Starting substrate-contracts-node"
+substrate-contracts-node --tmp --dev &
+SCN_PID=$!
+echo "PID of contracts node $SCN_PID"
+
+# wait for the node to be ready
+# --- Wait for the Node to be Ready (Health Check) ---
+echo "Waiting for the contracts node to be ready on 9944."
+
+# wait until the rpc port is reachable
+wait_for_rpc() {
+    local max_time=30
+    local interval=3
+    local elapsed=0
+    local host="localhost"
+    local port="9944"
+    local pid_to_check=$SCN_PID
+
+    # Use netcat to poll the endpoint
+    while ! nc -z -w 1 "$host" "$port" 2>/dev/null; do
+        # 1. Check for PID death
+        if ! kill -0 "$pid_to_check" 2>/dev/null; then
+             echo ""
+             echo "❌ ERROR: substrate-contracts-node (PID $pid_to_check) died unexpectedly."
+             return 1
+        fi
+        
+        # 2. Check for timeout
+        if [ "$elapsed" -ge "$max_time" ]; then
+            echo ""
+            echo "ERROR: Timed out waiting for RPC endpoint to be ready."
+            # Kill the background process if it timed out but is still running
+            kill "$pid_to_check" 2>/dev/null
+            return 1
+        fi
+        
+        printf "."
+        sleep "$interval"
+        elapsed=$((elapsed + interval))
+    done
+    echo ""
+    echo "Contracts node is ready."
+    return 0
+}
+
+if ! wait_for_rpc; then
+    echo "Aborting script due to node failure."
+    exit 1
+fi
+
+# deploy the contract
+# NOTE: If we modify the contract, then we need to manually update the contract address
+# but normally, it will produce a deterministic contract address 
+cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y
+
 # Start the first instance in the background of current terminal
-echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0"
-./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 &
+echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD""
+./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD" &
 FIRST_PID=$!
 echo "PID of first instance: $FIRST_PID"
 
@@ -91,7 +147,6 @@ done
 TICKET_CONTENT=$(cat ticket.txt)
 PUBKEY=$(cat pubkey.txt)
 echo "ticket.txt and pubkey.txt found!"
-
 echo "Starting second instance in new terminal..."
 
 # Pass the main script's PID and signal file to the second terminal
@@ -114,8 +169,8 @@ cleanup_second() {
 
 trap cleanup_second SIGINT
 
-echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1'
-./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 &
+echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"'
+./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD" &
 SECOND_SERVER_PID=\$!
 echo \"PID: \$SECOND_SERVER_PID\"
 echo \"\$SECOND_SERVER_PID\" > \"$SIGNAL_FILE.second_pid\"

@@ -82,6 +82,7 @@ impl<C: Pairing> Node<C> {
         let addr = router.endpoint().node_addr().await;
         println!("> Generated node address: {:?}", addr);
         let pubkey = addr.expect("NodeAddr issue occurred").node_id.to_string();
+        // TODO: once we impl a proper keystore we can remove this
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -103,7 +104,6 @@ impl<C: Pairing> Node<C> {
             router,
             blobs: blobs.client().clone(),
             docs: docs.client().clone(),
-            // gossip: gossip.client().clone(),
             state,
         }
     }
