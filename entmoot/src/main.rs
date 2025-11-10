@@ -126,7 +126,15 @@ impl App {
                                     // You can store the selected file path and use it later
                                     self.current_screen = CurrentScreen::PasswordSelection;
                                     // initialize the password input
-                                    self.input = Some(TextArea::default());
+                                    let mut textarea = TextArea::default();
+                                    textarea.set_cursor_line_style(Style::default());
+                                    textarea.set_mask_char('\u{2022}'); //U+2022 BULLET (•)
+                                    textarea.set_placeholder_text("Please enter your password");
+                                    let constraints = [Constraint::Length(3), Constraint::Min(1)];
+                                    let layout = Layout::default().constraints(constraints);
+                                    textarea.set_style(Style::default().fg(Color::LightGreen));
+                                    textarea.set_block(Block::default().borders(Borders::ALL).title("Password"));
+                                    self.input = Some(textarea);
                                 }
                             }
                             _ => {
@@ -134,7 +142,7 @@ impl App {
                             }
                         },
                         CurrentScreen::PasswordSelection => match key.code {
-                            KeyCode::Esc | KeyCode::Char('c') => {
+                            KeyCode::Esc | KeyCode::Char('q') => {
                                 self.current_screen = CurrentScreen::Main;
                                 self.generated_pubkey = None;
                             }
@@ -331,22 +339,14 @@ impl App {
         frame.render_widget(footer, footer_area);
     }
 
-    // todo: https://github.com/rhysd/tui-textarea/blob/main/examples/password.rs
     pub fn render_password_selection(&mut self, frame: &mut Frame) {
         let area = frame.area();
         let input = self.input.as_mut().unwrap();
-        let block = Block::bordered()
-            .title("Enter Password")
-            .title_alignment(Alignment::Center)
-            .border_style(Color::Yellow);
-
-        input.set_block(block);
-
         frame.render_widget(input.widget(), area);
     }
 }
 
-fn render_title(title_area: Rect, frame: &mut Frame) {
+fn render_title(title_area: Rect, frame: &mut Frame) {`
     let logo = Paragraph::new(
         "  
              _                         _   

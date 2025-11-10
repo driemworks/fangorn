@@ -31,19 +31,17 @@ This is a guide to run fangorn locally.
 
 ### Start the Nodes
 
+#### Option A: Manually starting the instances
 #### Substrate Contracts Node Setup
 1. Start the substrate-contracts-node again: `substrate-contracts-node` and deploy the `iris` contract with `cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y`.
-2. Copy the contract address (e.g. `5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD`) and configure `fangorn/src/lib.rs` to use the output address. 
-3. From the root, run `cargo build`
-
-#### Option A: Manually starting the instances
-1. start a bootstrap node
+2. Copy the contract address (e.g. `5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD`)
+3. start a bootstrap node
 
     ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0  --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
 
 > This will save the randomly generated config to config.txt
 
-2. start a second peer (copy/paste pubkey and ticket)
+4. start a second peer (copy/paste pubkey and ticket)
     > Note: pubkey is written to pubkey.txt and ticket is written to ticket.txt
 
     ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey 2ec177c3b8442215520052b55d2f9cef09ae0a65d35769a3f63b3659c099ccb2 --bootstrap-ip 172.31.149.62:9944 --ticket docaaacbsx4px23g66nfvyg4olvhsbm4s4477sj6c4b33lutfev6ym4ap7iaexmc56dxbccefksabjlkxjpttxqtlqkmxjvo2nd6y5tmwoathgleajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55ruhj52ayavqolfponju --index 1 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
