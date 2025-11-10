@@ -85,18 +85,20 @@ e.g. using the password intent
 --config-path config.txt \
 --keystore-dir tmp/keystore \
 --intent "Password(test)" \
---contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
+--contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
 ```
 
 e.g. using the Psp22 intent
 
+> note: you must manually deploy and configure the psp22 contract address 
+
 ``` sh
 ./target/debug/quickbeam encrypt \
 --message-path test.txt \
---filename test.txt \
+--filename test_psp.txt \
 --config-path config.txt \
 --keystore-dir tmp/keystore \
---intent "Psp22(5CAJFogAMrCE8MuRYG1Jo2gzJqKez28AnBkFVmPYaRxDfLnP, 1)" \
+--intent "Psp22(5CKscarzxymDME81J7gMaSWzqL8iFrBYHksVCpPCywdeKr1T, 1)" \
 --contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
 ```
 
@@ -110,13 +112,16 @@ e.g. Using the password intent
 --config-path config.txt \
 --witness test \
 --pt-filename test \
---contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
+--contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
 ```
 
 e.g. using the Psp22 intent
+
+> note: you need to mint a token first 
+
 ``` sh
 ./target/debug/quickbeam decrypt \
---filename test.txt \
+--filename test_psp.txt \
 --config-path config.txt \
 --witness 5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3 \
 --pt-filename test \

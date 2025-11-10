@@ -1,20 +1,20 @@
 use crate::rpc::server::*;
 use crate::storage::{
-    AppStore, DocStore, IntentStore, SharedStore,
     contract_store::ContractIntentStore,
     local_store::{LocalDocStore, LocalPlaintextStore},
+    AppStore, DocStore, IntentStore, SharedStore,
 };
 use crate::types::*;
 use crate::{
     backend::{BlockchainBackend, SubstrateBackend},
     crypto::keystore::{Keystore, Sr25519Keystore},
-    gadget::{GadgetRegistry, Psp22Gadget},
+    gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget},
     storage::PlaintextStore,
     utils::load_mnemonic,
 };
 use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use ark_std::{UniformRand, rand::rngs::OsRng};
+use ark_std::{rand::rngs::OsRng, UniformRand};
 use codec::Encode;
 use multihash_codetable::{Code, MultihashDigest};
 use silent_threshold_encryption::{
@@ -70,6 +70,7 @@ pub async fn handle_encrypt(
     );
     // configure the registry
     let mut gadget_registry = GadgetRegistry::new();
+    gadget_registry.register(PasswordGadget {});
     gadget_registry.register(Psp22Gadget::new(contract_addr.to_string(), backend.clone()));
 
     let app_store = AppStore::new(
@@ -134,6 +135,7 @@ pub async fn handle_decrypt(
     );
     // configure the registry
     let mut gadget_registry = GadgetRegistry::new();
+    gadget_registry.register(PasswordGadget {});
     gadget_registry.register(Psp22Gadget::new(contract_addr.to_string(), backend.clone()));
 
     let app_store = AppStore::new(

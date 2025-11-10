@@ -6,7 +6,9 @@ use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
 pub mod password;
 pub mod psp22;
+
 pub use psp22::Psp22Gadget;
+pub use password::PasswordGadget;
 
 #[async_trait]
 pub trait Gadget: Send + Sync + Debug {

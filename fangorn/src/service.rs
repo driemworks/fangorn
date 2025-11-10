@@ -9,13 +9,13 @@ use core::str::FromStr;
 use futures::prelude::*;
 use iroh::{NodeAddr, PublicKey as IrohPublicKey};
 use iroh_docs::{
-    DocTicket,
     engine::LiveEvent,
     rpc::{
         client::docs::{Doc, ShareMode},
         proto::{Request, Response},
     },
     store::{FlatQuery, QueryBuilder},
+    DocTicket,
 };
 use quic_rpc::transport::flume::FlumeConnector;
 use std::sync::Arc;
@@ -24,13 +24,13 @@ use tokio::sync::Mutex;
 use tonic::transport::Server;
 
 use crate::backend::{BlockchainBackend, SubstrateBackend};
-use crate::gadget::{GadgetRegistry, Psp22Gadget, password::PasswordGadget};
+use crate::gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget};
 use crate::node::*;
 use crate::rpc::server::{NodeServer, RpcServer};
 use crate::storage::{
-    AppStore, DocStore, IntentStore, SharedStore,
     contract_store::ContractIntentStore,
     local_store::{LocalDocStore, LocalPlaintextStore},
+    AppStore, DocStore, IntentStore, SharedStore,
 };
 use crate::types::*;
 
@@ -393,7 +393,7 @@ async fn spawn_rpc_service<C: Pairing>(
 
     // register gadgets here
     let mut gadget_registry = GadgetRegistry::new();
-    // registry.register(PasswordGadget {});
+    gadget_registry.register(PasswordGadget {});
     gadget_registry.register(Psp22Gadget::new(contract_addr.to_string(), backend.clone()));
 
     let gadget_registry = Arc::new(Mutex::new(gadget_registry));
