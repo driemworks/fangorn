@@ -100,7 +100,7 @@ impl App {
                             }
                             KeyCode::Up | KeyCode::Char('k') => self.previous(),
                             KeyCode::Down | KeyCode::Char('j') => self.next(),
-                            KeyCode::Enter => self.select(),
+                            KeyCode::Enter | KeyCode::Char(' ') | KeyCode::Right => self.select(),
                             _ => {}
                         },
                         CurrentScreen::KeyResults => match key.code {
