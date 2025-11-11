@@ -7,6 +7,7 @@ pub use substrate::SubstrateBackend;
 /// Generic blockchain backend for querying and calling contracts
 #[async_trait]
 pub trait BlockchainBackend: Send + Sync + std::fmt::Debug {
+
     /// Query a contract
     /// Returns the raw response bytes from the contract
     async fn query_contract(
@@ -20,7 +21,7 @@ pub trait BlockchainBackend: Send + Sync + std::fmt::Debug {
     /// Returns transaction hash or confirmation
     async fn call_contract(
         &self,
-        contract_address: &str,
+        contract_address: [u8;32],
         method_selector: [u8; 4],
         data: Vec<u8>,
     ) -> Result<Vec<u8>>;

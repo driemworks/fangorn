@@ -111,15 +111,7 @@ impl GadgetRegistry {
     }
 }
 
-// /// types of policies
-// #[derive(Clone, Debug, Serialize, Deserialize)]
-// pub enum IntentType {
-//     /// The intent is satisfied if you provide a valid password
-//     Password,
-//     /// The intent type could not be identified.
-//     Unknown,
-// }
-
+/// An intent represents raw user input that can be parsed by the given gadget
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Intent {
     pub intent_type: String,
@@ -140,7 +132,7 @@ impl From<Vec<u8>> for Intent {
     }
 }
 
-// parse IntentType(witness) using the expected challenge type based on intent type
+// parse IntentType(witness)
 fn parse_intent_string(input: &str) -> Result<(&str, &str), nom::Err<nom::error::Error<&str>>> {
     let (input, intent_type) = nom::bytes::complete::take_until("(")(input)?;
     let (input, _) = nom::bytes::complete::tag("(")(input)?;

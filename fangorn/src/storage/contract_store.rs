@@ -12,9 +12,9 @@ use sp_weights::Weight;
 use std::sync::Arc;
 use subxt::ext::codec::Encode;
 use subxt::{
-    OnlineClient, PolkadotConfig, config::polkadot::AccountId32, dynamic, utils::MultiAddress,
+    config::polkadot::AccountId32, dynamic, utils::MultiAddress, OnlineClient, PolkadotConfig,
 };
-use subxt_signer::sr25519::{Keypair, dev};
+use subxt_signer::sr25519::{dev, Keypair};
 
 pub struct ContractIntentStore {
     contract_address: String,
@@ -44,8 +44,10 @@ impl IntentStore for ContractIntentStore {
         data.extend(cid_bytes.encode());
         data.extend(intent_bytes.encode());
 
+        let contract_addr_bytes = crate::utils::decode_contract_addr(&self.contract_address);
+
         self.backend
-            .call_contract(&self.contract_address, selector, data)
+            .call_contract(contract_addr_bytes, selector, data)
             .await?;
 
         Ok(())
@@ -94,8 +96,10 @@ impl IntentStore for ContractIntentStore {
 
         let selector = self.backend.selector("remove");
 
+        let contract_addr_bytes = crate::utils::decode_contract_addr(&self.contract_address);
+
         self.backend
-            .call_contract(&self.contract_address, selector, data)
+            .call_contract(contract_addr_bytes, selector, data)
             .await?;
 
         Ok(())

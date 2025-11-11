@@ -6,7 +6,9 @@ use subxt::ext::codec::{Decode, Encode};
 
 #[derive(Debug)]
 pub struct Psp22Gadget {
+    /// The contract address of a Psp22 contract
     contract_address: String,
+    /// The backend 
     backend: Arc<dyn BlockchainBackend>,
 }
 
@@ -32,7 +34,7 @@ impl Gadget for Psp22Gadget {
     }
 
     // witness = account pubkey (32 bytes)
-    // statement = token_id
+    // statement = (contract_address, minimum_balance)
     async fn verify_witness(&self, witness: &[u8], statement: &[u8]) -> Result<bool, IntentError> {
         println!("verifying the witness");
 
@@ -53,34 +55,30 @@ impl Gadget for Psp22Gadget {
             ));
         }
 
-        // Decode statement to extract contract address and minimum balance
-        // convert to string
+        // statement = [32 bytes + 16 bytes]
         let token_contract: [u8; 32] = statement[..32].try_into().unwrap();
-        // then decode ss58 (this seeem roundabout...)
 
         let minimum_balance = u128::from_le_bytes(
             statement[32..48]
                 .try_into()
-                .map_err(|_| IntentError::VerificationError("Invalid balance bytes".into()))?,
+                .map_err(|_| IntentError::VerificationError("The minimum balance must be a valid u128.".into()))?,
         );
 
-        // Query PSP22::balance_of(witness)
+        //  PSP22::balance_of(witness)
         let mut call_data = Vec::new();
         call_data.extend(witness); // account_id
 
         let selector = self.backend.selector("PSP22::balance_of");
 
-        println!("querying token contract");
         let result = self
             .backend
             .query_contract(token_contract, selector, call_data)
             .await
-            .map_err(|e| IntentError::VerificationError(format!("Query failed: {}", e)))?;
+            .map_err(|e| IntentError::VerificationError(format!("Contract query failed: {}", e)))?;
 
-        // Decode balance from contract response
         let mut data = result;
         if !data.is_empty() {
-            data.remove(0); // Remove status byte
+            data.remove(0); // remove status byte
         }
 
         let balance = u128::decode(&mut &data[..])
@@ -90,6 +88,7 @@ impl Gadget for Psp22Gadget {
         Ok(balance >= minimum_balance)
     }
 
+    /// defines the data format for the Psp22 command
     /// expected format: data = "contract_addr, min_balance"
     fn parse_intent_data(&self, data: &str) -> Result<ParsedIntentData, IntentError> {
         // the intent is the contract_addr and min_balance encoded in a vec
@@ -102,8 +101,6 @@ impl Gadget for Psp22Gadget {
 
         // 32 bytes
         let contract_addr = crate::utils::decode_contract_addr(parts[0].trim());
-        // hex::decode(parts[0].trim())
-        //     .map_err(|_| IntentError::ParseError("Invalid hex address".into()))?;
 
         if contract_addr.len() != 32 {
             return Err(IntentError::ParseError("Address must be 32 bytes".into()));
@@ -113,13 +110,13 @@ impl Gadget for Psp22Gadget {
         let min_balance: u128 = parts[1]
             .trim()
             .parse()
-            .map_err(|_| IntentError::ParseError("Invalid minimum_balance".into()))?;
+            .map_err(|_| IntentError::ParseError("Minimum balance must be a valid u128.".into()))?;
 
         // build question: contract_address (32) || minimum_balance (16)
         let mut question = contract_addr.to_vec();
         question.extend(&min_balance.to_le_bytes());
-
-        let answer = Vec::new(); // No predetermined answer for NFT ownership
+        // no predetermined answer for NFT ownership
+        let answer = Vec::new(); 
 
         Ok(ParsedIntentData { question, answer })
     }
