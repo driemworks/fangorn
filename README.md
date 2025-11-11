@@ -94,11 +94,11 @@ e.g. using the Psp22 intent
 
 ``` sh
 ./target/debug/quickbeam encrypt \
---message-path test.txt \
---filename test_psp.txt \
+--message-path test.pdf \
+--filename test.pdf \
 --config-path config.txt \
 --keystore-dir tmp/keystore \
---intent "Psp22(5CKscarzxymDME81J7gMaSWzqL8iFrBYHksVCpPCywdeKr1T, 1)" \
+--intent "Psp22(5Fios92CSdTEE4mnpLyd8uxcuEfEFBL8YJV1QK8g9nxQo5Mp, 1)" \
 --contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
 ```
 
@@ -108,10 +108,10 @@ e.g. Using the password intent
 
 ``` sh
 ./target/debug/quickbeam decrypt \
---filename test.txt \
+--filename test.pdf \
 --config-path config.txt \
 --witness test \
---pt-filename test \
+--pt-filename test.pdf \
 --contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
 ```
 
@@ -121,10 +121,10 @@ e.g. using the Psp22 intent
 
 ``` sh
 ./target/debug/quickbeam decrypt \
---filename test_psp.txt \
+--filename test.pdf \
 --config-path config.txt \
 --witness 5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3 \
---pt-filename test \
+--pt-filename test.pdf \
 --contract-addr 5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7
 ```
 

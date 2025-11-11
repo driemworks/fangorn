@@ -86,7 +86,7 @@ pub async fn handle_encrypt(
         .await
         .expect("Something went wrong while reading PT");
 
-    let ct = encrypt::<E>(&ek, t, &config.crs, gamma_g2.into(), message.as_bytes()).unwrap();
+    let ct = encrypt::<E>(&ek, t, &config.crs, gamma_g2.into(), &message).unwrap();
     let mut ciphertext_bytes = Vec::new();
     ct.serialize_compressed(&mut ciphertext_bytes).unwrap();
 
