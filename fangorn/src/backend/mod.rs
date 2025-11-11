@@ -11,7 +11,7 @@ pub use substrate::SubstrateBackend;
 pub trait BlockchainBackend: Send + Sync + std::fmt::Debug {
 
     /// Fetch the latest nonce from the runtime for the configured signer
-    async fn nonce(&self) -> Result<u8>;
+    async fn nonce(&self) -> Result<u32>;
 
     /// Query contract storage (getters)
     async fn query_contract(

@@ -33,7 +33,7 @@ enum Commands {
         #[arg(long)]
         keystore_dir: String,
         #[arg(long)]
-        message: String,
+        nonce: u32,
     },
     /// encrypt a message under a 'policy' and then 'register' it
     Encrypt {
@@ -99,12 +99,12 @@ async fn main() -> Result<()> {
                 keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
             );
         }
-        Some(Commands::Sign { keystore_dir, message }) => {
+        Some(Commands::Sign { keystore_dir, nonce }) => {
             let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
             let key = keystore.list_keys()?[0];
-            let message_bytes = message.as_bytes();
-            let signature = keystore.sign(&key, message_bytes); 
-            println!("Produced a signature on the message {:?}: {:?}", message, signature);
+            let message_bytes = nonce.to_le_bytes();
+            let signature = keystore.sign(&key, &message_bytes); 
+            println!("Produced a signature on the nonce {:?}: {:?}", nonce, signature);
         }
         Some(Commands::Encrypt {
             message_path,

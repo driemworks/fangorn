@@ -29,7 +29,7 @@ impl Gadget for Sr25519Gadget {
         // parse the witness
         if witness.len() != 176 {
             return Err(IntentError::VerificationError(format!(
-                "Witness must be 96 bytes (Pubkey-as-ss58 + Signature). Got {}",
+                "Witness must be 176 bytes (Pubkey-as-ss58 + Signature). Got {}",
                 witness.len()
             )));
         }
@@ -41,7 +41,7 @@ impl Gadget for Sr25519Gadget {
 
         let pubkey_string: String =
             String::from_utf8(pubkey_bytes.to_vec()).expect("Invalid UTF-8 sequence");
-        println!("WE DECODED THE pubkey: {:?}", pubkey_string.clone());
+
         let pubkey_bytes = crate::utils::decode_public_key(&pubkey_string);
 
         let sig_hex = &witness[48..];
@@ -56,14 +56,11 @@ impl Gadget for Sr25519Gadget {
         })?;
         // fetch the nonce
         let nonce = self.backend.nonce().await.unwrap();
-        println!("FOUND A NONCE: {:?}", nonce);
-        // build the message: statement || nonce
-        // lets sign the empty string to start...
-        let mut message = Vec::new();
-        // let mut message = statement.to_vec();
-        // message.extend([nonce]);
+
+        // build the message: statement || nonce (statement is empty)
+        let mut message = statement.to_vec();
+        message.extend(nonce.to_le_bytes());
         // verify the signature
-        // let is_valid = sp_core::crypto::check_message();
         Ok(sr25519::Pair::verify(&signature, message, &public_key))
     }
 

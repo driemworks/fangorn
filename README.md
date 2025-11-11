@@ -71,11 +71,10 @@ This is a guide to run fangorn locally.
 ./target/debug/quickbeam inspect --keystore-dir tmp/keystore
 ```
 
-#### Sign a Message
-
+#### Sign a Message (nonce)
 
 ``` sh
-./target/debug/quickbeam sign --keystore-dir tmp/keystore --message "hello world!"
+./target/debug/quickbeam sign --keystore-dir tmp/keystore --nonce 1
 ```
 
 ##### Encrypt a message 
@@ -156,7 +155,7 @@ First produce a valid sr25519 signature on the message (statement || acct_nonce)
 ./target/debug/quickbeam decrypt \
 --filename test.txt \
 --config-path config.txt \
---witness "5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK32e0d091570e7e89d1f171e5649a41150de526b7b9e678dd76d4f2740a2930719964e658080a2fe07d1059f1df9e2638b99f56959461e776a9d021c875cc9568d" \
+--witness "5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK38e819e577a476bd3bb9cd2c5e5521a499cd4a0e0a896f8ecb091c6579278923d52c3f579c854d5f0ba76b6e0266eb8851d7bbfb7c59c70cb036678714146c48d" \
 --pt-filename test.txt \
 --contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
 ```

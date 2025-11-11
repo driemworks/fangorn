@@ -33,9 +33,26 @@ impl SubstrateBackend {
 
 #[async_trait]
 impl BlockchainBackend for SubstrateBackend {
+    async fn nonce(&self) -> Result<u32> {
+        let acct_id = AccountId32(self.signer.public_key().0);
+        // query system > account
+        let account_storage = runtime::storage().system().account(acct_id);
+        let account_info = self
+            .client
+            .storage()
+            .at_latest()
+            .await?
+            .fetch(&account_storage)
+            .await?
+            .unwrap();
 
-    async fn nonce(&self) -> Result<u8> {
-        Ok(0)
+        // decode the nonce
+        let nonce = account_info.nonce;
+        Ok(nonce.try_into().unwrap_or_else(|_| {
+            // unlikely, but if the nonce exceeds u32::Max then no more calls can be made
+            eprintln!("Warning: Nonce value {} truncated to u32::MAX.", nonce);
+            u32::MAX
+        }))
     }
 
     async fn query_contract(
