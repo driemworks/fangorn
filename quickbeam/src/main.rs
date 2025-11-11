@@ -29,6 +29,12 @@ enum Commands {
         #[arg(long)]
         keystore_dir: String,
     },
+    Sign {
+        #[arg(long)]
+        keystore_dir: String,
+        #[arg(long)]
+        message: String,
+    },
     /// encrypt a message under a 'policy' and then 'register' it
     Encrypt {
         /// the path to the plaintext
@@ -93,6 +99,13 @@ async fn main() -> Result<()> {
                 keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
             );
         }
+        Some(Commands::Sign { keystore_dir, message }) => {
+            let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
+            let key = keystore.list_keys()?[0];
+            let message_bytes = message.as_bytes();
+            let signature = keystore.sign(&key, message_bytes); 
+            println!("Produced a signature on the message {:?}: {:?}", message, signature);
+        }
         Some(Commands::Encrypt {
             message_path,
             filename,
@@ -106,7 +119,7 @@ async fn main() -> Result<()> {
             // let mut registry = GadgetRegistry::new();
             // registry.register(PasswordGadget {});
 
-            
+
 
             handle_encrypt(
                 message_path,

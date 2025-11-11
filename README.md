@@ -71,6 +71,13 @@ This is a guide to run fangorn locally.
 ./target/debug/quickbeam inspect --keystore-dir tmp/keystore
 ```
 
+#### Sign a Message
+
+
+``` sh
+./target/debug/quickbeam sign --keystore-dir tmp/keystore --message "hello world!"
+```
+
 ##### Encrypt a message 
 
 > hardcoded to save to ciphertext.txt for now
@@ -102,6 +109,19 @@ e.g. using the Psp22 intent
 --contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
 ```
 
+
+e.g. for sr25519 signatures
+
+``` sh
+./target/debug/quickbeam encrypt \
+--message-path test.txt \
+--filename test.txt \
+--config-path config.txt \
+--keystore-dir tmp/keystore \
+--intent "Sr25519()" \
+--contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
+```
+
 ##### Decrypt a message 
 
 e.g. Using the password intent (create a test.txt locally)
@@ -126,6 +146,19 @@ e.g. using the Psp22 intent
 --witness 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY \
 --pt-filename test.pdf \
 --contract-addr 5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7
+```
+
+e.g. sr25519 signatures
+
+First produce a valid sr25519 signature on the message (statement || acct_nonce).
+
+``` sh
+./target/debug/quickbeam decrypt \
+--filename test.txt \
+--config-path config.txt \
+--witness "5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK32e0d091570e7e89d1f171e5649a41150de526b7b9e678dd76d4f2740a2930719964e658080a2fe07d1059f1df9e2638b99f56959461e776a9d021c875cc9568d" \
+--pt-filename test.txt \
+--contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
 ```
 
 ##### To run UI

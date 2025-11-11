@@ -33,6 +33,11 @@ impl SubstrateBackend {
 
 #[async_trait]
 impl BlockchainBackend for SubstrateBackend {
+
+    async fn nonce(&self) -> Result<u8> {
+        Ok(0)
+    }
+
     async fn query_contract(
         &self,
         contract_address: [u8; 32],

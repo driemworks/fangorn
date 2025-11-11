@@ -24,7 +24,7 @@ use tokio::sync::Mutex;
 use tonic::transport::Server;
 
 use crate::backend::{BlockchainBackend, SubstrateBackend};
-use crate::gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget};
+use crate::gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget};
 use crate::node::*;
 use crate::rpc::server::{NodeServer, RpcServer};
 use crate::storage::{
@@ -395,6 +395,7 @@ async fn spawn_rpc_service<C: Pairing>(
     let mut gadget_registry = GadgetRegistry::new();
     gadget_registry.register(PasswordGadget {});
     gadget_registry.register(Psp22Gadget::new(contract_addr.to_string(), backend.clone()));
+    gadget_registry.register(Sr25519Gadget::new(backend.clone()));
 
     let gadget_registry = Arc::new(Mutex::new(gadget_registry));
 

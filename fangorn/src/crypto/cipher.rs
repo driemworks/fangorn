@@ -8,7 +8,7 @@ use crate::types::*;
 use crate::{
     backend::{BlockchainBackend, SubstrateBackend},
     crypto::keystore::{Keystore, Sr25519Keystore},
-    gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget},
+    gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget},
     storage::PlaintextStore,
     utils::load_mnemonic,
 };
@@ -71,6 +71,7 @@ pub async fn handle_encrypt(
     let mut gadget_registry = GadgetRegistry::new();
     gadget_registry.register(PasswordGadget {});
     gadget_registry.register(Psp22Gadget::new(contract_addr.to_string(), backend.clone()));
+    gadget_registry.register(Sr25519Gadget::new(backend.clone()));
 
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
@@ -140,6 +141,7 @@ pub async fn handle_decrypt(
     let mut gadget_registry = GadgetRegistry::new();
     gadget_registry.register(PasswordGadget {});
     gadget_registry.register(Psp22Gadget::new(contract_addr.to_string(), backend.clone()));
+    gadget_registry.register(Sr25519Gadget::new(backend.clone()));
 
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
@@ -162,8 +164,8 @@ pub async fn handle_decrypt(
     let sys_key_request = tonic::Request::new(PreprocessRequest {});
 
     // encode witness
-    let password_vec = witness_string.as_bytes().to_vec();
-    let witness_hex = hex::encode(password_vec);
+    let witness_vec = witness_string.as_bytes().to_vec();
+    let witness_hex = hex::encode(witness_vec);
 
     // from first node
     let mut client = RpcClient::connect("http://127.0.0.1:30332").await.unwrap();

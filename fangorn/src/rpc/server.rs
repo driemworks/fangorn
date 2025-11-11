@@ -92,8 +92,6 @@ impl<C: Pairing> Rpc for NodeServer<C> {
             .expect("Something went wrong when looking for intent.")
             .expect("Intent wasn't found");
 
-        println!("found (cid, intent)");
-
         let registry = self.gadget_registry.lock().await;
         match registry.verify_intent(&intent, &witness).await {
             Ok(true) => {

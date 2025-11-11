@@ -1,33 +1,75 @@
-// use crate::gadget::*;
-// use async_trait::async_trait;
-// use multihash_codetable::{Code, MultihashDigest};
-// use std::fmt::Debug;
+use crate::{backend::BlockchainBackend, gadget::*};
+use async_trait::async_trait;
+use multihash_codetable::{Code, MultihashDigest};
+use sp_core::{sr25519, Pair};
+use std::fmt::Debug;
 
-// #[derive(Debug)]
-// pub struct Sr25519Gadget {}
+/// Verifies sr25519 signatures
+#[derive(Debug)]
+pub struct Sr25519Gadget {
+    /// The blockchain backend
+    backend: Arc<dyn BlockchainBackend>,
+}
 
-// #[async_trait]
-// impl Gadget for Sr25519Gadget {
-//     fn intent_type_id(&self) -> &'static str {
-//         "Sr25519"
-//     }
+impl Sr25519Gadget {
+    pub fn new(backend: Arc<dyn BlockchainBackend>) -> Self {
+        Self { backend }
+    }
+}
 
-//     // The statement is: "I know "
-//     fn create_statement(&self, question: &[u8], _answer: &[u8]) -> Result<Vec<u8>, IntentError> {
-//         Ok(question.to_vec())
-//     }
+#[async_trait]
+impl Gadget for Sr25519Gadget {
+    fn intent_type_id(&self) -> &'static str {
+        "Sr25519"
+    }
 
-//     /// verify that the witness hashes to the statement
-//     async fn verify_witness(&self, witness: &[u8], statement: &[u8]) -> Result<bool, IntentError> {
-//         let hash = Code::Sha2_256.digest(witness).to_bytes();
-//         Ok(hash == statement)
-//     }
+    /// witness = (public_key, signature)
+    /// statement = the message that was signed (leave empty if you just signed a message containing the acct nonce)
+    async fn verify_witness(&self, witness: &[u8], statement: &[u8]) -> Result<bool, IntentError> {
+        // parse the witness
+        if witness.len() != 176 {
+            return Err(IntentError::VerificationError(format!(
+                "Witness must be 96 bytes (Pubkey-as-ss58 + Signature). Got {}",
+                witness.len()
+            )));
+        }
 
-//     // expected format: signature (32 bytes) || message (any length)
-//     fn parse_intent_data(&self, data: &str) -> Result<ParsedIntentData, IntentError> {
-//         let answer = data.as_bytes().to_vec();
-//         let question = Code::Sha2_256.digest(&answer).to_bytes();
+        // this is kind of weird.. need a better way to parse the witness..
+        let pubkey_bytes: &[u8; 48] = witness[..48]
+            .try_into()
+            .map_err(|_| IntentError::VerificationError("Invalid Pubkey length".into()))?;
 
-//         Ok(ParsedIntentData { question, answer })
-//     }
-// }
+        let pubkey_string: String =
+            String::from_utf8(pubkey_bytes.to_vec()).expect("Invalid UTF-8 sequence");
+        println!("WE DECODED THE pubkey: {:?}", pubkey_string.clone());
+        let pubkey_bytes = crate::utils::decode_public_key(&pubkey_string);
+
+        let sig_hex = &witness[48..];
+        let signature_bytes: [u8; 64] = hex::decode(&sig_hex)
+            .unwrap()
+            .try_into()
+            .map_err(|_| IntentError::VerificationError("Invalid Signature length".into()))?;
+
+        let public_key = sr25519::Public::from_raw(pubkey_bytes);
+        let signature = sr25519::Signature::try_from(signature_bytes).map_err(|_| {
+            IntentError::VerificationError("Invalid Sr25519 Signature format".into())
+        })?;
+        // fetch the nonce
+        let nonce = self.backend.nonce().await.unwrap();
+        println!("FOUND A NONCE: {:?}", nonce);
+        // build the message: statement || nonce
+        // lets sign the empty string to start...
+        let mut message = Vec::new();
+        // let mut message = statement.to_vec();
+        // message.extend([nonce]);
+        // verify the signature
+        // let is_valid = sp_core::crypto::check_message();
+        Ok(sr25519::Pair::verify(&signature, message, &public_key))
+    }
+
+    // This type has no data to parse (yet) - we could make this a generic sig verifier and
+    // introduce data=curve/cipher (e.g. Signed(Sr25519))
+    fn parse_intent_data(&self, data: &str) -> Result<Vec<u8>, IntentError> {
+        Ok(Vec::new())
+    }
+}
