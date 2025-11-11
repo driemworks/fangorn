@@ -21,6 +21,9 @@ pub struct EncryptionClient {
     config: Config<E>,
     // the endpoint of the coordinator node (e.g. localhost:9944)
     node_endpoint: String,
+    // gadget registry
+    registry: &GadgetRegistry,
+    app_store: _,
 }
 
 impl EncryptionClient {

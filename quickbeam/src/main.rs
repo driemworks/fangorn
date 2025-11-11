@@ -106,6 +106,8 @@ async fn main() -> Result<()> {
             // let mut registry = GadgetRegistry::new();
             // registry.register(PasswordGadget {});
 
+            
+
             handle_encrypt(
                 message_path,
                 filename,

@@ -25,8 +25,6 @@ pub struct Intent(pub Vec<u8>);
 pub struct Entry {
     pub cid: CID,
     pub intent: Intent,
-    // pub token_contract: AccountId,
-    // pub minimum_balance: Balance,
 }
 
 #[ink::contract]

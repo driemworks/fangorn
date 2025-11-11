@@ -13,7 +13,7 @@ impl Gadget for PasswordGadget {
     }
 
     // The statement is the hash of the password
-    fn create_statement(&self, question: &[u8], answer: &[u8]) -> Result<Vec<u8>, IntentError> {
+    fn create_statement(&self, question: &[u8], _answer: &[u8]) -> Result<Vec<u8>, IntentError> {
         Ok(question.to_vec())
     }
 

@@ -4,12 +4,13 @@ use async_trait::async_trait;
 pub mod substrate;
 pub use substrate::SubstrateBackend;
 
-/// Generic blockchain backend for querying and calling contracts
+/// A generic blockchain backend for querying and calling contracts
+/// TODO: if call_contract takes in weights + stuff as a param, we don't need query_contract
+/// then we can  impl a dry_run/query function to determine min gas needed
 #[async_trait]
 pub trait BlockchainBackend: Send + Sync + std::fmt::Debug {
 
-    /// Query a contract
-    /// Returns the raw response bytes from the contract
+    /// Query contract storage (getters)
     async fn query_contract(
         &self,
         contract_address: [u8; 32],
@@ -18,7 +19,6 @@ pub trait BlockchainBackend: Send + Sync + std::fmt::Debug {
     ) -> Result<Vec<u8>>;
 
     /// Call a contract
-    /// Returns transaction hash or confirmation
     async fn call_contract(
         &self,
         contract_address: [u8;32],
@@ -26,7 +26,7 @@ pub trait BlockchainBackend: Send + Sync + std::fmt::Debug {
         data: Vec<u8>,
     ) -> Result<Vec<u8>>;
 
-    /// Helper to create method selector from method name
+    /// Create method selector from method name
     fn selector(&self, name: &str) -> [u8; 4] {
         use sp_core_hashing::blake2_256;
         let hash = blake2_256(name.as_bytes());

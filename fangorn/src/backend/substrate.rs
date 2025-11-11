@@ -72,8 +72,6 @@ impl BlockchainBackend for SubstrateBackend {
         method_selector: [u8; 4],
         data: Vec<u8>,
     ) -> Result<Vec<u8>> {
-        // let address = crate::utils::decode_contract_addr(contract_address);
-
         // call_data = selector || data
         let mut call_data = method_selector.to_vec();
         call_data.extend(data);

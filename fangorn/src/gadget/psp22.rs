@@ -33,7 +33,7 @@ impl Gadget for Psp22Gadget {
         Ok(question.to_vec())
     }
 
-    // witness = account pubkey (32 bytes)
+    // witness = account pubkey (32 bytes) || signature (32 bytes)
     // statement = (contract_address, minimum_balance)
     async fn verify_witness(&self, witness: &[u8], statement: &[u8]) -> Result<bool, IntentError> {
         println!("verifying the witness");

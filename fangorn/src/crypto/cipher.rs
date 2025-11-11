@@ -36,7 +36,6 @@ pub async fn handle_encrypt(
     keystore_path: &String,
     intent_str: &String,
     contract_addr: &String,
-    // gadget_registry: &GadgetRegistry,
 ) {
     let config_hex =
         fs::read_to_string(config_path).expect("you must provide a valid config file.");
@@ -108,8 +107,12 @@ pub async fn handle_encrypt(
 }
 
 // // todo: create generic encrypt and decrypt function here
-// async fn encrypt<A: AppStore, G: GadgetRegistry>(
+// async fn encrypt(
 //     ek:
+// gadget_registry
+// app_store,
+// plaintext,
+// config,
 // ) [
 
 // ]

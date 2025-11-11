@@ -7,11 +7,7 @@ use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext
 use std::str::FromStr;
 
 use crate::{
-    gadget::{
-        GadgetRegistry,
-        // Statement, Witness,
-        // verifiers::{PasswordVerifier, Verifier},
-    },
+    gadget::GadgetRegistry,
     storage::{local_store::*, *},
     types::*,
 };

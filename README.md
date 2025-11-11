@@ -98,32 +98,32 @@ e.g. using the Psp22 intent
 --filename test.pdf \
 --config-path config.txt \
 --keystore-dir tmp/keystore \
---intent "Psp22(5Fios92CSdTEE4mnpLyd8uxcuEfEFBL8YJV1QK8g9nxQo5Mp, 1)" \
+--intent "Psp22(5DiTZLwsFHd19DQcQeYrCA67LKXbarXk3HBp9NWEsA43Mpp4, 1)" \
 --contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
 ```
 
 ##### Decrypt a message 
 
-e.g. Using the password intent
+e.g. Using the password intent (create a test.txt locally)
 
 ``` sh
 ./target/debug/quickbeam decrypt \
---filename test.pdf \
+--filename test.txt \
 --config-path config.txt \
 --witness test \
---pt-filename test.pdf \
+--pt-filename test.txt \
 --contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
 ```
 
 e.g. using the Psp22 intent
 
-> note: you need to mint a token first 
+> Don't forget to mint a token first!
 
 ``` sh
 ./target/debug/quickbeam decrypt \
 --filename test.pdf \
 --config-path config.txt \
---witness 5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3 \
+--witness 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY \
 --pt-filename test.pdf \
 --contract-addr 5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7
 ```
