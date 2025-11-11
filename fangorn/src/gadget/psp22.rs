@@ -27,12 +27,6 @@ impl Gadget for Psp22Gadget {
         "Psp22"
     }
 
-    // The statement is "This public key owns an NFT with id X in the contract" (note: no actual sig verification YET)
-    fn create_statement(&self, question: &[u8], _answer: &[u8]) -> Result<Vec<u8>, IntentError> {
-        // question = token_id
-        Ok(question.to_vec())
-    }
-
     // witness = account pubkey (32 bytes) || signature (32 bytes)
     // statement = (contract_address, minimum_balance)
     async fn verify_witness(&self, witness: &[u8], statement: &[u8]) -> Result<bool, IntentError> {
@@ -90,7 +84,7 @@ impl Gadget for Psp22Gadget {
 
     /// defines the data format for the Psp22 command
     /// expected format: data = "contract_addr, min_balance"
-    fn parse_intent_data(&self, data: &str) -> Result<ParsedIntentData, IntentError> {
+    fn parse_intent_data(&self, data: &str) -> Result<Vec<u8>, IntentError> {
         // the intent is the contract_addr and min_balance encoded in a vec
         let parts: Vec<&str> = data.split(',').collect();
         if parts.len() != 2 {
@@ -113,12 +107,10 @@ impl Gadget for Psp22Gadget {
             .map_err(|_| IntentError::ParseError("Minimum balance must be a valid u128.".into()))?;
 
         // build question: contract_address (32) || minimum_balance (16)
-        let mut question = contract_addr.to_vec();
-        question.extend(&min_balance.to_le_bytes());
-        // no predetermined answer for NFT ownership
-        let answer = Vec::new(); 
+        let mut statement = contract_addr.to_vec();
+        statement.extend(&min_balance.to_le_bytes());
 
-        Ok(ParsedIntentData { question, answer })
+        Ok(statement)
     }
 }
 

@@ -15,20 +15,11 @@ pub trait Gadget: Send + Sync + Debug {
     /// The gadget's intent type identifier
     fn intent_type_id(&self) -> &'static str;
 
-    /// Create a challenge statement from question and answer
-    fn create_statement(&self, question: &[u8], answer: &[u8]) -> Result<Vec<u8>, IntentError>;
-
     /// Verify a witness against a statement
     async fn verify_witness(&self, witness: &[u8], statement: &[u8]) -> Result<bool, IntentError>;
 
     /// Parse intent-specific data from string (todo: define parsing logic)
-    fn parse_intent_data(&self, data: &str) -> Result<ParsedIntentData, IntentError>;
-}
-
-/// Data returned from parsing intent string
-pub struct ParsedIntentData {
-    pub question: Vec<u8>,
-    pub answer: Vec<u8>,
+    fn parse_intent_data(&self, data: &str) -> Result<Vec<u8>, IntentError>;
 }
 
 #[derive(Debug)]
@@ -84,8 +75,7 @@ impl GadgetRegistry {
             .get_gadget(intent_type_str)
             .ok_or_else(|| IntentError::UnknownIntentType(intent_type_str.to_string()))?;
 
-        let parsed_data = gadget.parse_intent_data(data)?;
-        let statement = gadget.create_statement(&parsed_data.question, &parsed_data.answer)?;
+        let statement = gadget.parse_intent_data(data)?;
 
         Ok(Intent {
             intent_type: intent_type_str.to_string(),
@@ -132,7 +122,9 @@ impl From<Vec<u8>> for Intent {
     }
 }
 
-// parse IntentType(witness)
+/// parse IntentType(witness)
+// TODO: modify parsing logic to parse multiple intent strings
+// Type1(witness1), Type2(witnes2)
 fn parse_intent_string(input: &str) -> Result<(&str, &str), nom::Err<nom::error::Error<&str>>> {
     let (input, intent_type) = nom::bytes::complete::take_until("(")(input)?;
     let (input, _) = nom::bytes::complete::tag("(")(input)?;

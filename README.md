@@ -205,6 +205,18 @@ NFTs define data access priveleges
   Use cases: Temporary priveleged roles and access managent. Licensing of data (streaming services?)
 3. N-time access NFTs: An NFT that allows data access a total number of N times. Once data has been accessed N times using that NFT, data access is lost.
   Use cases: IDK but I bet someone creative can come up with something :p
+4. Revokable Access Tokens
+
+Password
+Psp22-Ownership
+Signature
+DaoMembership
+Time
+GPS (as a password)
+API & Verification logic => gadget 
+proof-of-x: `it rained in dallas on sunday according to weather.com`
+
+=> wrap them all in zkps (e.g. circom)
 
 #### TODOs
 
