@@ -1,4 +1,4 @@
-# Fangorn 
+# Fangorn
 
 > "Certainly the forest of Fangorn is perilous — not least to those that are too ready with their axes; and Fangorn himself, he is perilous too; yet he is wise and kindly nonetheless.”
 ― J.R.R. Tolkien, The Lord of the Rings
@@ -10,7 +10,17 @@ It provides a mechanism to encrypt data for an *intent* (e.g. you must know the 
 
 It supports a modular and dynamic storage backend, which  can be customized for specialized plaintext locations, intent storage locations, and ciphertext download locations. 
 
-It boasts an extensible *gadgets* module that allows for the implementation of new kinds of... gadgets. 
+It boasts an extensible *gadgets* module that allows for the implementation of new gadgets.
+
+- Dependencies and technologies used
+  - describe silent threshold encryption 
+  - iroh for networking
+  - ink! smart contracts
+  - substrate-contracts-node
+
+
+- todo: describe gadgets + intents, [link to gadgets readme](./fangorn/src/gadget/README.md)
+
 
 ## Setup Guide
 
@@ -29,31 +39,54 @@ This is a guide to run fangorn locally.
 4. Then, from the project root, generate metadata with `subxt metadata --url ws://localhost:9944 > metadata.scale`
 5. Tear down the contracts node, then build the binaries. From the root, run: `cargo build`.
 
-### Start the Nodes
+### Build a Network
+
+You must run a minimum of 2 Fangorn nodes, with a maximum of 255 (arbitary and untested).
+ 
+For a modular approach (e.g. to setup a node on a dedicated machine), follow [option A](#option-a-manually-starting-the-instances).
+
+For a quick start that runs everything locally, follow [option B](#option-b-automatically-start-two-instances).
 
 #### Option A: Manually starting the instances
-#### Substrate Contracts Node Setup
+##### Substrate Contracts Node Setup
 1. Start the substrate-contracts-node again: `substrate-contracts-node` and deploy the `iris` contract with 
    `cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y`
 2. Copy the contract address (e.g. `5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD`)
 3. start a bootstrap node
 
-    ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0  --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
+``` sh
+    ./target/debug/fangorn run \
+    --bind-port 9933 \
+    --rpc-port 30332 \
+    --is-bootstrap \
+    --index 0  \
+    --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
+```
 
 > This will save the randomly generated config to config.txt
 
 4. start a second peer (copy/paste pubkey and ticket)
     > Note: pubkey is written to pubkey.txt and ticket is written to ticket.txt
 
-    ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey 2ec177c3b8442215520052b55d2f9cef09ae0a65d35769a3f63b3659c099ccb2 --bootstrap-ip 172.31.149.62:9944 --ticket docaaacbsx4px23g66nfvyg4olvhsbm4s4477sj6c4b33lutfev6ym4ap7iaexmc56dxbccefksabjlkxjpttxqtlqkmxjvo2nd6y5tmwoathgleajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55ruhj52ayavqolfponju --index 1 --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
-
+``` sh
+    ./target/debug/fangorn run \
+    --bind-port 9945 
+    --rpc-port 30334 \
+    --bootstrap-pubkey 2ec177c3b8442215520052b55d2f9cef09ae0a65d35769a3f63b3659c099ccb2 \
+    --bootstrap-ip 172.31.149.62:9944 \
+    --ticket docaaacbsx4px23g66nfvyg4olvhsbm4s4477sj6c4b33lutfev6ym4ap7iaexmc56dxbccefksabjlkxjpttxqtlqkmxjvo2nd6y5tmwoathgleajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55ruhj52ayavqolfponju \
+    --index 1 \
+    --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
+```
 
 #### Option B: Automatically start two instances
 0. Install gnome-terminal `sudo apt install gnome-terminal`
 1. Ensure start_instances.sh has execute priveleges: `chmod +x start_servers.sh`
 2. From the root, run start_instances.sh: `./start_instances.sh`
  
-#### Using Quickbeam
+### Using Quickbeam
+
+Quickbeam is a basic CLI for generating keys, signing messages, and encryption/decryption. 
 
 ##### Generate a new keypair
 
@@ -74,13 +107,10 @@ This is a guide to run fangorn locally.
 #### Sign a Message (nonce)
 
 ``` sh
-./target/debug/quickbeam sign --keystore-dir tmp/keystore --nonce 1
+./target/debug/quickbeam sign --keystore-dir tmp/keystore --nonce 0
 ```
 
 ##### Encrypt a message 
-
-> hardcoded to save to ciphertext.txt for now
-> you must delete the file if you want to encrypt a new message... needs work
 
 e.g. using the password intent
 
@@ -149,7 +179,7 @@ e.g. using the Psp22 intent
 
 e.g. sr25519 signatures
 
-First produce a valid sr25519 signature on the message (statement || acct_nonce).
+First produce a valid sr25519 signature on the message (acct_nonce).
 
 ``` sh
 ./target/debug/quickbeam decrypt \
@@ -160,7 +190,10 @@ First produce a valid sr25519 signature on the message (statement || acct_nonce)
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
-##### To run UI
+### Entmoot
+
+Entmoot is a TUI for interacting with Fangorn. It is similar to quickbeam, but provides better UX. 
+
 1. From the root run: `cargo run -p entmoot`
 
 2. To quit hit the ESC key

@@ -19,7 +19,7 @@ The **gadget registry** allows for the composition of multiple gadgets within a 
 
 The gadget framework is extensible. Custom gadgets can be implemented using the `Gadget` trait. Each gadget is responsible for defining a unqiue *type* (e.g. "Psp22"), intent parsing, and witness verification logic.
 
-The [password-gadget](./password.rs) is a minimalistic gadget implementation that allows data to be encrypted under a password. The public NP-statement is "I know the preimage of Sha256(The_Password)". To satisfy the decryption condition, the witness is simply "The_Password". 
+The (one-time) [password-gadget](./password.rs) is a minimalistic gadget implementation that allows data to be encrypted under a password. The public NP-statement is "I know the preimage of Sha256(The_Password)". To satisfy the decryption condition, the witness is simply "The_Password". Note that the first corect invocation reveals the password to all fangor workers, so this should be considered as a one-time-password.
 
 The [psp22-gadget](./psp22.rs) is a more complex implementation requiring a psp22 contract to be deployed against a substrate backend. Given a contract address and minimum balance, the gadget statement is: "I know that a given public key has at least the minimum balance of the psp22 token".  It allows data to be encrypted such that knowledge of the public key of anyone owning at least a minimum balance of the token defined in the psp22 contract can decrypt the data. The gadget has a singular responsiblity that makes it brittle: the witness is public.
 
