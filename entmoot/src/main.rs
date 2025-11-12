@@ -14,7 +14,7 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 use ratatui_explorer::{FileExplorer, Theme};
-use std::time::Duration;
+use std::{path::Path, thread::sleep, time::Duration};
 use tui_textarea::TextArea;
 
 // 1. Enum to manage the active screen/view
@@ -22,8 +22,10 @@ use tui_textarea::TextArea;
 pub enum CurrentScreen {
     Main,
     KeyResults,
-    FileExplorer,
+    EncryptScreen,
     PasswordSelection,
+    DecryptScreen,
+    DecryptInfoScreen,
 }
 
 #[derive(Debug)]
@@ -37,7 +39,13 @@ pub struct App {
     // the file path of the message to be encrypted (plaintext)
     file_path: Option<String>,
     /// the text area for password input
-    input: Option<TextArea<'static>>,
+    /// Used for both encryption and decryption
+    password_input: Option<TextArea<'static>>,
+    /// the text area for filename input
+    /// only used during decryption
+    filename_input: Option<TextArea<'static>>,
+
+    input_selection: u8
 }
 
 impl Default for App {
@@ -62,7 +70,9 @@ impl Default for App {
             generated_pubkey: None,
             file_explorer,
             file_path: None,
-            input: None,
+            password_input: None,
+            filename_input: None,
+            input_selection: 0
         }
     }
 }
@@ -70,13 +80,17 @@ impl Default for App {
 fn main() -> Result<()> {
     color_eyre::install()?;
     let mut terminal = ratatui::init();
-    let app_result = App::default().run(&mut terminal);
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on( async {
+            App::default().run(&mut terminal).await.expect("An error occurred running the UI");
+        });
     ratatui::restore();
-    app_result
+    Ok(())
 }
 
 impl App {
-    fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
+    async fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
         loop {
             // --- DRAW PHASE ---
             terminal.draw(|frame| {
@@ -111,7 +125,7 @@ impl App {
                             }
                             _ => {}
                         },
-                        CurrentScreen::FileExplorer => match key.code {
+                        CurrentScreen::EncryptScreen => match key.code {
                             KeyCode::Esc | KeyCode::Char('c') => {
                                 self.current_screen = CurrentScreen::Main;
                                 self.generated_pubkey = None;
@@ -121,7 +135,7 @@ impl App {
                                 let selected = self.file_explorer.current();
                                 if selected.is_file() {
                                     // User selected a file - do something with it
-                                    let _file_path = selected.path().display().to_string();
+                                    self.file_path = Some(selected.path().display().to_string());
                                     // For now, just go back to main menu
                                     // You can store the selected file path and use it later
                                     self.current_screen = CurrentScreen::PasswordSelection;
@@ -134,7 +148,7 @@ impl App {
                                     let layout = Layout::default().constraints(constraints);
                                     textarea.set_style(Style::default().fg(Color::LightGreen));
                                     textarea.set_block(Block::default().borders(Borders::ALL).title("Password"));
-                                    self.input = Some(textarea);
+                                    self.password_input = Some(textarea);
                                 }
                             }
                             _ => {
@@ -149,18 +163,131 @@ impl App {
                             KeyCode::Enter => {
                                 // Get the input and handle confirmation logic
                                 // assuming the input element is already initialized...
-                                let password = self.input.as_mut().unwrap().lines().join("\n");
+                                let password = self.password_input.as_mut().unwrap().lines().join("\n");
+
+                                let file_path = self.file_path.as_mut().unwrap();
+
+                                println!("File path: {}", file_path);
+
+                                let filename_raw = Path::new(file_path)
+                                    .file_name()
+                                    .and_then(|name| name.to_str())
+                                    .unwrap_or("unknown");
+                                let filename = String::from(filename_raw);
+
+                                let config_path = String::from("config.txt");
+                                let keystore_path = String::from("tmp/keystore");
+                                let intent_str = String::from(format!("Password({})", password));
+                                let contract_addr = String::from("5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7");
+
+                                println!("intent string: {}", intent_str);
+
+                                // sleep(Duration::from_secs(10));
+
+                                handle_encrypt(&filename, &filename, &config_path, &keystore_path, &intent_str, &contract_addr).await;
                                 //  use password for encryption
                                 // Clear state and move on
-                                self.input = None;
+                                self.password_input = None;
+                                self.file_path = None;
                                 self.current_screen = CurrentScreen::Main;
                             }
                             _ => {
-                                if let Some(input) = self.input.as_mut() {
+                                if let Some(input) = self.password_input.as_mut() {
                                     input.input(key);
                                 }
                             }
                         },
+                        CurrentScreen::DecryptScreen => match key.code {
+                            KeyCode::Esc | KeyCode::Char('c') => {
+                                self.current_screen = CurrentScreen::Main;
+                                self.generated_pubkey = None;
+                            }
+                            KeyCode::Enter => {
+                                // copy file into memory
+                                let selected = self.file_explorer.current();
+                                if selected.is_file() {
+                                    // User selected a file - do something with it
+                                    self.file_path = Some(selected.path().display().to_string());
+                                    // For now, just go back to main menu
+                                    // You can store the selected file path and use it later
+                                    self.current_screen = CurrentScreen::DecryptInfoScreen;
+                                    // initialize the password input
+                                    let mut password_text_area = TextArea::default();
+                                    password_text_area.set_cursor_line_style(Style::default());
+                                    password_text_area.set_mask_char('\u{2022}'); //U+2022 BULLET (•)
+                                    password_text_area.set_placeholder_text("Please enter your password");
+                                    password_text_area.set_style(Style::default().fg(Color::LightGreen));
+                                    password_text_area.set_block(Block::default().borders(Borders::ALL).title("Password"));
+                                    self.password_input = Some(password_text_area);
+
+                                    let mut filename_text_area = TextArea::default();
+                                    filename_text_area.set_cursor_line_style(Style::default());
+                                    // filename_text_area.set_mask_char('\u{2022}'); //U+2022 BULLET (•)
+                                    filename_text_area.set_placeholder_text("Please enter the file name");
+                                    filename_text_area.set_style(Style::default().fg(Color::LightGreen));
+                                    filename_text_area.set_block(Block::default().borders(Borders::ALL).title("File Name"));
+                                    self.filename_input = Some(filename_text_area);
+                                }
+                            }
+                            _ => {
+                                self.file_explorer.handle(&event)?;
+                            }
+
+                        },
+                        CurrentScreen::DecryptInfoScreen => match key.code {
+                            KeyCode::Esc | KeyCode::Char('q') => {
+                                self.current_screen = CurrentScreen::Main;
+                                self.generated_pubkey = None;
+                            }
+                            KeyCode::Enter => {
+                                // Get the input and handle confirmation logic
+                                // assuming the input element is already initialized...
+
+                                if self.input_selection == 0 {
+                                    self.input_selection = 1;
+                                } else {
+
+                                    let password = self.password_input.as_mut().unwrap().lines().join("\n");
+                                    let filename = self.filename_input.as_mut().unwrap().lines().join("\n");
+
+                                    let file_path = self.file_path.as_mut().unwrap();
+
+                                    println!("File path: {}", file_path);
+
+                                    let config_path = String::from("config.txt");
+                                    let witness_string = &password;
+                                    let contract_addr = String::from("5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7");
+
+                                    println!("File name: {}", filename);
+                                    println!("password: {}", password);
+
+                                    // sleep(Duration::from_secs(10));
+
+                                    handle_decrypt(&config_path, &filename, witness_string, &filename, &contract_addr).await;
+                                    //  use password for encryption
+                                    // Clear state and move on
+                                    self.password_input = None;
+                                    self.filename_input = None;
+                                    self.file_path = None;
+                                    self.input_selection = 0;
+                                    self.current_screen = CurrentScreen::Main;
+
+                                }
+                            }
+                            _ => {
+                                if self.input_selection == 0 {
+                                     if let Some(input) = self.filename_input.as_mut() {
+                                        input.input(key);
+                                     }
+                                } else {
+                                    if let Some(input) = self.password_input.as_mut() {
+                                        input.input(key);
+                                    }
+                                }
+
+                            }
+                        },
+
                     }
                 }
             }
@@ -228,11 +355,11 @@ impl App {
                 }
                 // encrypt
                 2 => {
-                    self.current_screen = CurrentScreen::FileExplorer;
+                    self.current_screen = CurrentScreen::EncryptScreen;
                 }
                 // decrypt
                 3 => {
-                    // self.current_screen = CurrentScreen::FileExplorer;
+                    self.current_screen = CurrentScreen::DecryptScreen;
                 }
                 _ => {}
             }
@@ -244,8 +371,10 @@ impl App {
         match self.current_screen {
             CurrentScreen::Main => self.render_main_screen(frame),
             CurrentScreen::KeyResults => self.render_key_results_screen(frame),
-            CurrentScreen::FileExplorer => self.render_file_explorer_screen(frame),
+            CurrentScreen::EncryptScreen => self.render_file_explorer_screen(frame),
             CurrentScreen::PasswordSelection => self.render_password_selection(frame),
+            CurrentScreen::DecryptScreen => self.render_file_explorer_screen(frame),
+            CurrentScreen::DecryptInfoScreen => self.render_decrypt_info(frame), 
         }
 
         // Outer border
@@ -341,8 +470,23 @@ impl App {
 
     pub fn render_password_selection(&mut self, frame: &mut Frame) {
         let area = frame.area();
-        let input = self.input.as_mut().unwrap();
+        let input = self.password_input.as_mut().unwrap();
         frame.render_widget(input.widget(), area);
+    }
+
+    pub fn render_decrypt_info(&mut self, frame: &mut Frame) {
+
+        let vertical_layout = Layout::vertical([
+            Constraint::Min(10), // Instructions
+            Constraint::Min(10),   // File explorer
+        ]);
+
+        let [filename_area, password_area] = vertical_layout.areas(frame.area());
+        let password_input = self.password_input.as_mut().unwrap();
+        let filename_input = self.filename_input.as_mut().unwrap();
+        frame.render_widget(password_input.widget(), password_area);
+        frame.render_widget(filename_input.widget(), filename_area);
+
     }
 }
 
@@ -414,4 +558,26 @@ fn render_footer(area: Rect, frame: &mut Frame) {
         .style(Style::default().fg(Color::DarkGray))
         .alignment(Alignment::Center);
     frame.render_widget(footer, area);
+}
+
+fn inactivate_input(textarea: &mut TextArea<'_>) {
+        textarea.set_cursor_line_style(Style::default());
+        textarea.set_cursor_style(Style::default());
+        textarea.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .style(Style::default().fg(Color::DarkGray))
+                // .title(" Inactive (^X to switch) "),
+        );
+    }
+
+fn activate_input(textarea: &mut TextArea<'_>) {
+    textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
+    textarea.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
+    textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .style(Style::default())
+            // .title(" Active "),
+    );
 }

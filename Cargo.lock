@@ -2737,6 +2737,7 @@ dependencies = [
  "ratatui 0.29.0",
  "ratatui-explorer",
  "ratatui-textarea",
+ "tokio",
  "tui-textarea",
 ]
 
