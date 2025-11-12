@@ -93,14 +93,14 @@ pub async fn handle_encrypt(
     // write the ciphertext
     let cid = app_store.doc_store.add(&ciphertext_bytes).await.unwrap();
     // parse the intent
-    let intent = gadget_registry.parse_intent(intent_str).await.unwrap();
+    let intents = gadget_registry.parse_intents(intent_str).await.unwrap();
     // .map_err(|e| EncryptionError::IntentError(e))?;
     // format filename
     let filename_bytes = filename.clone().into_bytes();
-    // register it
+    // register intents
     let _ = app_store
         .intent_store
-        .register_intent(&filename_bytes, &cid, &intent)
+        .register_intent(&filename_bytes, &cid, intents)
         .await
         .expect("An error occurred when registering intent in shared store");
 
@@ -150,7 +150,7 @@ pub async fn handle_decrypt(
     );
 
     // TODO: fetch the cid and intent from filename
-    let (cid, _intent) = app_store
+    let (cid, _intents) = app_store
         .intent_store
         .get_intent(&filename.clone().into_bytes())
         .await
@@ -163,8 +163,13 @@ pub async fn handle_decrypt(
     //  get the sys key (TODO: send this as a cli param instead?)
     let sys_key_request = tonic::Request::new(PreprocessRequest {});
 
-    // encode witness
-    let witness_vec = witness_string.as_bytes().to_vec();
+    // encode witnesses
+    // split by comma
+    // w1, w2, ..., wk
+    let witness_parts: Vec<_> = witness_string.trim().split(",").collect();
+    // [w1_bytes, w2_bytes, ..., wk_bytes]
+    let witness_bytes: Vec<Vec<u8>> = witness_parts.iter().map(|w| w.as_bytes().to_vec()).collect();
+    let witness_vec = witness_bytes.encode();
     let witness_hex = hex::encode(witness_vec);
 
     // from first node

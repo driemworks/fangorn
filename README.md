@@ -91,7 +91,7 @@ e.g. using the password intent
 --config-path config.txt \
 --keystore-dir tmp/keystore \
 --intent "Password(test)" \
---contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
 e.g. using the Psp22 intent
@@ -105,7 +105,7 @@ e.g. using the Psp22 intent
 --config-path config.txt \
 --keystore-dir tmp/keystore \
 --intent "Psp22(5DiTZLwsFHd19DQcQeYrCA67LKXbarXk3HBp9NWEsA43Mpp4, 1)" \
---contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
 
@@ -118,7 +118,7 @@ e.g. for sr25519 signatures
 --config-path config.txt \
 --keystore-dir tmp/keystore \
 --intent "Sr25519()" \
---contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
 ##### Decrypt a message 
@@ -131,7 +131,7 @@ e.g. Using the password intent (create a test.txt locally)
 --config-path config.txt \
 --witness test \
 --pt-filename test.txt \
---contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
 e.g. using the Psp22 intent
@@ -144,7 +144,7 @@ e.g. using the Psp22 intent
 --config-path config.txt \
 --witness 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY \
 --pt-filename test.pdf \
---contract-addr 5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7
+--contract-addr 5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7
 ```
 
 e.g. sr25519 signatures
@@ -157,7 +157,7 @@ First produce a valid sr25519 signature on the message (statement || acct_nonce)
 --config-path config.txt \
 --witness "5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK38e819e577a476bd3bb9cd2c5e5521a499cd4a0e0a896f8ecb091c6579278923d52c3f579c854d5f0ba76b6e0266eb8851d7bbfb7c59c70cb036678714146c48d" \
 --pt-filename test.txt \
---contract-addr "5EVh9hx7xKUHjNqgoWa7DFknE13f9LQ2qkFgNFG5romgZ8N7"
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
 ##### To run UI
@@ -166,8 +166,6 @@ First produce a valid sr25519 signature on the message (statement || acct_nonce)
 2. To quit hit the ESC key
 
 ### Hackathon Scope
-
-TODO: https://github.com/Brushfam/openbrush-contracts/blob/main/contracts/src/token/Psp22/Psp22.rs
 
 #### Project Name
 Fangorn

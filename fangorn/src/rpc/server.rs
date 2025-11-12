@@ -85,7 +85,7 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         let filename = req_ref.filename.clone().into_bytes();
         let witness = hex::decode(req_ref.witness_hex.clone()).unwrap();
 
-        let (cid, intent) = self
+        let (cid, intents) = self
             .intent_store
             .get_intent(&filename)
             .await
@@ -93,7 +93,7 @@ impl<C: Pairing> Rpc for NodeServer<C> {
             .expect("Intent wasn't found");
 
         let registry = self.gadget_registry.lock().await;
-        match registry.verify_intent(&intent, &witness).await {
+        match registry.verify_intents(intents, &witness).await {
             Ok(true) => {
                 println!("Witness verification succeeded! ");
                 if let Some(ciphertext_bytes) = self.doc_store.fetch(&cid).await.unwrap() {

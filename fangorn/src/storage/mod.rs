@@ -33,8 +33,8 @@ pub trait DocStore: Send + Sync + SharedStore<Cid, Data> {}
 // e.g. the token_supply
 #[async_trait]
 pub trait IntentStore: Send + Sync {
-    async fn register_intent(&self, filename: &[u8], cid: &Cid, intent: &Intent) -> Result<()>;
-    async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Intent)>>;
+    async fn register_intent(&self, filename: &[u8], cid: &Cid, intents: Vec<Intent>) -> Result<()>;
+    async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Vec<Intent>)>>;
     async fn remove_intent(&self, filename: &[u8]) -> Result<()>;
 }
 

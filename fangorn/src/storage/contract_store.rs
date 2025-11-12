@@ -32,10 +32,11 @@ impl ContractIntentStore {
 
 #[async_trait]
 impl IntentStore for ContractIntentStore {
-    async fn register_intent(&self, filename: &[u8], cid: &Cid, intent: &Intent) -> Result<()> {
+    async fn register_intent(&self, filename: &[u8], cid: &Cid, intent: Vec<Intent>) -> Result<()> {
         let filename = filename.to_vec();
         let cid_bytes = cid.to_bytes().to_vec();
-        let intent_bytes = intent.to_bytes();
+        // convert vec of intents to bytes (scale encoded)
+        let intent_bytes = intent.encode();
 
         let selector = self.backend.selector("register");
 
@@ -53,7 +54,7 @@ impl IntentStore for ContractIntentStore {
         Ok(())
     }
 
-    async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Intent)>> {
+    async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Vec<Intent>)>> {
         use subxt::ext::codec::Decode;
 
         let selector = self.backend.selector("read");
@@ -63,6 +64,7 @@ impl IntentStore for ContractIntentStore {
 
         let contract_addr_bytes: [u8; 32] =
             crate::utils::decode_contract_addr(&self.contract_address);
+
         let result = self
             .backend
             .query_contract(contract_addr_bytes, selector, data)
@@ -82,12 +84,12 @@ impl IntentStore for ContractIntentStore {
 
         let decoded = <Option<Entry>>::decode(&mut &data[..])?;
 
-        Ok(decoded.map(|entry| {
-            (
-                Cid::try_from(entry.cid).expect("Invalid CID"),
-                entry.intent.into(),
-            )
-        }))
+        let result = decoded.map(|entry| {
+            let intents: Vec<Intent> = Vec::<Intent>::decode(&mut &entry.intent[..]).unwrap();
+            (Cid::try_from(entry.cid).expect("Invalid CID"), intents)
+        });
+
+        Ok(result)
     }
 
     async fn remove_intent(&self, filename: &[u8]) -> Result<()> {

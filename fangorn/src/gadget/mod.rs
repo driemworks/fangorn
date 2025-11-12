@@ -1,6 +1,7 @@
 //! Extensible intent framework for fangorn
 
 use async_trait::async_trait;
+use codec::{Encode, Decode};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
@@ -8,8 +9,8 @@ pub mod password;
 pub mod psp22;
 pub mod sr25519;
 
-pub use psp22::Psp22Gadget;
 pub use password::PasswordGadget;
+pub use psp22::Psp22Gadget;
 pub use sr25519::Sr25519Gadget;
 
 #[async_trait]
@@ -69,25 +70,57 @@ impl GadgetRegistry {
     }
 
     /// Parse an intent string and create an Intent
-    pub async fn parse_intent(&self, input: &str) -> Result<Intent, IntentError> {
-        let (intent_type_str, data) =
+    pub async fn parse_intents(&self, input: &str) -> Result<Vec<Intent>, IntentError> {
+        let parsed_intents =
             parse_intent_string(input).map_err(|e| IntentError::ParseError(format!("{:?}", e)))?;
 
-        let gadget = self
-            .get_gadget(intent_type_str)
-            .ok_or_else(|| IntentError::UnknownIntentType(intent_type_str.to_string()))?;
+        let mut intents = Vec::new();
+        
+        for (intent_type_str, data) in parsed_intents {
+            let gadget = self
+                .get_gadget(intent_type_str)
+                .ok_or_else(|| IntentError::UnknownIntentType(intent_type_str.to_string()))?;
 
-        let statement = gadget.parse_intent_data(data)?;
+            let statement = gadget.parse_intent_data(data)?;
+            let intent = Intent {
+                intent_type: intent_type_str.to_string(),
+                statement,
+                gadget: Some(gadget),
+            };
 
-        Ok(Intent {
-            intent_type: intent_type_str.to_string(),
-            statement,
-            gadget: Some(gadget),
-        })
+            intents.push(intent)
+
+        }
+
+        Ok(intents)
+    }
+
+    pub async fn verify_intents(
+        &self,
+        intents: Vec<Intent>,
+        mut witness: &[u8],
+    ) -> Result<bool, IntentError> {
+        // first we need to recover the witnesses
+        let decoded_witnesses = Vec::<Vec<u8>>::decode(&mut witness).unwrap();
+        assert!(decoded_witnesses.len() == intents.len(), "Mismatched intents and witnesses");
+        // TODO: this is a little dangerous: witnesses MUST be ordered
+        // in the same order that gadgets were described when encrypting the message
+
+        // if any single one fails, they all fail
+        let mut is_valid = true;
+
+        for (intent, witness) in intents.iter().zip(decoded_witnesses.iter()) {
+            if !self.verify_intent(&intent, &witness).await? {
+                return Err(IntentError::VerificationError(intent.intent_type.clone()));
+            }
+        }
+
+        Ok(is_valid)
+
     }
 
     /// Verify a witness against an intent
-    pub async fn verify_intent(
+    async fn verify_intent(
         &self,
         intent: &Intent,
         witness: &[u8],
@@ -104,11 +137,12 @@ impl GadgetRegistry {
 }
 
 /// An intent represents raw user input that can be parsed by the given gadget
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode)]
 pub struct Intent {
     pub intent_type: String,
     pub statement: Vec<u8>,
     #[serde(skip)]
+    #[codec(skip)]
     pub gadget: Option<Arc<dyn Gadget>>,
 }
 
@@ -124,30 +158,42 @@ impl From<Vec<u8>> for Intent {
     }
 }
 
-/// parse IntentType(witness)
-// TODO: modify parsing logic to parse multiple intent strings
-// Type1(witness1), Type2(witnes2)
-fn parse_intent_string(input: &str) -> Result<(&str, &str), nom::Err<nom::error::Error<&str>>> {
-    let (input, intent_type) = nom::bytes::complete::take_until("(")(input)?;
-    let (input, _) = nom::bytes::complete::tag("(")(input)?;
+/// intents are delimited with an && symbol (logical AND)
+static DELIMITER: &str = "&&";
 
-    let mut depth = 1;
-    let mut end_pos = 0;
+/// parse intent types and data from raw string input
+/// it expects an '&&' delimited string, e.g. "Type1(witness1) && Type2(witness2)"
+fn parse_intent_string(
+    raw_input: &str,
+) -> Result<Vec<(&str, &str)>, nom::Err<nom::error::Error<&str>>> {
+    // split by &
+    let parts: Vec<&str> = raw_input.split(DELIMITER).collect();
+    // Q: should we have a max number of allowed intents?
+    let mut output = Vec::new();
 
-    for (i, c) in input.char_indices() {
-        if c == '(' {
-            depth += 1;
-        } else if c == ')' {
-            depth -= 1;
-            if depth == 0 {
-                end_pos = i;
-                break;
+    for input in parts {
+        let (input, intent_type) = nom::bytes::complete::take_until("(")(input.trim())?;
+        let (input, _) = nom::bytes::complete::tag("(")(input)?;
+
+        let mut depth = 1;
+        let mut end_pos = 0;
+
+        for (i, c) in input.char_indices() {
+            if c == '(' {
+                depth += 1;
+            } else if c == ')' {
+                depth -= 1;
+                if depth == 0 {
+                    end_pos = i;
+                    break;
+                }
             }
         }
-    }
 
-    let password = &input[..end_pos];
-    Ok((intent_type, password))
+        let password = &input[..end_pos];
+        output.push((intent_type, password))
+    }
+    Ok(output)
 }
 
 #[cfg(test)]
@@ -156,10 +202,18 @@ pub mod test {
     use super::*;
 
     #[test]
-    fn parse_intent_works_with_plain_string_data() {
+    fn parse_single_intent_works() {
         let intent = "Password(this is my cool password_1235*(*()C11JKH))";
-        let (intent_type, password) = parse_intent_string(&intent).unwrap();
+        let (intent_type, password) = parse_intent_string(&intent).unwrap()[0];
         assert_eq!(intent_type, "Password");
         assert_eq!(password, "this is my cool password_1235*(*()C11JKH)");
+    }
+
+    #[test]
+    fn parse_multiple_intent_works() {
+        let intent = "Intent1(data1) && Intent2(data2--$$#()) && Intent3()";
+        let expected_output = vec![("Intent1", "data1"), ("Intent2", "data2--$$#()"), ("Intent3", "")];
+        let actual_output = parse_intent_string(&intent).unwrap();
+        assert!(expected_output == actual_output);
     }
 }

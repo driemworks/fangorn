@@ -24,7 +24,7 @@ pub struct Intent(pub Vec<u8>);
 #[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 pub struct Entry {
     pub cid: CID,
-    pub intent: Intent,
+    pub intent: Vec<u8>,
 }
 
 #[ink::contract]
@@ -58,13 +58,17 @@ pub mod fangorn_registry {
             }
         }
 
-        /// Register a file with a PSP22 token requirement
+        /// Register an intent
+        ///
+        /// * `filename`: the globally unique filename 
+        /// * `cid`: the content identifier
+        /// * `intent`: a generic blob of SCALE encoded data
         #[ink(message)]
         pub fn register(
             &mut self,
             filename: Filename,
             cid: CID,
-            intent: Intent,
+            intent: Vec<u8>,
         ) -> Result<(), Error> {
             // check duplicate filenames
             if self.registry.contains(&filename) {
