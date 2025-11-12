@@ -46,6 +46,8 @@ cleanup() {
     find ./tmp/intents -mindepth 1 -delete 2>/dev/null
     echo "Removing files from plaintext store"
     find ./tmp/plaintexts -mindepth 1 -delete 2>/dev/null
+    echo "Killing substrate contracts node"
+    kill "$SCN_PID"
     
     # Don't exit - just return to shell
     echo "Cleanup complete."
