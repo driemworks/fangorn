@@ -21,8 +21,10 @@ cleanup() {
     if [ -f "$SIGNAL_FILE.second_pid" ]; then
         SECOND_PID=$(cat "$SIGNAL_FILE.second_pid")
         if [ ! -z "$SECOND_PID" ] && kill -0 "$SECOND_PID" 2>/dev/null; then
-            echo "Stopping second server and closing second terminal..."
+            echo "Stopping second server and closing second terminal at PID $SECOND_PID..."
             kill "$SECOND_PID"
+            echo "Killing terminal monitor"
+            kill "$MONITOR_PID"
         fi
     fi
     
@@ -159,6 +161,8 @@ MAIN_PID=$$
 gnome-terminal -- bash -c "
 SECOND_SERVER_PID=\"\"
 
+echo \"Check the PID: \$SECOND_SERVER_PID\"
+
 cleanup_second() {
     echo \"\"
     echo \"Second terminal: Ctrl+C received, cleaning up...\"
@@ -177,13 +181,13 @@ trap cleanup_second SIGINT
 echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "$CONTRACT_ADDR"'
 ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "$CONTRACT_ADDR" &
 SECOND_SERVER_PID=\$!
-echo \"PID: \$SECOND_SERVER_PID\"
+echo \"Second server PID: \$SECOND_SERVER_PID\"
 echo \"\$SECOND_SERVER_PID\" > \"$SIGNAL_FILE.second_pid\"
 echo 'Press Ctrl+C here to stop both instances'
 
 wait \$SECOND_SERVER_PID
 " &
-
+# SECOND_SCRIPT_PID=$!
 # Monitor for signal file in the background
 (
     while true; do
@@ -204,4 +208,5 @@ echo "Both instances running. Press Ctrl+C in either window to stop both."
 wait $FIRST_PID
 
 echo "First instance stopped. Cleaning up remaining processes..."
+
 cleanup

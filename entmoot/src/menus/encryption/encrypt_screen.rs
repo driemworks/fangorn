@@ -28,14 +28,7 @@ pub fn handle_input(app: &mut App, key_code: KeyCode, event: Event) -> Result<()
                 // For now, just go back to main menu
                 // You can store the selected file path and use it later
                 app.current_screen = CurrentScreen::PasswordSelection;
-                // initialize the password input
-                let mut textarea = TextArea::default();
-                textarea.set_cursor_line_style(Style::default());
-                textarea.set_mask_char('\u{2022}'); //U+2022 BULLET (•)
-                textarea.set_placeholder_text("Please enter your password");
-                textarea.set_style(Style::default().fg(Color::LightGreen));
-                textarea.set_block(Block::default().borders(Borders::ALL).title("Password"));
-                app.password_input = Some(textarea);
+                app.reset_password_input();
             }
         }
         _ => {

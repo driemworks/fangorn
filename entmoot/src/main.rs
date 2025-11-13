@@ -11,7 +11,7 @@ use ratatui_explorer::{FileExplorer, Theme};
 use std::time::Duration;
 use tui_textarea::TextArea;
 
-use crate::menus::{decryption::{decrypt_info, decrypt_screen}, encryption::{encrypt_screen, password_encryption}, key_results_screen};
+use crate::menus::{decryption::{decrypt_screen}, encryption::{encrypt_screen, password_encryption}, key_results_screen};
 
 pub mod menus;
 
@@ -23,7 +23,6 @@ pub enum CurrentScreen {
     EncryptScreen,
     PasswordSelection,
     DecryptScreen,
-    DecryptInfoScreen,
 }
 
 #[derive(Debug)]
@@ -68,8 +67,8 @@ impl Default for App {
             generated_pubkey: None,
             file_explorer,
             file_path: None,
-            password_input: None,
-            filename_input: None,
+            password_input: initialize_password_input(),
+            filename_input: initialize_filename_input(),
             input_selection: 0
         }
     }
@@ -117,8 +116,7 @@ impl App {
                         CurrentScreen::KeyResults => key_results_screen::handle_input(self, key.code),
                         CurrentScreen::EncryptScreen => encrypt_screen::handle_input(self, key.code, event)?,
                         CurrentScreen::PasswordSelection => password_encryption::handle_input(self, key).await,
-                        CurrentScreen::DecryptScreen => decrypt_screen::handle_input(self, key.code, event)?,
-                        CurrentScreen::DecryptInfoScreen => decrypt_info::handle_input(self, key).await,
+                        CurrentScreen::DecryptScreen => decrypt_screen::handle_input(self, key).await,
                     }
                 }
             }
@@ -185,8 +183,7 @@ impl App {
             CurrentScreen::KeyResults => key_results_screen::render_key_results_screen(self, frame),
             CurrentScreen::EncryptScreen => encrypt_screen::render_file_explorer_screen(self, frame),
             CurrentScreen::PasswordSelection => password_encryption::render_password_selection(self, frame),
-            CurrentScreen::DecryptScreen => decrypt_screen::render_file_explorer_screen(self, frame),
-            CurrentScreen::DecryptInfoScreen => decrypt_info::render_decrypt_info(self, frame), 
+            CurrentScreen::DecryptScreen => decrypt_screen::render_decrypt_info(self, frame), 
         }
         // Outer border
         frame.render_widget(
@@ -211,6 +208,16 @@ impl App {
         render_menu(menu_area, frame, &self.menu_items, &mut self.menu_state);
         render_footer(footer_area, frame);
     }
+
+
+    pub fn reset_password_input(&mut self) {
+        self.password_input = initialize_password_input();        
+    }
+
+    pub fn reset_filename_input(&mut self) {
+        self.filename_input = initialize_filename_input();
+    }
+
 }
 
 fn render_title(title_area: Rect, frame: &mut Frame) {
@@ -281,4 +288,23 @@ fn render_footer(area: Rect, frame: &mut Frame) {
         .style(Style::default().fg(Color::DarkGray))
         .alignment(Alignment::Center);
     frame.render_widget(footer, area);
+}
+
+pub fn initialize_password_input() -> Option<TextArea<'static>> {
+    // initialize the password input
+    let mut textarea = TextArea::default();
+    textarea.set_cursor_line_style(Style::default());
+    textarea.set_mask_char('\u{2022}'); //U+2022 BULLET (•)
+    textarea.set_placeholder_text("Please enter your password");
+    textarea.set_style(Style::default().fg(Color::LightGreen));
+    textarea.set_block(Block::default().borders(Borders::ALL).title("Password"));
+    Some(textarea)
+}
+pub fn initialize_filename_input() -> Option<TextArea<'static>> {
+    let mut filename_text_area = TextArea::default();
+    filename_text_area.set_cursor_line_style(Style::default());
+    filename_text_area.set_placeholder_text("Please enter the file name");
+    filename_text_area.set_style(Style::default().fg(Color::LightGreen));
+    filename_text_area.set_block(Block::default().borders(Borders::ALL).title("File Name"));
+    Some(filename_text_area)
 }
