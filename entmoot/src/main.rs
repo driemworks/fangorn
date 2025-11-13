@@ -29,6 +29,7 @@ pub enum CurrentScreen {
 #[derive(Debug)]
 pub struct App {
     menu_state: ListState,
+    menu_title: String,
     menu_items: Vec<&'static str>,
     current_screen: CurrentScreen,
     generated_pubkey: Option<String>,
@@ -64,6 +65,7 @@ impl Default for App {
 
         Self {
             menu_state: state,
+            menu_title: String::from(" Main Menu "),
             menu_items: vec!["Generate Keys", "Inspect Keys", "Encrypt", "Decrypt"],
             current_screen: CurrentScreen::Main,
             generated_pubkey: None,
@@ -159,18 +161,24 @@ impl App {
             match selected {
                 // gen keys
                 0 => {
+                    self.menu_title = String::from(" Generate Keys ");
                     key_results_screen::generate_keys(self);
                 }
                 // inspect keys
                 1 => {
+                    self.menu_title = String::from(" Inspect Keys ");
                     key_results_screen::inspect_keys(self);
                 }
                 // encrypt
                 2 => {
+                    self.menu_title = String::from(" Encrypt Files ");
                     self.current_screen = CurrentScreen::EncryptScreen;
                 }
                 // decrypt
                 3 => {
+                    self.menu_title = String::from(" Decrypt Files ");
+                    App::activate(&mut self.filename_input);
+                    App::inactivate(&mut self.password_input);
                     self.current_screen = CurrentScreen::DecryptScreen;
                 }
                 _ => {}
@@ -185,23 +193,21 @@ impl App {
             CurrentScreen::KeyResults => key_results_screen::render_key_results_screen(self, frame),
             CurrentScreen::EncryptScreen => encrypt_screen::render_file_explorer_screen(self, frame),
             CurrentScreen::PasswordSelection => password_encryption::render_password_selection(self, frame),
-            CurrentScreen::DecryptScreen => {
-                App::activate(&mut self.filename_input);
-                App::inactivate(&mut self.password_input);
-                decrypt_screen::render_decrypt_info(self, frame)
-            }, 
+            CurrentScreen::DecryptScreen => decrypt_screen::render_decrypt_info(self, frame), 
         }
         // Outer border
         frame.render_widget(
             Block::new()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Double)
-                .border_style(Style::default().fg(Color::Cyan)),
+                .border_style(Style::default().fg(Color::Cyan))
+                .title(self.menu_title.clone()),
             frame.area(),
         );
     }
 
     fn render_main_screen(&mut self, frame: &mut Frame) {
+        self.menu_title = String::from(" Main Menu ");
         let vertical_layout = Layout::vertical([
             Constraint::Length(10), // Title
             Constraint::Min(10),    // Menu
@@ -224,26 +230,20 @@ impl App {
         self.filename_input = initialize_filename_input();
     }
 
-    fn inactivate(textarea: &mut TextArea<'_>) {
-        textarea.set_cursor_line_style(Style::default());
-        textarea.set_cursor_style(Style::default());
-        textarea.set_block(
-            Block::default()
-                .borders(Borders::ALL)
-                .style(Style::default().fg(Color::DarkGray))
-                .title(" Inactive (^X to switch) "),
-        );
+    pub fn inactivate(textarea: &mut TextArea<'_>) {
+        textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::HIDDEN));
+        textarea.set_cursor_style(Style::default().add_modifier(Modifier::HIDDEN));
+        textarea.set_style(Style::default().fg(Color::DarkGray));
+        let inactivate_block = textarea.block().unwrap().clone().border_style(Style::default().fg(Color::DarkGray));
+        textarea.set_block(inactivate_block);
     }
 
-    fn activate(textarea: &mut TextArea<'_>) {
+    pub fn activate(textarea: &mut TextArea<'_>) {
         textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
         textarea.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
-        textarea.set_block(
-            Block::default()
-                .borders(Borders::ALL)
-                .style(Style::default())
-                .title(" Active "),
-        );
+        textarea.set_style(Style::default().fg(Color::LightGreen));
+        let activate_block = textarea.block().unwrap().clone().border_style(Color::LightGreen);
+        textarea.set_block(activate_block);
     }
 
 }
@@ -325,7 +325,7 @@ fn initialize_password_input() -> TextArea<'static> {
     textarea.set_mask_char('\u{2022}'); //U+2022 BULLET (•)
     textarea.set_placeholder_text("Please enter your password");
     textarea.set_style(Style::default().fg(Color::LightGreen));
-    textarea.set_block(Block::default().borders(Borders::ALL).title("Password"));
+    textarea.set_block(Block::default().borders(Borders::ALL).border_style(Color::LightGreen).title("Password"));
     textarea
 }
 fn initialize_filename_input() -> TextArea<'static> {
@@ -333,6 +333,6 @@ fn initialize_filename_input() -> TextArea<'static> {
     filename_text_area.set_cursor_line_style(Style::default());
     filename_text_area.set_placeholder_text("Please enter the file name");
     filename_text_area.set_style(Style::default().fg(Color::LightGreen));
-    filename_text_area.set_block(Block::default().borders(Borders::ALL).title("File Name"));
+    filename_text_area.set_block(Block::default().borders(Borders::ALL).border_style(Color::LightGreen).title("File Name"));
     filename_text_area
 }

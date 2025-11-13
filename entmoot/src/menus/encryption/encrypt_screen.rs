@@ -27,7 +27,7 @@ pub fn handle_input(app: &mut App, key_code: KeyCode, event: Event) -> Result<()
                 // For now, just go back to main menu
                 // You can store the selected file path and use it later
                 app.current_screen = CurrentScreen::PasswordSelection;
-                app.reset_password_input();
+                app.menu_title = String::from(" Enter Password ");
             }
         }
         _ => {

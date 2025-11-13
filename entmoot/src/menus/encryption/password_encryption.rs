@@ -3,6 +3,7 @@ use std::path::Path;
 use fangorn::crypto::cipher::handle_encrypt;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
+use ratatui::layout::{Constraint, Layout};
 
 
 use crate::{App, CurrentScreen};
@@ -11,8 +12,7 @@ use crate::{App, CurrentScreen};
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Esc | KeyCode::Char('q') => {
-            app.current_screen = CurrentScreen::Main;
-            app.generated_pubkey = None;
+            cleanup(app);
         }
         KeyCode::Enter => {
             // Get the input and handle confirmation logic
@@ -31,9 +31,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             handle_encrypt(&filename, &filename, &config_path, &keystore_path, &intent_str, &contract_addr).await;
             // use password for encryption
             // Clear state and move on
-            app.reset_password_input();
-            app.file_path = None;
-            app.current_screen = CurrentScreen::Main;
+            cleanup(app);
         }
         _ => {
             app.password_input.input(key);
@@ -42,7 +40,28 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
 }
 
 pub fn render_password_selection(app: &mut App, frame: &mut Frame) {
-    let area = frame.area();
+    let vertical_layout = Layout::vertical([
+        Constraint::Min(7),
+        Constraint::Max(10),
+        Constraint::Min(7)
+
+    ]);
+    let [_, password_area_vert, _] = vertical_layout.areas(frame.area());
+    let horizontal_layout = Layout::horizontal([
+        Constraint::Max(5),
+        Constraint::Min(5),
+        Constraint::Max(5)
+    ]);
+
+    let [_, area, _] = horizontal_layout.areas(password_area_vert);
+    
     let input = &app.password_input;
     frame.render_widget(input, area);
+}
+
+fn cleanup(app: &mut App) {
+    app.reset_password_input();
+    app.generated_pubkey = None;
+    app.file_path = None;
+    app.current_screen = CurrentScreen::Main;
 }
