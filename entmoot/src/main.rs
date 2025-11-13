@@ -42,6 +42,7 @@ pub struct App {
     /// only used during decryption
     filename_input: Option<TextArea<'static>>,
 
+    /// used to toggle between password_input and filename_input
     input_selection: u8
 }
 
@@ -290,7 +291,7 @@ fn render_footer(area: Rect, frame: &mut Frame) {
     frame.render_widget(footer, area);
 }
 
-pub fn initialize_password_input() -> Option<TextArea<'static>> {
+fn initialize_password_input() -> Option<TextArea<'static>> {
     // initialize the password input
     let mut textarea = TextArea::default();
     textarea.set_cursor_line_style(Style::default());
@@ -300,7 +301,7 @@ pub fn initialize_password_input() -> Option<TextArea<'static>> {
     textarea.set_block(Block::default().borders(Borders::ALL).title("Password"));
     Some(textarea)
 }
-pub fn initialize_filename_input() -> Option<TextArea<'static>> {
+fn initialize_filename_input() -> Option<TextArea<'static>> {
     let mut filename_text_area = TextArea::default();
     filename_text_area.set_cursor_line_style(Style::default());
     filename_text_area.set_placeholder_text("Please enter the file name");
