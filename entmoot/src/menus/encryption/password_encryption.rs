@@ -3,7 +3,9 @@ use std::path::Path;
 use fangorn::crypto::cipher::handle_encrypt;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Layout};
+use ratatui::layout::{Alignment, Constraint, Layout, Rect};
+use ratatui::style::{Color, Style};
+use ratatui::widgets::Paragraph;
 
 
 use crate::{App, CurrentScreen};
@@ -14,6 +16,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         KeyCode::Esc | KeyCode::Char('q') => {
             cleanup(app);
         }
+        KeyCode::Tab => {}
         KeyCode::Enter => {
             // Get the input and handle confirmation logic
             // assuming the input element is already initialized...
@@ -46,12 +49,13 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
 
 pub fn render_password_selection(app: &mut App, frame: &mut Frame) {
     let vertical_layout = Layout::vertical([
-        Constraint::Min(7),
+        Constraint::Max(4),
         Constraint::Max(10),
-        Constraint::Min(7)
+        Constraint::Max(10),  // password area
+        Constraint::Length(3)
 
     ]);
-    let [_, password_area_vert, _] = vertical_layout.areas(frame.area());
+    let [_, password_area_vert, _, footer_area] = vertical_layout.areas(frame.area());
     let horizontal_layout = Layout::horizontal([
         Constraint::Max(5),
         Constraint::Min(5),
@@ -61,7 +65,15 @@ pub fn render_password_selection(app: &mut App, frame: &mut Frame) {
     let [_, area, _] = horizontal_layout.areas(password_area_vert);
     
     let input = &app.password_input;
+    render_footer(footer_area, frame);
     frame.render_widget(input, area);
+}
+
+fn render_footer(area: Rect, frame: &mut Frame) {
+    let footer = Paragraph::new("Enter: Submit  │  Esc: Back")
+        .style(Style::default().fg(Color::DarkGray))
+        .alignment(Alignment::Center);
+    frame.render_widget(footer, area);
 }
 
 fn cleanup(app: &mut App) {
