@@ -26,8 +26,9 @@ pub fn handle_input(app: &mut App, key_code: KeyCode, event: Event) -> Result<()
                 app.file_path = Some(selected.path().display().to_string());
                 // For now, just go back to main menu
                 // You can store the selected file path and use it later
-                app.current_screen = CurrentScreen::PasswordSelection;
-                app.menu_title = String::from(" Enter Password ");
+                // app.current_screen = CurrentScreen::PasswordSelection;
+                app.current_screen = CurrentScreen::IntentSelection;
+                app.menu_title = String::from(" Select Intents ");
             }
         }
         _ => {

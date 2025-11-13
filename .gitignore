@@ -1,6 +1,10 @@
 target/
 config.txt
 test.txt
+test2.txt
+test3.txt
+test4.txt
+test5.txt
 ciphertext.txt
 pubkey.txt
 ticket.txt

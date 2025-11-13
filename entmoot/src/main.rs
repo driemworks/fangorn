@@ -12,23 +12,40 @@ use ratatui_explorer::{FileExplorer, Theme};
 use std::time::Duration;
 use tui_textarea::TextArea;
 
-use crate::menus::{decryption::{decrypt_screen}, encryption::{encrypt_screen, password_encryption}, key_results_screen};
+use crate::menus::encryption::intents_screen;
+use crate::menus::{decryption::{decrypt_screen}, encryption::{encrypt_fileselect_screen, encryption_screen}, key_results_screen};
 
 pub mod menus;
+
+pub const PWD_INPUT_PLACEHOLDER: &str = "Please enter your password";
+const PWD_INPUT_TITLE: &str = "Password";
+
+const FILENAME_INPUT_PLACEHOLDER: &str = "Please enter the file name";
+const FILENAME_INPUT_TITLE: &str = "Filename";
+
+const PSP22_INPUT_PLACEHOLDER: &str = "Please enter the psp22 contract address";
+const PSP22_INPUT_TITLE: &str = "Contract Address";
+
+const PSP22_TOKEN_COUNT_PLACEHOLDER: &str = "Please enter token amount (numbers only)";
+const PSP22_TOKEN_TITLE: &str = "Token Amount";
+
 
 // 1. Enum to manage the active screen/view
 #[derive(Debug)]
 pub enum CurrentScreen {
     Main,
     KeyResults,
-    EncryptScreen,
-    PasswordSelection,
+    EncryptFileSelectScreen,
+    EncryptionInputScreen,
     DecryptScreen,
+    IntentSelection,
 }
 
 #[derive(Debug)]
 pub struct App {
     menu_state: ListState,
+    intent_list_state: ListState,
+    intent_list_items: Vec<(&'static str, bool)>,
     menu_title: String,
     menu_items: Vec<&'static str>,
     current_screen: CurrentScreen,
@@ -40,18 +57,29 @@ pub struct App {
     /// the text area for password input
     /// Used for both encryption and decryption
     password_input: TextArea<'static>,
+
+    contract_address_input: TextArea<'static>,
+    token_count_input: TextArea<'static>,
     /// the text area for filename input
     /// only used during decryption
     filename_input: TextArea<'static>,
 
     /// used to toggle between password_input and filename_input
-    input_selection: u8
+    decrypt_input_selection: u8,
+    encrypt_input_selection: u8,
+
+    display_password_input: bool,
+    display_contract_address_input: bool,
+    sr25519_intent: bool,
 }
 
 impl Default for App {
     fn default() -> Self {
         let mut state = ListState::default();
         state.select(Some(0));
+
+        let mut intent_list = ListState::default();
+        intent_list.select(Some(0));
 
         // Create the file explorer with a theme
         let theme = Theme::default().add_default_title().with_block(
@@ -65,15 +93,23 @@ impl Default for App {
 
         Self {
             menu_state: state,
+            intent_list_state: intent_list,
+            intent_list_items: vec![("Password", false), ("PSP22", false), ("SR25519", false)],
+            display_contract_address_input: false,
+            display_password_input: false,
+            sr25519_intent: false,
             menu_title: String::from(" Main Menu "),
             menu_items: vec!["Generate Keys", "Inspect Keys", "Encrypt", "Decrypt"],
             current_screen: CurrentScreen::Main,
             generated_pubkey: None,
             file_explorer,
             file_path: None,
-            password_input: initialize_password_input(),
-            filename_input: initialize_filename_input(),
-            input_selection: 0
+            password_input: initialize_input_field(String::from(PWD_INPUT_PLACEHOLDER), String::from(PWD_INPUT_TITLE), true),
+            filename_input: initialize_input_field(String::from(FILENAME_INPUT_PLACEHOLDER), String::from(FILENAME_INPUT_TITLE), false),
+            contract_address_input: initialize_input_field(String::from(PSP22_INPUT_PLACEHOLDER), String::from(PSP22_INPUT_TITLE), false),
+            token_count_input: initialize_input_field(String::from(PSP22_TOKEN_COUNT_PLACEHOLDER), String::from(PSP22_TOKEN_TITLE), false),
+            encrypt_input_selection: 0,
+            decrypt_input_selection: 0
         }
     }
 }
@@ -118,9 +154,10 @@ impl App {
                             _ => {}
                         },
                         CurrentScreen::KeyResults => key_results_screen::handle_input(self, key.code),
-                        CurrentScreen::EncryptScreen => encrypt_screen::handle_input(self, key.code, event)?,
-                        CurrentScreen::PasswordSelection => password_encryption::handle_input(self, key).await,
+                        CurrentScreen::EncryptFileSelectScreen => encrypt_fileselect_screen::handle_input(self, key.code, event)?,
+                        CurrentScreen::EncryptionInputScreen => encryption_screen::handle_input(self, key).await,
                         CurrentScreen::DecryptScreen => decrypt_screen::handle_input(self, key).await,
+                        CurrentScreen::IntentSelection => intents_screen::handle_input(self, key.code).await,
                     }
                 }
             }
@@ -171,8 +208,8 @@ impl App {
                 }
                 // encrypt
                 2 => {
-                    self.menu_title = String::from(" Encrypt Files ");
-                    self.current_screen = CurrentScreen::EncryptScreen;
+                    self.menu_title = String::from(" Select File ");
+                    self.current_screen = CurrentScreen::EncryptFileSelectScreen;
                 }
                 // decrypt
                 3 => {
@@ -191,9 +228,10 @@ impl App {
         match self.current_screen {
             CurrentScreen::Main => self.render_main_screen(frame),
             CurrentScreen::KeyResults => key_results_screen::render_key_results_screen(self, frame),
-            CurrentScreen::EncryptScreen => encrypt_screen::render_file_explorer_screen(self, frame),
-            CurrentScreen::PasswordSelection => password_encryption::render_password_selection(self, frame),
-            CurrentScreen::DecryptScreen => decrypt_screen::render_decrypt_info(self, frame), 
+            CurrentScreen::EncryptFileSelectScreen => encrypt_fileselect_screen::render_file_explorer_screen(self, frame),
+            CurrentScreen::EncryptionInputScreen => encryption_screen::render_encryption_inputs(self, frame),
+            CurrentScreen::DecryptScreen => decrypt_screen::render_decrypt_info(self, frame),
+            CurrentScreen::IntentSelection => intents_screen::render_intents_screen(self, frame),
         }
         // Outer border
         frame.render_widget(
@@ -221,13 +259,19 @@ impl App {
         render_footer(footer_area, frame);
     }
 
-
-    pub fn reset_password_input(&mut self) {
-        self.password_input = initialize_password_input();        
+    pub fn reset_input_fields(&mut self) {
+        self.password_input = initialize_input_field(String::from(PWD_INPUT_PLACEHOLDER), String::from(PWD_INPUT_TITLE), true);
+        self.filename_input = initialize_input_field(String::from(FILENAME_INPUT_PLACEHOLDER), String::from(FILENAME_INPUT_TITLE), false);
+        self.contract_address_input = initialize_input_field(String::from(PSP22_INPUT_PLACEHOLDER), String::from(PSP22_INPUT_TITLE), false);
+        self.token_count_input = initialize_input_field(String::from(PSP22_TOKEN_COUNT_PLACEHOLDER), String::from(PSP22_TOKEN_TITLE), false);
     }
 
-    pub fn reset_filename_input(&mut self) {
-        self.filename_input = initialize_filename_input();
+    pub fn reset_intent_list(&mut self) {
+        self.intent_list_state.select(None);
+        self.intent_list_state.select(Some(0));
+        for (_, item_selected) in self.intent_list_items.iter_mut() {
+            *item_selected = false;
+        }
     }
 
     pub fn inactivate(textarea: &mut TextArea<'_>) {
@@ -325,21 +369,14 @@ fn render_footer(area: Rect, frame: &mut Frame) {
     frame.render_widget(footer, area);
 }
 
-fn initialize_password_input() -> TextArea<'static> {
-    // initialize the password input
+fn initialize_input_field(placeholder: String, title: String, masked: bool) -> TextArea<'static> {
     let mut textarea = TextArea::default();
     textarea.set_cursor_line_style(Style::default());
-    textarea.set_mask_char('\u{2022}'); //U+2022 BULLET (•)
-    textarea.set_placeholder_text("Please enter your password");
+    if masked {
+        textarea.set_mask_char('\u{2022}'); //U+2022 BULLET (•)
+    }
+    textarea.set_placeholder_text(placeholder);
     textarea.set_style(Style::default().fg(Color::LightGreen));
-    textarea.set_block(Block::default().borders(Borders::ALL).border_style(Color::LightGreen).title("Password"));
+    textarea.set_block(Block::default().borders(Borders::ALL).border_style(Color::LightGreen).title(title));
     textarea
-}
-fn initialize_filename_input() -> TextArea<'static> {
-    let mut filename_text_area = TextArea::default();
-    filename_text_area.set_cursor_line_style(Style::default());
-    filename_text_area.set_placeholder_text("Please enter the file name");
-    filename_text_area.set_style(Style::default().fg(Color::LightGreen));
-    filename_text_area.set_block(Block::default().borders(Borders::ALL).border_style(Color::LightGreen).title("File Name"));
-    filename_text_area
 }

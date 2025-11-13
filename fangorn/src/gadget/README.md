@@ -49,7 +49,7 @@ e.g. `Psp22(5DiTZLwsFHd19DQcQeYrCA67LKXbarXk3HBp9NWEsA43Mpp4, 1)`
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
-Note: `5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7` is the iris contrat address.
+Note: `5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7` is the iris contract address.
 
 To decrypt, you just provide any public key of a wallet that owns at least the minimum balance. e.g. `5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY`.
 

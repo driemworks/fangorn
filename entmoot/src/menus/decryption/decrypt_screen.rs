@@ -17,8 +17,8 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             cleanup(app);
         }
         KeyCode::Tab =>  {
-            app.input_selection = (app.input_selection + 1) % 2;
-            if app.input_selection == 0 {
+            app.decrypt_input_selection = (app.decrypt_input_selection + 1) % 2;
+            if app.decrypt_input_selection == 0 {
                 App::activate(&mut app.filename_input);
                 App::inactivate(&mut app.password_input);
             } else {
@@ -46,7 +46,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             }
         }
         _ => {
-            if app.input_selection == 0 {
+            if app.decrypt_input_selection == 0 {
                  app.filename_input.input(key);
                  App::activate(&mut app.filename_input);
             } else {
@@ -90,9 +90,8 @@ fn render_footer(area: Rect, frame: &mut Frame) {
 
 fn cleanup(app: &mut App) {
     app.generated_pubkey = None;
-    app.reset_password_input();
-    app.reset_filename_input();
+    app.reset_input_fields();
     app.file_path = None;
-    app.input_selection = 0;
+    app.decrypt_input_selection = 0;
     app.current_screen = CurrentScreen::Main;
 }
