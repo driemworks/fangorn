@@ -56,7 +56,7 @@ impl Gadget for Sr25519Gadget {
         })?;
         // fetch the nonce
         let nonce = self.backend.nonce().await.unwrap();
-
+        println!("Using nonce: {:?}", nonce);
         // build the message: statement || nonce (statement is empty)
         let mut message = statement.to_vec();
         message.extend(nonce.to_le_bytes());

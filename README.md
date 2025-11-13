@@ -3,6 +3,8 @@
 > "Certainly the forest of Fangorn is perilous — not least to those that are too ready with their axes; and Fangorn himself, he is perilous too; yet he is wise and kindly nonetheless.”
 ― J.R.R. Tolkien, The Lord of the Rings
 
+`_>` this is the standard readme for Fangorn. For hackathon judges, please supplement with the [hackathon overview/readme](./HACKATHON_README.md) first.
+
 Fangorn is a p2p threshold encryption network that enables 'practical' witness encryption. 
 It enables decentralized conditional access control for generic data sets.
 
@@ -17,7 +19,6 @@ It boasts an extensible *gadgets* module that allows for the implementation of n
   - iroh for networking
   - ink! smart contracts
   - substrate-contracts-node
-
 
 - todo: describe gadgets + intents, [link to gadgets readme](./fangorn/src/gadget/README.md)
 
@@ -69,14 +70,14 @@ For a quick start that runs everything locally, follow [option B](#option-b-auto
     > Note: pubkey is written to pubkey.txt and ticket is written to ticket.txt
 
 ``` sh
-    ./target/debug/fangorn run \
-    --bind-port 9945 
-    --rpc-port 30334 \
-    --bootstrap-pubkey 2ec177c3b8442215520052b55d2f9cef09ae0a65d35769a3f63b3659c099ccb2 \
-    --bootstrap-ip 172.31.149.62:9944 \
-    --ticket docaaacbsx4px23g66nfvyg4olvhsbm4s4477sj6c4b33lutfev6ym4ap7iaexmc56dxbccefksabjlkxjpttxqtlqkmxjvo2nd6y5tmwoathgleajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55ruhj52ayavqolfponju \
-    --index 1 \
-    --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
+./target/debug/fangorn run \
+--bind-port 9999 \
+--rpc-port 30335 \
+--bootstrap-pubkey 61dc255b12378d441c54fab3be9f380b58e4eb153b296b16f00e20179bb0b9f0 \
+--bootstrap-ip 172.31.149.62:9933 \
+--ticket docaaacaxzwhvoasmzkscqxaeciht74plakvljgysk4opsq7cmyfqzbmm5aafq5yjk3ci3y2ra4kt5lhpu7hafvrzhlcu5ss2yw6ahcaf43wc47aajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55ruhz54ayavqolfponju \
+--index 2 \
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
 #### Option B: Automatically start two instances
@@ -134,7 +135,7 @@ e.g. using the Psp22 intent
 --filename test.pdf \
 --config-path config.txt \
 --keystore-dir tmp/keystore \
---intent "Psp22(5DiTZLwsFHd19DQcQeYrCA67LKXbarXk3HBp9NWEsA43Mpp4, 1)" \
+--intent "Psp22(5DAhorztkEqQwhkAH4dDJVdmLGYN1STwdaWd6St3kShLegGD, 1)" \
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
@@ -144,7 +145,7 @@ e.g. for sr25519 signatures
 ``` sh
 ./target/debug/quickbeam encrypt \
 --message-path test.txt \
---filename test.txt \
+--filename test1.txt \
 --config-path config.txt \
 --keystore-dir tmp/keystore \
 --intent "Sr25519()" \
@@ -159,7 +160,7 @@ e.g. Using the password intent (create a test.txt locally)
 ./target/debug/quickbeam decrypt \
 --filename test.txt \
 --config-path config.txt \
---witness test \
+--witness test \ 
 --pt-filename test.txt \
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
@@ -190,6 +191,8 @@ First produce a valid sr25519 signature on the message (acct_nonce).
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
+72759386929f53f677968d4fe5e2d2e0787dc40f692bde971595f91a98e3082cf79fcbfbea4b48fe66c4a68693f88952f3727cc2c227a1886dd0215e92f60a8c
+
 ### Entmoot
 
 Entmoot is a TUI for interacting with Fangorn. It is similar to quickbeam, but provides better UX. 
@@ -197,6 +200,16 @@ Entmoot is a TUI for interacting with Fangorn. It is similar to quickbeam, but p
 1. From the root run: `cargo run -p entmoot`
 
 2. To quit hit the ESC key
+
+### Iris Visualizer UI
+
+This is a basic react app, provided as a convenience for now, for deploying new psp22 contracts and for reading data and decoding intents from the iris contract.
+
+``` sh
+cd ui
+npm i 
+npm run start
+```
 
 ### Hackathon Scope
 
@@ -260,8 +273,7 @@ Seller:
 - I want to publish it once and then be able to go offline forever while still reaping benefit when copies are sold.
 Buyer: If I buy your book for $X, then I own it. I do not want to pay more fees to read it - I just pay one fee and am done forever.
 
-### NFT Types
-NFTs define data access priveleges
+### NFT Types priveleges
 1. Perpetual NFTs: An NFT that allows data access in perpetuity. So long as the ciphertext is accessible, users who own this NFT can access that data.
   Use cases: Privileged roles and access management (admin, executive, developer,...), personal data ownership (music albums, movies, tv shows)
 2. Time gated NFTs: An NFT that allows data access over a period of time. Once time expires data access is lost.
@@ -269,17 +281,23 @@ NFTs define data access priveleges
 3. N-time access NFTs: An NFT that allows data access a total number of N times. Once data has been accessed N times using that NFT, data access is lost.
   Use cases: IDK but I bet someone creative can come up with something :p
 4. Revokable Access Tokens
+---
 
 Password
 Psp22-Ownership
 Signature
+
+---
+
 DaoMembership
 Time
 GPS (as a password)
 API & Verification logic => gadget 
-proof-of-x: `it rained in dallas on sunday according to weather.com`
+proof-of-x: `it rained in Dallas on sunday according to weather.com`
 
 => wrap them all in zkps (e.g. circom)
+
+----
 
 #### TODOs
 

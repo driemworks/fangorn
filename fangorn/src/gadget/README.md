@@ -72,10 +72,10 @@ Currently, Fangorn supports `Password`, `Psp22`, and `Sr25519` intent types. So,
 ``` sh
 ./target/debug/quickbeam encrypt \
 --message-path test.pdf \
---filename test.pdf \
+--filename test2.pdf \
 --config-path config.txt \
 --keystore-dir tmp/keystore \
---intent "Psp22(5GYxKttJUeGYVhDYL3FpNYyw2MdXwpphbNp7ujLX1KvkS5Ds, 1) && Sr25519()" \
+--intent "Psp22(5DHHL4pkrLzxcYRbU5kpt82MDaJYjmSjtEUzjnauHUehU7Td, 1) && Sr25519()" \
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
@@ -86,8 +86,10 @@ For the Psp22 statement ("The account with pubkey X owns at least the minimum am
 For the sr25519 statement ("I know the secret key to the public key that produced a valid signature on a message equal to the latest nonce in the substrate chain for the associated account."), first sign the latest nonce (right now, I do this by manually querying system > account using polkadotjs, but could probably be integrated). Then, concatenate the public key with the signature (hex enocded, but drop 0x). For example:
 
 - pubkey: `5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3`
-- signature: `8e819e577a476bd3bb9cd2c5e5521a499cd4a0e0a896f8ecb091c6579278923d52c3f579c854d5f0ba76b6e0266eb8851d7bbfb7c59c70cb036678714146c48d`
+- signature: `8a18f0ce316bed54261c939fea6c8f07778300876e690b88b15f0eded0efc54666a4d2823292f9f54c99554cd4925b6ef9dfcf1edc4a406cf393b537c7b53788`
 - witness: `5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK38e819e577a476bd3bb9cd2c5e5521a499cd4a0e0a896f8ecb091c6579278923d52c3f579c854d5f0ba76b6e0266eb8851d7bbfb7c59c70cb036678714146c48d`
+
+5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3, 5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK38a18f0ce316bed54261c939fea6c8f07778300876e690b88b15f0eded0efc54666a4d2823292f9f54c99554cd4925b6ef9dfcf1edc4a406cf393b537c7b53788
 
 So the full witness for the statement "I own at least the minimum balance of the psp22" is:
 
@@ -99,7 +101,7 @@ So the full witness for the statement "I own at least the minimum balance of the
 ./target/debug/quickbeam decrypt \
 --filename test.pdf \
 --config-path config.txt \
---witness "5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3,5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK374e819b20c7dede9ad6062c325a1510a0b9294a8c9b541a50f04a23d27b9ad53f5bba60c84b498097060c300f89c7baba9522a2f31e30430eb78cc0a3b6a3283" \
+--witness "5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3,5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK38e819e577a476bd3bb9cd2c5e5521a499cd4a0e0a896f8ecb091c6579278923d52c3f579c854d5f0ba76b6e0266eb8851d7bbfb7c59c70cb036678714146c48d" \
 --pt-filename test.pdf \
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```

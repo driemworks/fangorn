@@ -105,10 +105,8 @@ impl GadgetRegistry {
         assert!(decoded_witnesses.len() == intents.len(), "Mismatched intents and witnesses");
         // TODO: this is a little dangerous: witnesses MUST be ordered
         // in the same order that gadgets were described when encrypting the message
-
         // if any single one fails, they all fail
         let mut is_valid = true;
-
         for (intent, witness) in intents.iter().zip(decoded_witnesses.iter()) {
             if !self.verify_intent(&intent, &witness).await? {
                 return Err(IntentError::VerificationError(intent.intent_type.clone()));
