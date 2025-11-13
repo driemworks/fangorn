@@ -6,7 +6,6 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
     Frame,
 };
-use tui_textarea::TextArea;
 
 
 use crate::{App, CurrentScreen};

@@ -20,8 +20,8 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             if app.input_selection == 0 {
                 app.input_selection = 1;
             } else {
-                let password = app.password_input.as_mut().unwrap().lines().join("\n");
-                let filename = app.filename_input.as_mut().unwrap().lines().join("\n");
+                let password = app.password_input.lines().join("\n");
+                let filename = app.filename_input.lines().join("\n");
                 let config_path = String::from("config.txt");
                 let witness_string = &password;
                 let contract_addr = String::from("5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7");
@@ -37,13 +37,9 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         }
         _ => {
             if app.input_selection == 0 {
-                 if let Some(input) = app.filename_input.as_mut() {
-                    input.input(key);
-                 }
+                 app.filename_input.input(key);
             } else {
-                if let Some(input) = app.password_input.as_mut() {
-                    input.input(key);
-                }
+                app.password_input.input(key);
             }
         }
     }
@@ -56,8 +52,8 @@ pub fn render_decrypt_info(app: &mut App, frame: &mut Frame) {
         Constraint::Min(10),   // File explorer
     ]);
     let [filename_area, password_area] = vertical_layout.areas(frame.area());
-    let password_input = app.password_input.as_mut().unwrap();
-    let filename_input = app.filename_input.as_mut().unwrap();
-    frame.render_widget(password_input.widget(), password_area);
-    frame.render_widget(filename_input.widget(), filename_area);
+    let password_input = &app.password_input;
+    let filename_input = &app.filename_input;
+    frame.render_widget(password_input, password_area);
+    frame.render_widget(filename_input, filename_area);
 }

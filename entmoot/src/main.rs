@@ -1,6 +1,7 @@
 use color_eyre::Result;
 
 use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
+use ratatui::style::Modifier;
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
@@ -37,10 +38,10 @@ pub struct App {
     file_path: Option<String>,
     /// the text area for password input
     /// Used for both encryption and decryption
-    password_input: Option<TextArea<'static>>,
+    password_input: TextArea<'static>,
     /// the text area for filename input
     /// only used during decryption
-    filename_input: Option<TextArea<'static>>,
+    filename_input: TextArea<'static>,
 
     /// used to toggle between password_input and filename_input
     input_selection: u8
@@ -184,7 +185,11 @@ impl App {
             CurrentScreen::KeyResults => key_results_screen::render_key_results_screen(self, frame),
             CurrentScreen::EncryptScreen => encrypt_screen::render_file_explorer_screen(self, frame),
             CurrentScreen::PasswordSelection => password_encryption::render_password_selection(self, frame),
-            CurrentScreen::DecryptScreen => decrypt_screen::render_decrypt_info(self, frame), 
+            CurrentScreen::DecryptScreen => {
+                App::activate(&mut self.filename_input);
+                App::inactivate(&mut self.password_input);
+                decrypt_screen::render_decrypt_info(self, frame)
+            }, 
         }
         // Outer border
         frame.render_widget(
@@ -217,6 +222,28 @@ impl App {
 
     pub fn reset_filename_input(&mut self) {
         self.filename_input = initialize_filename_input();
+    }
+
+    fn inactivate(textarea: &mut TextArea<'_>) {
+        textarea.set_cursor_line_style(Style::default());
+        textarea.set_cursor_style(Style::default());
+        textarea.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .style(Style::default().fg(Color::DarkGray))
+                .title(" Inactive (^X to switch) "),
+        );
+    }
+
+    fn activate(textarea: &mut TextArea<'_>) {
+        textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
+        textarea.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
+        textarea.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .style(Style::default())
+                .title(" Active "),
+        );
     }
 
 }
@@ -291,7 +318,7 @@ fn render_footer(area: Rect, frame: &mut Frame) {
     frame.render_widget(footer, area);
 }
 
-fn initialize_password_input() -> Option<TextArea<'static>> {
+fn initialize_password_input() -> TextArea<'static> {
     // initialize the password input
     let mut textarea = TextArea::default();
     textarea.set_cursor_line_style(Style::default());
@@ -299,13 +326,13 @@ fn initialize_password_input() -> Option<TextArea<'static>> {
     textarea.set_placeholder_text("Please enter your password");
     textarea.set_style(Style::default().fg(Color::LightGreen));
     textarea.set_block(Block::default().borders(Borders::ALL).title("Password"));
-    Some(textarea)
+    textarea
 }
-fn initialize_filename_input() -> Option<TextArea<'static>> {
+fn initialize_filename_input() -> TextArea<'static> {
     let mut filename_text_area = TextArea::default();
     filename_text_area.set_cursor_line_style(Style::default());
     filename_text_area.set_placeholder_text("Please enter the file name");
     filename_text_area.set_style(Style::default().fg(Color::LightGreen));
     filename_text_area.set_block(Block::default().borders(Borders::ALL).title("File Name"));
-    Some(filename_text_area)
+    filename_text_area
 }

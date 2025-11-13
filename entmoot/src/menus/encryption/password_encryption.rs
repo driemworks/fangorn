@@ -17,7 +17,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         KeyCode::Enter => {
             // Get the input and handle confirmation logic
             // assuming the input element is already initialized...
-            let password = app.password_input.as_mut().unwrap().lines().join("\n");
+            let password = app.password_input.lines().join("\n");
             let file_path = app.file_path.as_mut().unwrap();
             let filename_raw = Path::new(file_path)
                 .file_name()
@@ -31,20 +31,18 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             handle_encrypt(&filename, &filename, &config_path, &keystore_path, &intent_str, &contract_addr).await;
             // use password for encryption
             // Clear state and move on
-            app.password_input = None;
+            app.reset_password_input();
             app.file_path = None;
             app.current_screen = CurrentScreen::Main;
         }
         _ => {
-            if let Some(input) = app.password_input.as_mut() {
-                input.input(key);
-            }
+            app.password_input.input(key);
         }
     }
 }
 
 pub fn render_password_selection(app: &mut App, frame: &mut Frame) {
     let area = frame.area();
-    let input = app.password_input.as_mut().unwrap();
-    frame.render_widget(input.widget(), area);
+    let input = &app.password_input;
+    frame.render_widget(input, area);
 }
