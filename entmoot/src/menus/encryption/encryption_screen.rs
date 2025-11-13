@@ -154,7 +154,7 @@ pub fn render_encryption_inputs(app: &mut App, frame: &mut Frame) {
         let contract_split = Layout::horizontal([
             Constraint::Max(5),
             Constraint::Min(10),
-            Constraint::Min(5),
+            Constraint::Max(30),
             Constraint::Max(5)
         ]);
         let [_, contract_address_area, token_count_area, _] = contract_split.areas(contract_area_vert);
@@ -192,7 +192,10 @@ fn match_num_chars(app: &mut App, key: KeyEvent) {
     match key.code {
         KeyCode::Char('0') => {
             App::activate(&mut app.token_count_input);
-            app.token_count_input.input(key);
+            let token_count = app.token_count_input.lines().join("\n");
+            if token_count.len() > 0 {
+                app.token_count_input.input(key);
+            }
         }
         KeyCode::Char('1') => {
             App::activate(&mut app.token_count_input);

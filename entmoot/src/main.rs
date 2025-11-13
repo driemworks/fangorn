@@ -26,7 +26,7 @@ const FILENAME_INPUT_TITLE: &str = "Filename";
 const PSP22_INPUT_PLACEHOLDER: &str = "Please enter the psp22 contract address";
 const PSP22_INPUT_TITLE: &str = "Contract Address";
 
-const PSP22_TOKEN_COUNT_PLACEHOLDER: &str = "Please enter token amount (numbers only)";
+const PSP22_TOKEN_COUNT_PLACEHOLDER: &str = "Numbers only";
 const PSP22_TOKEN_TITLE: &str = "Token Amount";
 
 

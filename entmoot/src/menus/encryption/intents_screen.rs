@@ -3,6 +3,7 @@ use std::path::Path;
 use fangorn::crypto::cipher::handle_encrypt;
 use color_eyre::Result;
 use ratatui::crossterm::event::{Event, KeyCode};
+use ratatui::layout::Rect;
 use ratatui::style::Stylize;
 use ratatui::widgets::{BorderType, List, ListItem};
 use ratatui::{
@@ -17,7 +18,7 @@ use crate::{App, CurrentScreen};
 
 pub async fn handle_input(app: &mut App, key_code: KeyCode) {
     match key_code {
-        KeyCode::Esc | KeyCode::Char('c') => {
+        KeyCode::Esc | KeyCode::Char('q') => {
             app.current_screen = CurrentScreen::Main;
             app.generated_pubkey = None;
             app.reset_intent_list();
@@ -82,12 +83,12 @@ pub async fn handle_input(app: &mut App, key_code: KeyCode) {
 pub fn render_intents_screen(app: &mut App, frame: &mut Frame) {
 
     let vertical_layout = Layout::vertical([
-        Constraint::Length(10), // Title
+        Constraint::Max(1),
         Constraint::Min(10),    // Menu
         Constraint::Length(3),  // Footer
     ]);
 
-    let [_, menu_area, _] = vertical_layout.areas(frame.area());
+    let [_, menu_area, footer_area] = vertical_layout.areas(frame.area());
 
         // Center the menu
     let menu_layout = Layout::vertical([
@@ -136,6 +137,7 @@ pub fn render_intents_screen(app: &mut App, frame: &mut Frame) {
         .highlight_symbol("▶ ");
 
     frame.render_stateful_widget(list, centered_menu, &mut app.intent_list_state);
+    render_footer(footer_area, frame);
 
 }
 
@@ -172,4 +174,11 @@ fn select(app: &mut App) {
         let (_, item_selected) = app.intent_list_items.get_mut(selected).unwrap();
         *item_selected = !*item_selected;
     }
+}
+
+fn render_footer(area: Rect, frame: &mut Frame) {
+    let footer = Paragraph::new("↑↓: Navigate  │  Space: Select/Deselect | Enter: Submit  │  Esc/q: Quit")
+        .style(Style::default().fg(Color::DarkGray))
+        .alignment(Alignment::Center);
+    frame.render_widget(footer, area);
 }
