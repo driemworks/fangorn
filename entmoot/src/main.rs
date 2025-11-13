@@ -246,6 +246,13 @@ impl App {
         textarea.set_block(activate_block);
     }
 
+    pub fn indicate_error(textarea: &mut TextArea<'_>) {
+        textarea.set_style(Style::default().fg(Color::Red));
+        let error_block = textarea.block().unwrap().clone().border_style(Style::default().fg(Color::Red));
+        textarea.set_placeholder_text("Input cannot be empty");
+        textarea.set_block(error_block);
+    }
+
 }
 
 fn render_title(title_area: Rect, frame: &mut Frame) {

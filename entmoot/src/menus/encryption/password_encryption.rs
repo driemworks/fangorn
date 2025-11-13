@@ -18,22 +18,27 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             // Get the input and handle confirmation logic
             // assuming the input element is already initialized...
             let password = app.password_input.lines().join("\n");
-            let file_path = app.file_path.as_mut().unwrap();
-            let filename_raw = Path::new(file_path)
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("unknown");
-            let filename = String::from(filename_raw);
-            let config_path = String::from("config.txt");
-            let keystore_path = String::from("tmp/keystore");
-            let intent_str = String::from(format!("Password({})", password));
-            let contract_addr = String::from("5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7");
-            handle_encrypt(&filename, &filename, &config_path, &keystore_path, &intent_str, &contract_addr).await;
-            // use password for encryption
-            // Clear state and move on
-            cleanup(app);
+            if password.len() == 0 {
+                App::indicate_error(&mut app.password_input);
+            } else {
+                let file_path = app.file_path.as_mut().unwrap();
+                let filename_raw = Path::new(file_path)
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("unknown");
+                let filename = String::from(filename_raw);
+                let config_path = String::from("config.txt");
+                let keystore_path = String::from("tmp/keystore");
+                let intent_str = String::from(format!("Password({})", password));
+                let contract_addr = String::from("5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7");
+                handle_encrypt(&filename, &filename, &config_path, &keystore_path, &intent_str, &contract_addr).await;
+                // use password for encryption
+                // Clear state and move on
+                cleanup(app);
+            }
         }
         _ => {
+            App::activate(&mut app.password_input);
             app.password_input.input(key);
         }
     }
