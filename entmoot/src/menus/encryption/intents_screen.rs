@@ -62,7 +62,7 @@ pub async fn handle_input(app: &mut App, key_code: KeyCode) {
                             App::inactivate(&mut app.token_count_input);
                         }
                         app.current_screen = CurrentScreen::EncryptionInputScreen;
-                        app.menu_title = String::from("Enter Encryption Info");
+                        app.menu_title = String::from(" Enter Encryption Info ");
                     }
                 } else {
                     app.menu_title = String::from(" Decrypt Files ");
@@ -72,7 +72,6 @@ pub async fn handle_input(app: &mut App, key_code: KeyCode) {
                         App::inactivate(&mut app.password_input);
                     }
                 }
-
             }
         }
         KeyCode::Char(' ') => {

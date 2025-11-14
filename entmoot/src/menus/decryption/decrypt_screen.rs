@@ -4,7 +4,7 @@ use fangorn::backend::BlockchainBackend;
 use anyhow::Result;
 use fangorn::crypto::cipher::handle_decrypt;
 use fangorn::crypto::keystore::KeystoreError;
-use fangorn::utils::load_mnemonic;
+use fangorn::utils::{decode_public_key, load_mnemonic};
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::{Alignment, Rect};
 use ratatui::style::{Color, Style};
@@ -101,7 +101,8 @@ async fn prepare_witness_string(app: &mut App, password: String) -> Result<Strin
     if app.display_password_input && app.display_contract_address_input && app.sr25519_intent {
         // All chosen
         let pubkey = signer.public_key().to_account_id().to_string();
-        let message_bytes = app.substrate_backend.as_ref().unwrap().nonce().await.unwrap().to_le_bytes();
+        let pubkey_bytes = decode_public_key(&pubkey);
+        let message_bytes = app.substrate_backend.as_ref().unwrap().nonce(pubkey_bytes).await.unwrap().to_le_bytes();
         let signature = signer.sign(&message_bytes).0;
         let signature_hex = hex::encode(signature);
         
@@ -110,7 +111,8 @@ async fn prepare_witness_string(app: &mut App, password: String) -> Result<Strin
     } else if !app.display_password_input && app.display_contract_address_input && app.sr25519_intent {
         // Token and sr25519
         let pubkey = signer.public_key().to_account_id().to_string();
-        let message_bytes = app.substrate_backend.as_ref().unwrap().nonce().await.unwrap().to_le_bytes();
+        let pubkey_bytes = decode_public_key(&pubkey);
+        let message_bytes = app.substrate_backend.as_ref().unwrap().nonce(pubkey_bytes).await.unwrap().to_le_bytes();
         let signature = signer.sign(&message_bytes).0;
         let signature_hex = hex::encode(signature);
         witness_string = String::from(format!("{},{}{}", pubkey, pubkey, signature_hex));
@@ -118,7 +120,8 @@ async fn prepare_witness_string(app: &mut App, password: String) -> Result<Strin
     } else if app.display_password_input && !app.display_contract_address_input && app.sr25519_intent {
         // password and sr25519
         let pubkey = signer.public_key().to_account_id().to_string();
-        let message_bytes = app.substrate_backend.as_ref().unwrap().nonce().await.unwrap().to_le_bytes();
+        let pubkey_bytes = decode_public_key(&pubkey);
+        let message_bytes = app.substrate_backend.as_ref().unwrap().nonce(pubkey_bytes).await.unwrap().to_le_bytes();
         let signature = signer.sign(&message_bytes).0;
         let signature_hex = hex::encode(signature);
         witness_string = String::from(format!("{},{}{}", password, pubkey, signature_hex));
@@ -140,7 +143,8 @@ async fn prepare_witness_string(app: &mut App, password: String) -> Result<Strin
     } else if !app.display_password_input && !app.display_contract_address_input && app.sr25519_intent {
         // only sr25519
         let pubkey = signer.public_key().to_account_id().to_string();
-        let message_bytes = app.substrate_backend.as_ref().unwrap().nonce().await.unwrap().to_le_bytes();
+        let pubkey_bytes = decode_public_key(&pubkey);
+        let message_bytes = app.substrate_backend.as_ref().unwrap().nonce(pubkey_bytes).await.unwrap().to_le_bytes();
         let signature = signer.sign(&message_bytes).0;
         let signature_hex = hex::encode(signature);
         witness_string = String::from(format!("{}{}", pubkey, signature_hex));
