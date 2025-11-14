@@ -55,7 +55,7 @@ impl Gadget for Sr25519Gadget {
             IntentError::VerificationError("Invalid Sr25519 Signature format".into())
         })?;
         // fetch the nonce
-        let nonce = self.backend.nonce().await.unwrap();
+        let nonce = self.backend.nonce(pubkey_bytes).await.unwrap();
         println!("Using nonce: {:?}", nonce);
         // build the message: statement || nonce (statement is empty)
         let mut message = statement.to_vec();

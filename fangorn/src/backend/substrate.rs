@@ -33,11 +33,11 @@ impl SubstrateBackend {
 
 #[async_trait]
 impl BlockchainBackend for SubstrateBackend {
-    async fn nonce(&self) -> Result<u32> {
-        let acct_id = AccountId32(self.signer.public_key().0);
+    async fn nonce(&self, pubkey: [u8;32]) -> Result<u32> {
+        let acct_id = AccountId32(pubkey);
         // query system > account
         let account_storage = runtime::storage().system().account(acct_id);
-        let account_info = self
+        let account_info = self 
             .client
             .storage()
             .at_latest()
