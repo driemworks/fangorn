@@ -14,3 +14,7 @@ fangorn.workspace = true
 ratatui-textarea = "0.4.1"
 tui-textarea = "0.7.0"
 tokio.workspace = true
+subxt.workspace = true
+subxt-signer.workspace = true
+anyhow.workspace = true
+hex.workspace = true

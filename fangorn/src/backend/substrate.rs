@@ -29,6 +29,10 @@ impl SubstrateBackend {
 
         Ok(Self { client, signer })
     }
+
+    pub fn update_signer(&mut self, signer: Keypair) {
+        self.signer = signer;
+    }
 }
 
 #[async_trait]

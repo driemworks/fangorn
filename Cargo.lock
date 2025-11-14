@@ -2731,12 +2731,16 @@ checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 name = "entmoot"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "color-eyre",
  "crossterm 0.29.0",
  "fangorn",
+ "hex",
  "ratatui 0.29.0",
  "ratatui-explorer",
  "ratatui-textarea",
+ "subxt 0.44.0",
+ "subxt-signer 0.44.0",
  "tokio",
  "tui-textarea",
 ]
