@@ -1,5 +1,7 @@
-use color_eyre::Result;
+// use color_eyre::Result;
+use anyhow::Result;
 
+use fangorn::backend::SubstrateBackend;
 use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
 use ratatui::style::Modifier;
 use ratatui::{
@@ -28,6 +30,8 @@ const PSP22_INPUT_TITLE: &str = "Contract Address";
 
 const PSP22_TOKEN_COUNT_PLACEHOLDER: &str = "Numbers only";
 const PSP22_TOKEN_TITLE: &str = "Token Amount";
+
+const WS_URL: &str = "ws://localhost:9944";
 
 
 // 1. Enum to manage the active screen/view
@@ -71,6 +75,9 @@ pub struct App {
     display_password_input: bool,
     display_contract_address_input: bool,
     sr25519_intent: bool,
+
+    is_encrypt_path: bool,
+    substrate_backend: Option<SubstrateBackend>
 }
 
 impl Default for App {
@@ -98,6 +105,8 @@ impl Default for App {
             display_contract_address_input: false,
             display_password_input: false,
             sr25519_intent: false,
+            substrate_backend: None,
+            is_encrypt_path: true,
             menu_title: String::from(" Main Menu "),
             menu_items: vec!["Generate Keys", "Inspect Keys", "Encrypt", "Decrypt"],
             current_screen: CurrentScreen::Main,
@@ -114,7 +123,7 @@ impl Default for App {
     }
 }
 
-fn main() -> Result<()> {
+fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     let mut terminal = ratatui::init();
     tokio::runtime::Runtime::new()
@@ -128,6 +137,7 @@ fn main() -> Result<()> {
 
 impl App {
     async fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
+        self.substrate_backend = Some(SubstrateBackend::new(String::from(WS_URL), None).await?);
         loop {
             // --- DRAW PHASE ---
             terminal.draw(|frame| {
@@ -209,14 +219,14 @@ impl App {
                 // encrypt
                 2 => {
                     self.menu_title = String::from(" Select File ");
+                    self.is_encrypt_path = true;
                     self.current_screen = CurrentScreen::EncryptFileSelectScreen;
                 }
                 // decrypt
                 3 => {
-                    self.menu_title = String::from(" Decrypt Files ");
-                    App::activate(&mut self.filename_input);
-                    App::inactivate(&mut self.password_input);
-                    self.current_screen = CurrentScreen::DecryptScreen;
+                    self.menu_title = String::from(" Select Intents ");
+                    self.is_encrypt_path = false;
+                    self.current_screen = CurrentScreen::IntentSelection;
                 }
                 _ => {}
             }

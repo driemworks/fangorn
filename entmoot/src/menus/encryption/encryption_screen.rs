@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::time::Duration;
 
 use fangorn::crypto::cipher::handle_encrypt;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
@@ -7,7 +6,6 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::Paragraph;
-use tokio::time::sleep;
 
 
 use crate::{App, CurrentScreen};
@@ -245,8 +243,6 @@ fn match_num_chars(app: &mut App, key: KeyEvent) {
 async fn handle_encrypt_all(app: &mut App, password: String, contract_address: String, token_count: String) {
 
     let mut intent_str = String::from(format!("Password({}) && Psp22({}, {})", password, contract_address, token_count));
-    println!("intent, string {}", intent_str);
-    sleep(Duration::from_secs(5)).await;
     let file_path = app.file_path.as_mut().unwrap();
     let filename_raw = Path::new(file_path)
         .file_name()
