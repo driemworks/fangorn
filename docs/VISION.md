@@ -1,19 +1,5 @@
 # FANGORN
 
----
-
-- **Hackathon**: https://polkadot.devpost.com/
-- **Track**: 3 - Polkadot Tinkerers
-- **Team**: Tony Riemer & Coleman Irby
-- **Github**: 
-  - Fangorn repo: https://github.com/driemworks/fangorn
-  - Silent-Threshold-Encryption repo: https://github.com/driemworks/silent-threshold-encryption/tree/dev
-- **Description**: Decentralized Conditional Access Control: Encrypt data under provable conditions, decrypted by a trustless network.
-
----
-
-[TODO: embed demo here]
-
 ## The Platform Problem
 
 The "platform-economy" [[1]](https://www.ebsco.com/research-starters/technology/platform-economy) is just any economic activity conducted on platforms. Today, >80% of the top performing companies globally are part of the platform economy (e.g. Microsoft, Apple, Nvidia, Alphabet, Meta ). While "many business experts see the platform economy as increasing productivity" and making businesses more efficient and this is not untrue. Over the last two decades, big tech has transformed the global economy, but it comes at a cost.

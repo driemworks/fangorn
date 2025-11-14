@@ -93,7 +93,7 @@ For the sr25519 statement ("I know the secret key to the public key that produce
 
 So the full witness for the statement "I own at least the minimum balance of the psp22" is:
 
-`5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3,5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK38e819e577a476bd3bb9cd2c5e5521a499cd4a0e0a896f8ecb091c6579278923d52c3f579c854d5f0ba76b6e0266eb8851d7bbfb7c59c70cb036678714146c48d`
+`5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3,5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3764a2fdee6084f925e0e1bbbe007c914fada5f637c6899d12f52caea276e1d3c43addd2cc13d9970850a4cda95d69865bbf13f24b79697d5030ec6511b970680`
 
 > todo: that's pretty redundant, we can probably do better
 
@@ -101,7 +101,7 @@ So the full witness for the statement "I own at least the minimum balance of the
 ./target/debug/quickbeam decrypt \
 --filename test.pdf \
 --config-path config.txt \
---witness "5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3,5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK38e819e577a476bd3bb9cd2c5e5521a499cd4a0e0a896f8ecb091c6579278923d52c3f579c854d5f0ba76b6e0266eb8851d7bbfb7c59c70cb036678714146c48d" \
+--witness "5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3,5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK3c88dc165a284a56ebf0a49ff42661b07e86000f8d4e2ba06bf5a618ebda11556a74b685fd4ad41e4c5e9d7434315df1ead4b661286908d97be0f2c81adbb5184" \
 --pt-filename test.pdf \
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```

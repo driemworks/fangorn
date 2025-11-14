@@ -50,6 +50,7 @@ cleanup() {
     find ./tmp/plaintexts -mindepth 1 -delete 2>/dev/null
     echo "Killing substrate contracts node"
     kill "$SCN_PID"
+	kill "$NPM_PID"
     
     # Don't exit - just return to shell
     echo "Cleanup complete."
@@ -133,6 +134,14 @@ fi
 # NOTE: If we modify the contract, then we need to manually update the contract address
 # but normally, it will produce a deterministic contract address 
 cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y
+
+echo "Starting the UI on port 3000"
+cd ui
+npm i
+npm run start &
+cd ..
+NPM_PID=$!
+echo "PID of react app $NPM_PID"
 
 # Start the first instance in the background of current terminal
 echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --contract-addr "$CONTRACT_ADDR""

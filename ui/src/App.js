@@ -159,11 +159,20 @@ const TokenGatedDataApp = () => {
 
   const decodeStatement = (type, statementBytes) => {
     const u8a = statementBytes.toU8a ? statementBytes.toU8a() : statementBytes;
-  
+
     try {
       if (type === 'Psp22') {
-        // psp22 => account id (contract address) + min balance (u128)
-        return api.createType('(AccountId, u32)', u8a).toHuman();
+
+        let data = u8a;
+
+        if (u8a.length > 1) {
+          const codec = api.registry.createType('Compact<u32>', u8a);
+          const prefixLength = codec.encodedLength;
+          // Skip the prefix
+          data = u8a.slice(prefixLength);
+        }
+
+        return api.createType('(AccountId, u128)', data);
       } else if (type === 'Password') {
         const decoded = api.createType('Vec<u8>', u8a);
         const bytes = decoded.toU8a(true);

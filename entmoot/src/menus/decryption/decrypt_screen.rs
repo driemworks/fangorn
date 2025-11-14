@@ -13,7 +13,7 @@ use crate::{App, CurrentScreen};
 
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
     match key.code {
-        KeyCode::Esc | KeyCode::Char('q') => {
+        KeyCode::Esc => {
             cleanup(app);
         }
         KeyCode::Tab =>  {
@@ -39,9 +39,8 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 }
             } else {
                 let config_path = String::from("config.txt");
-                let witness_string = &password;
                 let contract_addr = String::from("5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7");
-                handle_decrypt(&config_path, &filename, witness_string, &filename, &contract_addr).await;
+                handle_decrypt(&config_path, &filename, &password, &filename, &contract_addr).await;
                 cleanup(app);
             }
         }
