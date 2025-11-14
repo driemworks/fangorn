@@ -104,7 +104,7 @@ pub async fn handle_encrypt(
         .await
         .expect("An error occurred when registering intent in shared store");
 
-    println!("> Saved ciphertext to /tmp/{}", &cid.to_string());
+    // println!("> Saved ciphertext to /tmp/{}", &cid.to_string());
 }
 
 // // todo: create generic encrypt and decrypt function here
@@ -193,7 +193,7 @@ pub async fn handle_decrypt(
             _ => panic!("Unknown node"),
         };
 
-        println!("Sending query against rpc port: {:?}", rpc_port);
+        // println!("Sending query against rpc port: {:?}", rpc_port);
         let mut client = RpcClient::connect(format!("http://127.0.0.1:{}", rpc_port))
             .await
             .unwrap();
@@ -214,7 +214,7 @@ pub async fn handle_decrypt(
             .expect("Couldn't deserialize the partial decryption bytes");
     }
 
-    println!("> Collected partial decryptions, attempting to decrypt the ciphertext");
+    // println!("> Collected partial decryptions, attempting to decrypt the ciphertext");
 
     let mut selector = vec![false; MAX_COMMITTEE_SIZE];
     selector[0] = true;
