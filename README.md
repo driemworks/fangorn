@@ -23,6 +23,11 @@
 
 ---
 
+[Brief (2 minute) overview](https://www.youtube.com/watch?v=TcbqWT5AMy4)
+[5 minute demo](https://www.youtube.com/watch?v=GCo14J6t220)
+
+---
+
 Fangorn is a distributed threshold encryption network enabling practical witness encryption on Polkadot.
 
 It allows you to encrypt data under public statements (**intents**) that are stored onchain, with decryption possible if and only if that condition is provably met (with a valid **witness**). 
@@ -37,7 +42,7 @@ It also supports a modular and dynamic storage backend, which  can be customized
 - decentralized conditional access control via extensible gadgets framework
 - censorship/ransomware resistance
 - fault tolerant, robust, and permissionless threshold encryption network
-- purpose-built on Polkadot: enabling token-gated content and more
+- built on Polkadot: enabling token-gated content and more
 
 ### Intent Bound Data
 
@@ -76,6 +81,8 @@ See the [setup guide](./docs/setup.md).
 
 The idea behind Fangorn is that users can encrypt data for predefined gadgets that determine rules. Fangorn **workers** execute these gadgets, verifying **witness** data provided by the user via an RPC endpoint. Whenever witnesses can be verified, and at least a threshold of nodes agree, then they each produce a **partial decrypt** that can be used to decrypt some ciphertext.
 
+![e2e](./docs/e2e.png)
+
 ### Gadgets (Extensible Access Control)
 
  In the scope of the hackathon, we have implemented three gadgets:
@@ -90,7 +97,6 @@ e.g. `Psp22(contract_address, min_balance) && Sr25519()`
 
 See [gadget docs](./fangorn/src/gadget/README.md) to create custom types.
 
-
 ## Use Cases
 
 The use cases made possible with this framework are very broad, even with our semi-naive implementation.
@@ -101,13 +107,14 @@ The use cases made possible with this framework are very broad, even with our se
   - new kinds of open data marketplaces
   - Time or Location-gated content
   - zkId gated content
-  - proof-of-membership 
+  - proof-of-membership gated content
   - The only limit is your imagination.
 
-**Onchain apps:**
+**Web3 dApps and more:**
 - Games where assets survive studio shutdown
 - DAOs with member-gated resources
 - Social networks without centralized APIs
+- encrypted mempools for MEV elimination (as in [this forum post](https://forum.polkadot.network/t/encrypted-mempools-turning-polkadots-mev-leak-into-treasury-revenue/15817))
 
 **Cross-chain (XCM-ready):**
 - Verify conditions across parachains
@@ -121,6 +128,7 @@ The use cases made possible with this framework are very broad, even with our se
 - [Gadget Framework](./fangorn/src/gadget/README.md) - Create custom access types
 - [Architecture](./docs/architecture.md) - System design overview
 - [Quickbeam CLI](./quickbeam/README.md)
+
 ---
 
 ## Built With
@@ -130,6 +138,16 @@ The use cases made possible with this framework are very broad, even with our se
 - **Silent Threshold Encryption**:
   - [Research paper](https://eprint.iacr.org/2024/263)
   - [Fork](https://github.com/driemworks/silent-threshold-encryption/tree/dev)
+---
+
+## Future Work
+
+This is a proof-of-concept only. While there remains significant work in increasing code quality, especially introducing robust testing the codebase, there are various other, more high level aspects that we think it would be interesting to explore:
+
+- **Shared storage implementations**: We only implemented local shared storage structs for now (meaning Fangorn can only run if all nodes are on the same machine). It should be straightforward to implement shared storage against a centralized db or an IPFS swarm.
+- **zk-gadgets**: currently, each gadget requires a public, plaintext witness that reveals it to the Fangorn workers. This is fine for now, but is not privacy preserving. Instead, we would investigate the implementation of zk-gadgets for verification of witnesses, resulting in a privacy-preserving way to use Fangorn.
+- **economic integration**: This version of Fangorn has no economic incentives for workers to operate, especially to operate honestly. In the future, we would investigate an economic integration layer, perhaps as a smart contract or parachain, where we can leverage staking mechanisms to both authorize and incentivize Fangorn workers. 
+
 ---
 
 ## License

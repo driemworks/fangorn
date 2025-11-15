@@ -60,6 +60,13 @@ You must run a minimum of 2 Fangorn nodes.
 0. Install gnome-terminal `sudo apt install gnome-terminal`
 1. Ensure start_instances.sh has execute priveleges: `chmod +x start_servers.sh`
 2. From the root, run start_instances.sh: `./start_instances.sh`
+
+This will startup two fangorn node, a ui, the substrate contracts node, and deploy the iris contract:
+
+<div>
+    <img src="./start_service.png" style="width: 20%;" />
+</div>
+<!-- ![start-service-diagram](./start_service.png) -->
  
 ### Using Quickbeam
 

@@ -23,10 +23,7 @@ pub mod rpc {
 
 pub use rpc::rpc_client::RpcClient;
 pub use rpc::rpc_server::{Rpc, RpcServer};
-pub use rpc::{
-    AggregateDecryptRequest, AggregateDecryptResponse, PartDecRequest, PartDecResponse,
-    PreprocessRequest, PreprocessResponse,
-};
+pub use rpc::{PartDecRequest, PartDecResponse, PreprocessRequest, PreprocessResponse};
 
 pub struct NodeServer<C: Pairing> {
     pub doc_store: Arc<dyn DocStore>,
@@ -121,4 +118,3 @@ impl<C: Pairing> Rpc for NodeServer<C> {
         }))
     }
 }
-
