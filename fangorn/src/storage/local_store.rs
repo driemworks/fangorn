@@ -89,9 +89,9 @@ impl SharedStore<Cid, Data> for LocalDocStore {
         // Check if file exists
         if filepath.exists() {
             fs::remove_file(&filepath).await?;
-            println!("Removed data for CID: {}", &cid.to_string());
+            // println!("Removed data for CID: {}", &cid.to_string());
         } else {
-            println!("No data found for CID: {}", &cid.to_string());
+            // println!("No data found for CID: {}", &cid.to_string());
         }
 
         Ok(())
