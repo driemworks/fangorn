@@ -1,54 +1,50 @@
 # Fangorn
 
-
 > "Certainly the forest of **Fangorn** is perilous — not least to those that are too ready with their axes; and Fangorn himself, he is perilous too; yet he is wise and kindly nonetheless.”
 ― J.R.R. Tolkien, The Lord of the Rings
 
-Fangorn is a trustless, distributed and permissionless **silent threshold encryption** network that aims to accomplish general purpose 'practical' witness encryption. It uses [a breakthrough in threshold encryption](https://eprint.iacr.org/2024/263) to introduce a new paradigm, which we call `intent-bound data`. It allows data to be encrypted locally under an *intent* that must be satisfied for decryption to pass. Through an extensible **gadget** framework, our system allows for new mechanisms for *decentralized conditional access control* to be easily implemented and **composed** to form more complex statements. In the scope of the hackathon, we have implemented three gadgets:
+---
 
-- **password-gadget** - a minimalistic gadget implementation that allows data to be encrypted under a (one-time-use) password
-- **psp22-gadget** - allows data to be encrypted such that knowledge of the public key of anyone owning at least a minimum balance of the token defined in the psp22 contract can decrypt the data
-- **sr25519-gadget** - verify a schnorr signature
+- **Hackathon**: https://polkadot.devpost.com/
+- **Track**: 3 - Polkadot Tinkerers
+- **Team**: Tony Riemer & Coleman Irby
+- **Github**: 
+  - Fangorn: https://github.com/driemworks/fangorn
+  - Silent-Threshold-Encryption Fork: https://github.com/driemworks/silent-threshold-encryption/tree/dev
+- **Description**: Decentralized Conditional Access Control: Encrypt data under provable conditions, decrypted by a trustless network.
 
-As stated, gadgets can be **composed** to build more complex statements. To demonstrate, by composing the psp2-gadget and sr25519 gadget, we achieve **token-gated content**. 
+---
 
-e.g. `Psp22(contract_address, min_balance) && Sr25519()`
+**TL;DR**
+- **What**: Trustless & distributed network for encrypting data under provable conditions (witness encryption)
+- **Why**: NFTs prove ownership but don't grant access. Platforms control access through permissions, not ownership.
+- **How**: Silent threshold encryption + Polkadot smart contracts = token-gated content that actually works.
+- **Impact**: Creators control how their data is accessed, buyers own forever.
 
-It supports a modular and dynamic storage backend, which  can be customized for specialized plaintext locations, intent storage locations, and ciphertext download locations. 
+---
 
-- Dependencies and technologies used
-  - describe silent threshold encryption 
-  - iroh for networking
-  - ink! smart contracts
-  - substrate-contracts-node
+Fangorn is a distributed threshold encryption network enabling practical witness encryption on Polkadot.
 
-- todo: make some diagrams? can also do a long form doc on architecture, ste, etc., would be good for the demo
-- todo: describe gadgets + intents, [link to gadgets readme](./fangorn/src/gadget/README.md)
+It allows you to encrypt data under public statements (**intents**) that are stored onchain, with decryption possible if and only if that condition is provably met (with a valid **witness**). 
 
-- See the [setup guide](./docs/setup.md) to learn how to run Fangorn.
+It uses a breakthrough in threshold encryption, [silent-threshold-encryption](https://eprint.iacr.org/2024/263), to enable a robust, fault-tolerant, and permissionless network where nodes can freely join and leave without requiring an expensive distributed key generation (DKG) ceremony.
 
-### Hackathon Scope
+Through an extensible **gadget** framework, our system allows for new mechanisms for *decentralized conditional access control* to be easily implemented and **composed** to form more complex statements.
 
-#### Project Name
-Fangorn
+It also supports a modular and dynamic storage backend, which  can be customized for specialized plaintext locations, intent storage locations, and ciphertext download locations. 
 
-Track: Track 1 - dApp Track?
-Track: Track 3 - tinkerer track?
+### Key Features
+- decentralized conditional access control via extensible gadgets framework
+- censorship/ransomware resistance
+- fault tolerant, robust, and permissionless threshold encryption network
+- purpose-built on Polkadot: enabling token-gated content and more
 
--  contracts are built using https://forum.polkadot.network/t/pendzl-a-smart-contract-library/5975
+### Intent Bound Data
 
-#### Description
-Fangorn is a p2p threshold encryption network that enables 'practical' witness encryption. 
+We describe the resulting paradigm as intent-bound data. Using Fangorn, users can encrypt messages under *intent*, such as "I own an NFT" or "I am a member of this DAO" without needing to engage with key management system or complex key exchanges or DKG ceremonies. It enables the convenience of web2 with the soverignty and ownership models of web3. Intent-bound data aims to revolutionize access control for web3. **We aim to realize the same UX as piracy, but where creators still get paid.** 
 
-It enables decentralized conditional access control for generic data sets.
+This is a tool for a post-platform economy, enabling:
 
-It acts as a decentralized key management system for Polkadot. 
-Unlike LIT: 
-- more decentralized, permissionless + open protocol
-
-Intent-bound data is revolutionizes access control for web3.
-
-This is a tool for a post-platform economy for:
 - digital property rights: own what you buy instead of renting access. 
 - creatory soverignty: truly control content distribution, not platforms
 - user privacy: no databases, no tracking, no data collection
@@ -56,72 +52,86 @@ This is a tool for a post-platform economy for:
 - convivial tech: value flows to creators and consumers, not parasitic intermediaries
 - resilience: no 'company' that can mishandle the data, no platform to enshittify
 
-"Same UX as piracy, but creators get paid."
+## What We Delivered
 
-Today, web3 is capable of handling cryptographically provably ownership and identity, yet it lacks clear access control mechanisms. 
+- **[fangorn](./fangorn/README.md)** - P2P threshold encryption network (Rust + Iroh)
+- **[iris-contract](./iris-contract/README.md)** - Intent registry (ink!)
+- **[psp22-token](./psp22-token/README.md)** - Example PSP22 token
+- **[quickbeam](./quickbeam/README.md)** - CLI tool
+- **[entmoot](./entmoot/README.md)** - Terminal UI
+- **[iris-visualizer](./iris-visualizer/README.md)** - React web app
 
-The internet and all its connected apps and services are a place for corporations to collect and sell data, to get you hooked on their services, engage in their culture wars and practices. The magic of the early internet is extinct. The fun has been sucked away, but we still spend all of our time there. 
-
-As Camus says: what does any artist truly strive for? global connection and understanding. While the internet stood to be an artform enabling unbounded creativity and understanding that crosses borders, it has largely failed. 
-
-The social and economic impact: streaming services require subscriptions to entire databases and curated servcies rather, with actual artists and creators being unable to sell content for fair market prices. Instead, if creators are unable to license content through a studio, they are instead are restricted  to unreliable rewards through platforms like YouTube, Patreon, or even OnlyFans. Here,  their hard work may reward them, but the systems are inherently designed to reward the platform providers: they are, irrefutably and by design, *exractive* technologies. They monetize peoples' willingness to share and communicate with others by turning users into a product. No ads become 5 second ads become unskippable 10 seconds ads become you being a commodity. Services like Spotify, initially a godsend for digital artists, has since become exploitative, with musicians seeing pennies but illegitimate AI artists unduly profiting by pleasing the algorithm. With the latest sora2 launch, this kind of AI-generated rot, slop, or gold will obliterate the profits and revenue of real human creators. While this could initially be seen as easy wins for many -- generate slop and profit -- it ultimately aims to stagnate and diminish creative output. 
-
-Instead of relying on centralized systems to act as arbiters of data access, threshold encryption and zero knowledge cryptography can be leveraged to enable access by mathematical proof, not by permission. Iris uses breakthroughts in threshold cryptography that allow for the network to function in the absence of trusted setup via distributed key generation (DKG) while enabling internet-scale threshold encryption capabilities. Rather than rely on platforms and permissions to gate access to data, Iris is an open protocol where content owners can determine not only who, but *how* their data can be accessed. 
-
-##### Key Features
-- decentralized access control
-- censorship resistance
-- ransomware resistance
-
-### Use Cases
-
-The general idea:
-Access control in a smart contract
-
-1. Encrypt data under a policy P -> add to IPFS -> publish in Iris
-2. Satisfy policy (witness) -> build proof -> request data access
-3. verify proof -> provide partial decryption
-4. aggregate and decrypt
-
-e.g. a user flow could be...
-Seller:
-- I wrote a book and want to sell it. If you buy my NFT then you should get access.
-- I want to publish it once and then be able to go offline forever while still reaping benefit when copies are sold.
-Buyer: If I buy your book for $X, then I own it. I do not want to pay more fees to read it - I just pay one fee and am done forever.
-
-### NFT Types priveleges
-1. Perpetual NFTs: An NFT that allows data access in perpetuity. So long as the ciphertext is accessible, users who own this NFT can access that data.
-  Use cases: Privileged roles and access management (admin, executive, developer,...), personal data ownership (music albums, movies, tv shows)
-2. Time gated NFTs: An NFT that allows data access over a period of time. Once time expires data access is lost.
-  Use cases: Temporary priveleged roles and access managent. Licensing of data (streaming services?)
-3. N-time access NFTs: An NFT that allows data access a total number of N times. Once data has been accessed N times using that NFT, data access is lost.
-  Use cases: IDK but I bet someone creative can come up with something :p
-4. Revokable Access Tokens
----
-
-Password
-Psp22-Ownership
-Signature
+See [setup guide](./docs/setup.md) for installation. 
+See [gadget documentation](./fangorn/src/gadget/README.md) for creating custom access control types.
 
 ---
 
-DaoMembership
-Time
-GPS (as a password)
-API & Verification logic => gadget 
-proof-of-x: `it rained in Dallas on sunday according to weather.com`
+## Quick start
 
-=> wrap them all in zkps (e.g. circom)
+See the [setup guide](./docs/setup.md).
 
-----
+---
 
-#### TODOs
+## How it Works
 
-- RPC
-- Merkle Verifier - maybe not for hackathon, future work
-- IPFS integration (or polkastorage or something to give more oomph?) - also future work? can use firebase for now if need be, though will try to stretch. 
+The idea behind Fangorn is that users can encrypt data for predefined gadgets that determine rules. Fangorn **workers** execute these gadgets, verifying **witness** data provided by the user via an RPC endpoint. Whenever witnesses can be verified, and at least a threshold of nodes agree, then they each produce a **partial decrypt** that can be used to decrypt some ciphertext.
 
-- [ ] design smart contract, deploy on IDN? Asset Hub? 
-- [ ] Gossipsub for requesting partial decryptions
-- [ ] masking partial decryptions and unmasking 
-- [ ] user interface design
+### Gadgets (Extensible Access Control)
+
+ In the scope of the hackathon, we have implemented three gadgets:
+
+- **password-gadget** - a minimalistic gadget implementation that allows data to be encrypted under a (one-time-use) password
+- **psp22-gadget** - allows data to be encrypted such that knowledge of the public key of anyone owning at least a minimum balance of the token defined in the psp22 contract can decrypt the data
+- **sr25519-gadget** - verify a schnorr signature
+
+Gadgets can be **composed** to build more complex statements. To demonstrate, by composing the psp2-gadget and sr25519 gadget, we achieve **token-gated content**. 
+
+e.g. `Psp22(contract_address, min_balance) && Sr25519()`
+
+See [gadget docs](./fangorn/src/gadget/README.md) to create custom types.
+
+
+## Use Cases
+
+The use cases made possible with this framework are very broad, even with our semi-naive implementation.
+
+- **Creator economy:**
+  - Direct artist-to-consumer sales:
+    - Encrypt album → Sell PSP22 NFT → Buyer owns forever
+  - new kinds of open data marketplaces
+  - Time or Location-gated content
+  - zkId gated content
+  - proof-of-membership 
+  - The only limit is your imagination.
+
+**Onchain apps:**
+- Games where assets survive studio shutdown
+- DAOs with member-gated resources
+- Social networks without centralized APIs
+
+**Cross-chain (XCM-ready):**
+- Verify conditions across parachains
+- "Holds DOT on relay + owns RMRK NFT"
+
+---
+
+## Documentation
+
+- [Setup Guide](./docs/setup.md) - Installation and configuration
+- [Gadget Framework](./fangorn/src/gadget/README.md) - Create custom access types
+- [Architecture](./docs/architecture.md) - System design overview
+- [Quickbeam CLI](./quickbeam/README.md)
+---
+
+## Built With
+
+- **Polkadot SDK** - Substrate + ink! contracts
+- **Iroh** - P2P networking
+- **Silent Threshold Encryption**:
+  - [Research paper](https://eprint.iacr.org/2024/263)
+  - [Fork](https://github.com/driemworks/silent-threshold-encryption/tree/dev)
+---
+
+## License
+
+Apache 2.0

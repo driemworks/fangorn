@@ -8,9 +8,6 @@ service Rpc {
   
   // request a partial decryption from a node
   rpc Partdec (PartDecRequest) returns (PartDecResponse);
-
-  // coordinator fans out and aggregates
-  rpc AggregateDecrypt(AggregateDecryptRequest) returns (AggregateDecryptResponse);
 }
 
 // request preprocess params from a node (ak, ek) for encryption and decryptiopn
@@ -28,17 +25,4 @@ message PartDecRequest {
 // the partial decryption response
 message PartDecResponse {
   string hex_serialized_decryption = 1;
-}
-
-// request partial decryption aggregation
-message AggregateDecryptRequest {
-    string ciphertext_hex = 1;
-    string content_id = 2;
-    string witness_hex = 3;
-    // num shares needed
-    uint32 threshold = 4;
-}
-
-message AggregateDecryptResponse {
-    string plaintext_hex = 1;
 }

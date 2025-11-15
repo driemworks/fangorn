@@ -1,4 +1,6 @@
-# Quickbeam Encryption flow
+# Quickbeam Encryption flow 
+
+> Note: This is not yet implemented! 
 
 #### Encrypt (Alice)
 // input params

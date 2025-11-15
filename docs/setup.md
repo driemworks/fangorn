@@ -4,6 +4,8 @@ This is a guide to run a local Fangorn forest and manually encrypt/decrypt.
 
 ### Prerequisites (One Time Setup)
 
+This library is built with subxt and requires that you generate the proper metadata.scale. If you intend to use the substrate-contract-node, the included metadata file will suffice. Otherwise, you **must** perform this one-time setup to generate the metadata.
+
 1. [Install cargo contract](https://github.com/use-ink/cargo-contract)
 2. Build the 'iris' contract locally (from the root):
    ``` sh
@@ -17,11 +19,10 @@ This is a guide to run a local Fangorn forest and manually encrypt/decrypt.
 
 ### Build a Network
 
-You must run a minimum of 2 Fangorn nodes, with a maximum of 255 (arbitary and untested).
- 
-For a modular approach (e.g. to setup a node on a dedicated machine), follow [option A](#option-a-manually-starting-the-instances).
+You must run a minimum of 2 Fangorn nodes.
 
-For a quick start that runs everything locally, follow [option B](#option-b-automatically-start-two-instances).
+- For a modular approach (e.g. to setup a node on a dedicated machine), follow [option A](#option-a-manually-starting-the-instances).
+- **(Recommended)** For a quick start that runs everything locally, follow [option B](#option-b-automatically-start-two-instances).
 
 #### Option A: Manually starting the instances
 ##### Substrate Contracts Node Setup
@@ -55,7 +56,7 @@ For a quick start that runs everything locally, follow [option B](#option-b-auto
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
-#### Option B: Automatically start two instances
+#### Option B: All-in-One convenience script
 0. Install gnome-terminal `sudo apt install gnome-terminal`
 1. Ensure start_instances.sh has execute priveleges: `chmod +x start_servers.sh`
 2. From the root, run start_instances.sh: `./start_instances.sh`
@@ -66,15 +67,11 @@ Quickbeam is a basic CLI for generating keys, signing messages, and encryption/d
 
 ##### Generate a new keypair
 
-> Note: for now we just take the first file in the keystore directory and try to use it as the seed
-> when encrypting a file, so you can only have one key in the store at a time right now
-
 ``` sh
 ./target/debug/quickbeam keygen --keystore-dir tmp/keystore
 ```
 
 #### Inspect keys
-
 
 ``` sh
 ./target/debug/quickbeam inspect --keystore-dir tmp/keystore
@@ -86,9 +83,18 @@ Quickbeam is a basic CLI for generating keys, signing messages, and encryption/d
 ./target/debug/quickbeam sign --keystore-dir tmp/keystore --nonce 0
 ```
 
-##### Encrypt a message 
+### Intent-Bound Data with Quickbeam
 
-e.g. using the password intent
+Quickbeam is a basic CLI for interacting with Fangorn. For a more streamlined approach, use [entmoot](#entmoot), a TUI that accomplished much the same as quickbeam.
+
+#### Password-based Encryption
+
+> IMPORTANT! Once you have a valid keypair, **you must fund it** onchain.
+
+**Encryption**
+
+The password based gadget lets you specify a plaintext password as the decryption condition.
+Note that decryption exposes the password to verifiers, making this best used as a one-time-password mechanism.
 
 ``` sh
 ./target/debug/quickbeam encrypt \
@@ -100,9 +106,27 @@ e.g. using the password intent
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
-e.g. using the Psp22 intent
+**Decryption**
 
-> note: you must manually deploy and configure the psp22 contract address 
+``` sh
+./target/debug/quickbeam decrypt \
+--filename test.txt \
+--config-path config.txt \
+--witness test \ 
+--pt-filename test.txt \
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+```
+
+#### PSP22 Based Encryption
+
+The PSP22 gadget allows the file owner to associate access with a given psp22 contract, where they speicify the contract address and minimum balance required (`PSP22(contract_addr, min_balance)`).
+
+> note: you must manually deploy and configure the psp22 contract address. The easiest way to do this is by:
+> 1) importing your mnemonic (from tmp/keystore) into the polkadotjs extension
+> 2) (assuming you used the startup script) navigate to localhost:3000 and click the button to deploy a psp22 contract
+> 3) Copy the contract address, use it below (e.g. `5DAhorztkEqQwhkAH4dDJVdmLGYN1STwdaWd6St3kShLegGD`).
+
+**Encryption**
 
 ``` sh
 ./target/debug/quickbeam encrypt \
@@ -114,33 +138,9 @@ e.g. using the Psp22 intent
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
+**Decryption**
 
-e.g. for sr25519 signatures
-
-``` sh
-./target/debug/quickbeam encrypt \
---message-path test.txt \
---filename test1.txt \
---config-path config.txt \
---keystore-dir tmp/keystore \
---intent "Sr25519()" \
---contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
-```
-
-##### Decrypt a message 
-
-e.g. Using the password intent (create a test.txt locally)
-
-``` sh
-./target/debug/quickbeam decrypt \
---filename test.txt \
---config-path config.txt \
---witness test \ 
---pt-filename test.txt \
---contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
-```
-
-e.g. using the Psp22 intent
+This allows to use knowledge of ANY public key who owns at least the minimum balance of psp22 tokens to decrypt. To reiterate: this is **not yet** token gated content! If Bob owns enough tokens, any Charlie could provide Bob's public key as the witness! We address this below by demonstrating **intent composition**.
 
 > Don't forget to mint a token first!
 
@@ -153,7 +153,21 @@ e.g. using the Psp22 intent
 --contract-addr 5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7
 ```
 
-e.g. sr25519 signatures
+#### Intent Composition
+
+We can encrypt for multiple intents by concatenating them! As mentioned above, the PSP22 gadget doesn't let you gate content in relation to actual token holders, only gating based on *knowledge* of a token holder. Here, we use the `sr25519-gadget`, which expects a witness to be a valid Schnorr signature. By combining the sr25519 and psp22 gadgets, we arrive at token-gated-content! 
+
+``` sh
+./target/debug/quickbeam encrypt \
+--message-path test.txt \
+--filename test1.txt \
+--config-path config.txt \
+--keystore-dir tmp/keystore \
+--intent "Psp22(5DAhorztkEqQwhkAH4dDJVdmLGYN1STwdaWd6St3kShLegGD, 1) && Sr25519()" \
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+```
+
+**Decrypt**
 
 First produce a valid sr25519 signature on the message (acct_nonce).
 
@@ -172,13 +186,12 @@ First produce a valid sr25519 signature on the message (acct_nonce).
 
 Entmoot is a TUI for interacting with Fangorn. It is similar to quickbeam, but provides better UX. 
 
-1. From the root run: `cargo run -p entmoot`
-
+1. From the root run: `cargo run -p entmoot` or `./target/debug/entmoot`
 2. To quit hit the ESC key
 
 ### Iris Visualizer UI
 
-This is a basic react app, provided as a convenience for now, for deploying new psp22 contracts and for reading data and decoding intents from the iris contract.
+This is a basic react app, provided as a convenience for now, for deploying new psp22 contracts and for reading data and decoding intents from the iris contract. The `start_server` script will start the UI on port 3000. It lets you view registered files in the iris contract and decode intents to plaintext.
 
 ``` sh
 cd ui
