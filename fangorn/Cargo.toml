@@ -22,8 +22,6 @@ sp-keyring.workspace = true
 sp-keystore.workspace = true
 sp-application-crypto.workspace = true
 sp-runtime.workspace = true
-sp-weights.workspace = true
-jsonrpsee.workspace = true
 bip39.workspace = true
 sha2.workspace = true
 
@@ -33,7 +31,6 @@ ark-poly.workspace = true
 rand.workspace = true
 ark-bls12-381.workspace = true
 rand_core.workspace = true
-postcard.workspace = true
 clap.workspace = true
 tokio.workspace = true
 tarpc.workspace = true

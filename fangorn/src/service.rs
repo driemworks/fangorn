@@ -1,5 +1,3 @@
-// src/service.rs
-
 use anyhow::Result;
 use ark_ec::pairing::Pairing;
 use ark_serialize::CanonicalSerialize;
@@ -27,10 +25,7 @@ use crate::backend::SubstrateBackend;
 use crate::gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget};
 use crate::node::*;
 use crate::rpc::server::{NodeServer, RpcServer};
-use crate::storage::{
-    contract_store::ContractIntentStore,
-    local_store::LocalDocStore,
-};
+use crate::storage::{contract_store::ContractIntentStore, local_store::LocalDocStore};
 use crate::types::*;
 
 /// Configuration for starting a full node service
@@ -69,12 +64,6 @@ pub struct ServiceHandle<C: Pairing> {
     pub ticket: String,
     pub doc: Doc<FlumeConnector<Response, Request>>,
 }
-
-// build a service that connects to peers but doesn't sync,
-// does not produce shares, only operates the 'agg and dec' rpc and peer sync
-// this will be used by users to aggregate shares,
-// so we don't need to manually configure peer addresses.
-// pub async fn build_partial_service<C: Pairing>() -> Result<()> { }
 
 /// Build and start the full Fangorn node service
 pub async fn build_full_service<C: Pairing>(
@@ -330,7 +319,6 @@ async fn run_state_sync<C: Pairing>(
     bootstrap_peers: Option<Vec<NodeAddr>>,
 ) -> Result<()> {
     // to sync the doc with peers we need to read the state of the doc and load it
-    // doc_stream.start_sync(vec![]).await.unwrap();
     let peers = bootstrap_peers.unwrap_or_default();
     doc_stream.start_sync(peers).await.unwrap();
 

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::prelude::vec::Vec;
@@ -18,7 +17,6 @@ pub struct CID(pub Vec<u8>);
 #[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 pub struct Intent(pub Vec<u8>);
 
-/// Entry that can reference external PSP22 contracts
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 #[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]

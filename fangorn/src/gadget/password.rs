@@ -1,6 +1,6 @@
 use crate::gadget::*;
 use async_trait::async_trait;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::fmt::Debug;
 
 #[derive(Debug)]
@@ -40,5 +40,4 @@ mod test {
         let actual_hash = gadget.parse_intent_data(data).unwrap();
         assert_eq!(&expected_hash[..], actual_hash);
     }
-
 }
