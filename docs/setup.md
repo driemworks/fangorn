@@ -63,10 +63,7 @@ You must run a minimum of 2 Fangorn nodes.
 
 This will startup two fangorn node, a ui, the substrate contracts node, and deploy the iris contract:
 
-<div>
-    <img src="./start_service.png" style="width: 20%;" />
-</div>
-<!-- ![start-service-diagram](./start_service.png) -->
+![start-service-diagram](./start_service.png)
  
 ### Using Quickbeam
 

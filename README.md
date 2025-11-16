@@ -23,8 +23,9 @@
 
 ---
 
-[Brief (2 minute) overview](https://www.youtube.com/watch?v=TcbqWT5AMy4)
-[5 minute demo](https://www.youtube.com/watch?v=GCo14J6t220)
+→ [Brief (2 minute) overview](https://www.youtube.com/watch?v=TcbqWT5AMy4)
+
+→ [5 minute demo](https://www.youtube.com/watch?v=GCo14J6t220)
 
 ---
 
@@ -48,14 +49,13 @@ It also supports a modular and dynamic storage backend, which  can be customized
 
 We describe the resulting paradigm as intent-bound data. Using Fangorn, users can encrypt messages under *intent*, such as "I own an NFT" or "I am a member of this DAO" without needing to engage with key management system or complex key exchanges or DKG ceremonies. It enables the convenience of web2 with the soverignty and ownership models of web3. Intent-bound data aims to revolutionize access control for web3. **We aim to realize the same UX as piracy, but where creators still get paid.** 
 
-This is a tool for a post-platform economy, enabling:
+This is a tool for a **post-platform economy**:
 
 - digital property rights: own what you buy instead of renting access. 
-- creatory soverignty: truly control content distribution, not platforms
+- creatory soverignty: truly control content distribution instead of relying on platforms
 - user privacy: no databases, no tracking, no data collection
-- permissionless & decentralized: can't be shut down, censored, or controlled
-- convivial tech: value flows to creators and consumers, not parasitic intermediaries
-- resilience: no 'company' that can mishandle the data, no platform to enshittify
+- permissionless & decentralized: can't be shut down, workers don't know what they are decrypting
+- convivial tech: value flows to creators and consumers, not intermediaries
 
 ## What We Delivered
 
@@ -66,8 +66,9 @@ This is a tool for a post-platform economy, enabling:
 - **[entmoot](./entmoot/README.md)** - Terminal UI
 - **[iris-visualizer](./iris-visualizer/README.md)** - React web app
 
-See [setup guide](./docs/setup.md) for installation. 
-See [gadget documentation](./fangorn/src/gadget/README.md) for creating custom access control types.
+→ See [setup guide](./docs/setup.md) for installation. 
+
+→ See [gadget documentation](./fangorn/src/gadget/README.md) for creating custom access control types.
 
 ---
 
@@ -80,6 +81,21 @@ See the [setup guide](./docs/setup.md).
 ## How it Works
 
 The idea behind Fangorn is that users can encrypt data for predefined gadgets that determine rules. Fangorn **workers** execute these gadgets, verifying **witness** data provided by the user via an RPC endpoint. Whenever witnesses can be verified, and at least a threshold of nodes agree, then they each produce a **partial decrypt** that can be used to decrypt some ciphertext.
+
+Fangorn operates as a distributed p2p network. After initial setup, the nodes **never** need to communicate again unless gossiping information related to a new node joining the forest. Encryption is completely non-interactive, while decryption requires calling each nodes' RPC.
+
+For encryption, users simply:
+1. define their intent (must be supported by Fangorn)
+2. Encrypt their data under Fangorn's public encryption key 
+3. Store the ciphertext in some kind of shared storage
+4. Store the intent in a smart contract
+and that's it!
+
+For decryption, the process is somewhat more complex, involving interaction with the Fangorn network. This interaction is done by a simple RPC call. To decrypt:
+1. Read the intent from the smart contract and produce a vdalid witness
+2. Request t-of-n partial decryptions from Fangorn workers
+3. Aggregated them, and fetch the ciphertext from shared storage
+4. Decrypt the ciphertext and download it
 
 ![e2e](./docs/e2e.png)
 
@@ -111,10 +127,13 @@ The use cases made possible with this framework are very broad, even with our se
   - The only limit is your imagination.
 
 **Web3 dApps and more:**
-- Games where assets survive studio shutdown
-- DAOs with member-gated resources
-- Social networks without centralized APIs
+- conditionally-executed transactions (e.g. password-gated payments)
+- on-chain secret sharing
 - encrypted mempools for MEV elimination (as in [this forum post](https://forum.polkadot.network/t/encrypted-mempools-turning-polkadots-mev-leak-into-treasury-revenue/15817))
+- More robust, data-heavy apps become possible and practical:
+  - e.g. decentralized Spotify, Youtube, etc.
+  - DAOs with member-gated resources
+  - Social networks without centralized APIs
 
 **Cross-chain (XCM-ready):**
 - Verify conditions across parachains
@@ -136,17 +155,19 @@ The use cases made possible with this framework are very broad, even with our se
 - **Polkadot SDK** - Substrate + ink! contracts
 - **Iroh** - P2P networking
 - **Silent Threshold Encryption**:
+  - Built with Arkworks
   - [Research paper](https://eprint.iacr.org/2024/263)
-  - [Fork](https://github.com/driemworks/silent-threshold-encryption/tree/dev)
+  - [Our Fork](https://github.com/driemworks/silent-threshold-encryption/tree/dev)
 ---
 
 ## Future Work
 
 This is a proof-of-concept only. While there remains significant work in increasing code quality, especially introducing robust testing the codebase, there are various other, more high level aspects that we think it would be interesting to explore:
 
-- **Shared storage implementations**: We only implemented local shared storage structs for now (meaning Fangorn can only run if all nodes are on the same machine). It should be straightforward to implement shared storage against a centralized db or an IPFS swarm.
+- **Advanced implementation**: We have outlined a concept for a more advanced and extendable version of intent-bound-data that would make the network more robust. This includes both a new way of bundling intent with data (see: [here](./docs/encryption_flow.md)) as well as as more robust sync protocol. Specifically, our current implementation requires that nodes publish a unique index when joining the network, which is an optimization that we can likely obfuscate using the gossip layer. In addition, worker nodes do not have a keystore right now - they just generate random keys each time. Future work would introduce a more robust keystore for storing iroh keys as well as Fangorn ones.
+- **Shared storage implementations**: We only implemented local shared storage structs for now(meaning Fangorn can only run if all nodes are on the same machine). It should be straightforward to implement shared storage against a centralized db or an IPFS swarm.
 - **zk-gadgets**: currently, each gadget requires a public, plaintext witness that reveals it to the Fangorn workers. This is fine for now, but is not privacy preserving. Instead, we would investigate the implementation of zk-gadgets for verification of witnesses, resulting in a privacy-preserving way to use Fangorn.
-- **economic integration**: This version of Fangorn has no economic incentives for workers to operate, especially to operate honestly. In the future, we would investigate an economic integration layer, perhaps as a smart contract or parachain, where we can leverage staking mechanisms to both authorize and incentivize Fangorn workers. 
+- **Economic integration**: This version of Fangorn has no economic incentives for workers to operate, especially to operate honestly. In the future, we would investigate an economic integration layer, perhaps as a smart contract or parachain, where we can leverage staking mechanisms to both authorize and incentivize Fangorn workers. 
 
 ---
 
