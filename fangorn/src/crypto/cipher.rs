@@ -2,12 +2,11 @@ use crate::rpc::server::*;
 use crate::storage::{
     contract_store::ContractIntentStore,
     local_store::{LocalDocStore, LocalPlaintextStore},
-    AppStore, DocStore, IntentStore, SharedStore,
+    AppStore, IntentStore, SharedStore,
 };
 use crate::types::*;
 use crate::{
-    backend::{BlockchainBackend, SubstrateBackend},
-    crypto::keystore::{Keystore, Sr25519Keystore},
+    backend::SubstrateBackend,
     gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget},
     storage::PlaintextStore,
     utils::load_mnemonic,
@@ -16,14 +15,11 @@ use ark_bls12_381::G2Affine as G2;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::{rand::rngs::OsRng, UniformRand};
 use codec::Encode;
-use multihash_codetable::{Code, MultihashDigest};
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, encryption::encrypt,
     setup::PartialDecryption, types::Ciphertext,
 };
-use sp_application_crypto::Ss58Codec;
 use std::fs;
-use std::str::FromStr;
 use std::sync::Arc;
 
 const MAX_COMMITTEE_SIZE: usize = 2;
@@ -70,7 +66,7 @@ pub async fn handle_encrypt(
     // configure the registry
     let mut gadget_registry = GadgetRegistry::new();
     gadget_registry.register(PasswordGadget {});
-    gadget_registry.register(Psp22Gadget::new(contract_addr.to_string(), backend.clone()));
+    gadget_registry.register(Psp22Gadget::new(backend.clone()));
     gadget_registry.register(Sr25519Gadget::new(backend.clone()));
 
     let app_store = AppStore::new(
@@ -130,7 +126,6 @@ pub async fn handle_decrypt(
         fs::read_to_string(config_path).expect("you must provide a valid config file.");
     let config_bytes = hex::decode(&config_hex).unwrap();
     let config = Config::<E>::deserialize_compressed(&config_bytes[..]).unwrap();
-    // get the ciphertext
     // build the backend
     let backend = Arc::new(
         SubstrateBackend::new(crate::WS_URL.to_string(), None)
@@ -140,7 +135,7 @@ pub async fn handle_decrypt(
     // configure the registry
     let mut gadget_registry = GadgetRegistry::new();
     gadget_registry.register(PasswordGadget {});
-    gadget_registry.register(Psp22Gadget::new(contract_addr.to_string(), backend.clone()));
+    gadget_registry.register(Psp22Gadget::new(backend.clone()));
     gadget_registry.register(Sr25519Gadget::new(backend.clone()));
 
     let app_store = AppStore::new(
@@ -157,7 +152,8 @@ pub async fn handle_decrypt(
         .unwrap()
         .unwrap();
 
-    // living dangerously...
+    // living dangerously...    
+    // get the ciphertext
     let ciphertext_bytes = app_store.doc_store.fetch(&cid).await.unwrap().unwrap();
     let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
     //  get the sys key (TODO: send this as a cli param instead?)

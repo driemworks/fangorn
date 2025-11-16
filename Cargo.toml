@@ -1,57 +1,15 @@
 [workspace.package]
-authors = ["driemworks <driemworks@idealabs.network>"]
+authors = [
+    "Tony <driemworks@idealabs.network>",
+    "Coleman <coleman@idealabs.network>",
+]
 version = "0.1.0"
 edition = "2024"
-homepage = "https://idealabs.network"
 
 [workspace]
 resolver = "2"
 
-members = [
-    "fangorn",
-    "quickbeam",
-    "entmoot",
-    "contract/iris",
-    "contract/psp22",
-]
-
-# [workspace.lints.rust]
-# suspicious_double_ref_op = { level = "allow", priority = 2 }
-# # `substrate_runtime` is a common `cfg` condition name used in the repo.
-# unexpected_cfgs = { level = "warn", check-cfg = [
-# 	'cfg(build_opt_level, values("3"))',
-# 	'cfg(build_profile, values("debug", "release"))',
-# 	'cfg(enable_alloc_error_handler)',
-# 	'cfg(fuzzing)',
-# 	'cfg(ignore_flaky_test)',
-# 	'cfg(substrate_runtime)',
-# ] }
-
-# [workspace.lints.clippy]
-# all = { level = "allow", priority = 0 }
-# bind_instead_of_map = { level = "allow", priority = 2 }              # stylistic
-# borrowed-box = { level = "allow", priority = 2 }                     # Reasonable to fix this one
-# complexity = { level = "warn", priority = 1 }
-# correctness = { level = "warn", priority = 1 }
-# default_constructed_unit_structs = { level = "allow", priority = 2 } # stylistic
-# derivable_impls = { level = "allow", priority = 2 }                  # false positives
-# eq_op = { level = "allow", priority = 2 }                            # In tests we test equality.
-# erasing_op = { level = "allow", priority = 2 }                       # E.g. 0 * DOLLARS
-# extra-unused-type-parameters = { level = "allow", priority = 2 }     # stylistic
-# identity-op = { level = "allow", priority = 2 }                      # One case where we do 0 +
-# if-same-then-else = { level = "allow", priority = 2 }
-# needless-lifetimes = { level = "allow", priority = 2 }               # generated code
-# needless_option_as_deref = { level = "allow", priority = 2 }         # false positives
-# nonminimal-bool = { level = "allow", priority = 2 }                  # maybe
-# option-map-unit-fn = { level = "allow", priority = 2 }               # stylistic
-# stable_sort_primitive = { level = "allow", priority = 2 }            # prefer stable sort
-# too-many-arguments = { level = "allow", priority = 2 }               # (Turning this on would lead to)
-# type_complexity = { level = "allow", priority = 2 }                  # raison d'etre
-# unit_arg = { level = "allow", priority = 2 }                         # stylistic
-# unnecessary_cast = { level = "allow", priority = 2 }                 # Types may change
-# useless_conversion = { level = "allow", priority = 2 }               # Types may change
-# while_immutable_condition = { level = "allow", priority = 2 }        # false positives
-# zero-prefixed-literal = { level = "allow", priority = 2 }            # 00_1000_000
+members = ["fangorn", "quickbeam", "entmoot", "contract/iris", "contract/psp22"]
 
 [workspace.dependencies]
 async-trait = "0.1.89"
@@ -70,7 +28,6 @@ n0-future = "0.1.2"
 
 #crypto
 silent-threshold-encryption = { git = "https://github.com/driemworks/silent-threshold-encryption.git", branch = "dev", default-features = false }
-# silent-threshold-encryption = { path = "../silent-threshold-encryption", default-features = false }
 ark-serialize = "0.5.0"
 ark-std = "0.5.0"
 ark-ec = "0.5.0"
@@ -80,7 +37,7 @@ ark-bls12-381 = "0.5.0"
 rand_core = "0.9.3"
 jsonrpsee = { version = "0.24", features = ["http-client"] }
 bip39 = "2.2.0"
-sha256 = "0.10.9"
+sha2 = "0.10.9"
 
 # substrate
 sp-core = { version = "38.1.0", features = ["std", "full_crypto"] }

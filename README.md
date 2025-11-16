@@ -74,6 +74,8 @@ This is a tool for a **post-platform economy**:
 
 ## Quick start
 
+> Important! The UI fails to run on firefox but will run fine on Chrome and Brave with no issues. We are not sure why this is the case yet, and it remains unresolved.
+
 See the [setup guide](./docs/setup.md).
 
 ---

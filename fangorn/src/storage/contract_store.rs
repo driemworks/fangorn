@@ -1,20 +1,12 @@
 use super::*;
 use crate::{
-    backend::{BlockchainBackend, SubstrateBackend},
+    backend::BlockchainBackend,
     gadget::Intent,
 };
 use async_trait::async_trait;
 use cid::Cid;
-use jsonrpsee::{core::client::ClientT, http_client::HttpClientBuilder};
-use sp_application_crypto::Ss58Codec;
-use sp_core::Pair;
-use sp_weights::Weight;
 use std::sync::Arc;
 use subxt::ext::codec::Encode;
-use subxt::{
-    config::polkadot::AccountId32, dynamic, utils::MultiAddress, OnlineClient, PolkadotConfig,
-};
-use subxt_signer::sr25519::{dev, Keypair};
 
 pub struct ContractIntentStore {
     contract_address: String,

@@ -2,20 +2,17 @@ use crate::backend::BlockchainBackend;
 use crate::gadget::*;
 use async_trait::async_trait;
 use std::sync::Arc;
-use subxt::ext::codec::{Decode, Encode};
+use subxt::ext::codec::Decode;
 
 #[derive(Debug)]
 pub struct Psp22Gadget {
-    /// The contract address of a Psp22 contract
-    contract_address: String,
     /// The backend 
     backend: Arc<dyn BlockchainBackend>,
 }
 
 impl Psp22Gadget {
-    pub fn new(contract_address: String, backend: Arc<dyn BlockchainBackend>) -> Self {
+    pub fn new(backend: Arc<dyn BlockchainBackend>) -> Self {
         Self {
-            contract_address,
             backend,
         }
     }
@@ -114,10 +111,10 @@ impl Gadget for Psp22Gadget {
     }
 }
 
-#[cfg(test)]
-mod test {
+// #[cfg(test)]
+// mod test {
 
-    use super::*;
+//     use super::*;
 
-    fn test_can_parse_intent_data() {}
-}
+//     fn test_can_parse_intent_data() {}
+// }

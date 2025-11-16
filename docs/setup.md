@@ -61,6 +61,8 @@ You must run a minimum of 2 Fangorn nodes.
 1. Ensure start_instances.sh has execute priveleges: `chmod +x start_servers.sh`
 2. From the root, run start_instances.sh: `./start_instances.sh`
 
+> Important! The UI fails to run on firefox but will run fine on Chrome and Brave with no issues. We are not sure why this is the case yet, and it remains unresolved.
+
 This will startup two fangorn node, a ui, the substrate contracts node, and deploy the iris contract:
 
 ![start-service-diagram](./start_service.png)
@@ -194,6 +196,8 @@ Entmoot is a TUI for interacting with Fangorn. It is similar to quickbeam, but p
 2. To quit hit the ESC key
 
 ### Iris Visualizer UI
+
+> Important! The UI fails to run on firefox but will run fine on Chrome and Brave with no issues. We are not sure why this is the case yet, and it remains unresolved.
 
 This is a basic react app, provided as a convenience for now, for deploying new psp22 contracts and for reading data and decoding intents from the iris contract. The `start_server` script will start the UI on port 3000. It lets you view registered files in the iris contract and decode intents to plaintext.
 

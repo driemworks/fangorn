@@ -1,6 +1,6 @@
 use crate::gadget::*;
 use async_trait::async_trait;
-use multihash_codetable::{Code, MultihashDigest};
+use sha2::{Sha256, Digest};
 use std::fmt::Debug;
 
 #[derive(Debug)]
@@ -14,16 +14,31 @@ impl Gadget for PasswordGadget {
 
     /// verify that the witness hashes to the statement
     async fn verify_witness(&self, witness: &[u8], statement: &[u8]) -> Result<bool, IntentError> {
-        let hash = Code::Sha2_256.digest(witness).to_bytes();
-        Ok(hash == statement)
+        let hash = Sha256::digest(witness);
+        Ok(&hash[..] == statement)
     }
 
     // parse raw data to a password verification intent
     // where the question is the hash and the answer is the password
     fn parse_intent_data(&self, data: &str) -> Result<Vec<u8>, IntentError> {
         let answer = data.as_bytes().to_vec();
-        let question = Code::Sha2_256.digest(&answer).to_bytes();
+        let question = Sha256::digest(&answer);
 
-        Ok(question)
+        Ok(question.to_vec())
     }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_can_parse_valid_intent_data() {
+        let gadget = PasswordGadget {};
+        let data: &str = "Password(HelloWorld!)";
+        let expected_hash = Sha256::digest(data.as_bytes().to_vec());
+        let actual_hash = gadget.parse_intent_data(data).unwrap();
+        assert_eq!(&expected_hash[..], actual_hash);
+    }
+
 }

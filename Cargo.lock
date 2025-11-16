@@ -2954,6 +2954,7 @@ dependencies = [
  "sc-keystore",
  "serde",
  "serde_json",
+ "sha2 0.10.9",
  "silent-threshold-encryption",
  "sp-application-crypto 43.0.0",
  "sp-core 38.1.0",

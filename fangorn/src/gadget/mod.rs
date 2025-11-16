@@ -99,21 +99,21 @@ impl GadgetRegistry {
         &self,
         intents: Vec<Intent>,
         mut witness: &[u8],
-    ) -> Result<bool, IntentError> {
+    ) -> Result<bool, IntentError> { // TODO: this coudl return Result<(), IntentError> instead
         // first we need to recover the witnesses
         let decoded_witnesses = Vec::<Vec<u8>>::decode(&mut witness).unwrap();
         assert!(decoded_witnesses.len() == intents.len(), "Mismatched intents and witnesses");
         // TODO: this is a little dangerous: witnesses MUST be ordered
         // in the same order that gadgets were described when encrypting the message
         // if any single one fails, they all fail
-        let mut is_valid = true;
         for (intent, witness) in intents.iter().zip(decoded_witnesses.iter()) {
             if !self.verify_intent(&intent, &witness).await? {
+                // return an error if an intent is not valid
                 return Err(IntentError::VerificationError(intent.intent_type.clone()));
             }
         }
 
-        Ok(is_valid)
+        Ok(true)
 
     }
 

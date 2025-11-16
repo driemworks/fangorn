@@ -1,6 +1,5 @@
 use crate::{backend::BlockchainBackend, gadget::*};
 use async_trait::async_trait;
-use multihash_codetable::{Code, MultihashDigest};
 use sp_core::{sr25519, Pair};
 use std::fmt::Debug;
 
@@ -66,7 +65,7 @@ impl Gadget for Sr25519Gadget {
 
     // This type has no data to parse (yet) - we could make this a generic sig verifier and
     // introduce data=curve/cipher (e.g. Signed(Sr25519))
-    fn parse_intent_data(&self, data: &str) -> Result<Vec<u8>, IntentError> {
+    fn parse_intent_data(&self, _data: &str) -> Result<Vec<u8>, IntentError> {
         Ok(Vec::new())
     }
 }

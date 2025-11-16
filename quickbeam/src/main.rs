@@ -6,7 +6,6 @@ use fangorn::{
         cipher::{handle_decrypt, handle_encrypt},
         keystore::{Keystore, Sr25519Keystore},
     },
-    gadget::{GadgetRegistry, password::PasswordGadget},
 };
 
 #[derive(Parser, Debug)]
@@ -114,13 +113,6 @@ async fn main() -> Result<()> {
             intent,
             contract_addr,
         }) => {
-            // let backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), None).await?);
-
-            // let mut registry = GadgetRegistry::new();
-            // registry.register(PasswordGadget {});
-
-
-
             handle_encrypt(
                 message_path,
                 filename,
@@ -128,7 +120,6 @@ async fn main() -> Result<()> {
                 keystore_dir,
                 intent,
                 contract_addr,
-                // &registry,
             )
             .await;
         }
