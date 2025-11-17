@@ -19,12 +19,13 @@ pub trait Gadget: Send + Sync + Debug {
     fn intent_type_id(&self) -> &'static str;
 
     /// Verify a witness against a statement
-    async fn verify_witness(&self, witness: &[u8], statement: &[u8]) -> Result<bool, IntentError>;
+    async fn verify_witness(&self, witness: &[u8], statement: &[u8]) -> Result<bool, IntentError >;
 
     /// Parse intent-specific data from string (todo: define parsing logic)
     fn parse_intent_data(&self, data: &str) -> Result<Vec<u8>, IntentError>;
 }
 
+// TODO: use thiserror instead
 #[derive(Debug)]
 pub enum IntentError {
     ParseError(String),

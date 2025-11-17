@@ -1,6 +1,8 @@
 use sp_core::crypto::KeyTypeId;
 
 pub mod cipher;
+pub mod decrypt;
+pub mod encrypt;
 pub mod keystore;
 
 // fangorn key type
