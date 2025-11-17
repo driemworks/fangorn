@@ -27,6 +27,7 @@ sha2.workspace = true
 
 ark-std.workspace = true
 ark-ec.workspace = true
+ark-ff.workspace = true
 ark-poly.workspace = true
 rand.workspace = true
 ark-bls12-381.workspace = true
