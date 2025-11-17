@@ -1,5 +1,5 @@
 use crate::node::Node;
-use crate::rpc::server::*;
+use crate::rpc::{resolver::IrohRpcResolver, server::*};
 use crate::storage::{
     contract_store::ContractIntentStore,
     iroh_docstore::IrohDocStore,
@@ -15,6 +15,7 @@ use crate::{
     utils::load_mnemonic,
 };
 use ark_serialize::CanonicalDeserialize;
+use iroh_docs::{DocTicket};
 use silent_threshold_encryption::aggregate::SystemPublicKeys;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -58,12 +59,19 @@ pub async fn handle_decrypt(
 ) {
     // let (sys_keys, _registry, app_store) = local_testnet_setup(contract_addr, None).await;
     let (sys_keys, gadget_registry, app_store) =
-        iroh_testnet_setup(contract_addr, None, node, ticket.clone()).await;
+        iroh_testnet_setup(contract_addr, None, node.clone(), ticket.clone()).await;
     // Parse witnesses
     let witnesses: Vec<&str> = witness_string.trim().split(',').map(|s| s.trim()).collect();
 
+    let doc_ticket = DocTicket::from_str(&ticket).unwrap();
+    let doc_stream = node.docs().import(doc_ticket).await.unwrap();
+    let resolver = IrohRpcResolver {
+        node,
+        doc_stream,
+    };
+
     // Decrypt
-    let client = DecryptionClient::new(config_path, sys_keys, app_store).unwrap();
+    let client = DecryptionClient::new(config_path, sys_keys, app_store, resolver).unwrap();
     client
         .decrypt(filename, &witnesses, pt_filename)
         .await

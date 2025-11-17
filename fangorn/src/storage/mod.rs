@@ -27,6 +27,7 @@ pub trait SharedStore<K, V>: Send + Sync {
 
 /// The docstore is a SharedStore where the key is a cid
 /// and the value is the corresponding message
+// TODO: make the key just a vec instead?
 pub trait DocStore: Send + Sync + SharedStore<Cid, Data> {}
 
 /// shared statement storage to associate CID (data) to intent

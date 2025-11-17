@@ -52,12 +52,12 @@ Options:
 For example, to start a bootnode that runs the iroh networking layer on 9933 and rpc on 30332 (dummy contract address):
 
 ``` sh
-fangorn run \
+./target/debug/fangorn run \
 --bind-port 9933 \
 --rpc-port 30332 \
 --is-bootstrap \
 --index 0  \
---contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
 
 and to sync with it, we must copy the public key and ticket output in the node logs on startup. The necessary config (KZG params) are gossiped to the incoming node from the bootstrap.

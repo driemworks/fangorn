@@ -1,5 +1,8 @@
 use crate::{
-    rpc::server::{PartDecRequest, RpcClient},
+    rpc::{
+        resolver::{IrohRpcResolver, RpcAddressResolver},
+        server::{PartDecRequest, RpcClient},
+    },
     storage::*,
     types::*,
 };
@@ -41,9 +44,13 @@ pub enum DecryptionClientError {
     IntentNotFound(String),
     #[error("Ciphertext not found")]
     CiphertextNotFound,
+    #[error("Failed to find data in the docstore: {0}")]
+    LookupError(String),
+    #[error("Failed to map a node index to a known host:port : {0}")]
+    MissingRpcAddress(usize),
 }
 
-pub struct DecryptionClient<D: DocStore, I: IntentStore, P: PlaintextStore> {
+pub struct DecryptionClient<D: DocStore, I: IntentStore, P: PlaintextStore, R: RpcAddressResolver> {
     config: Config<E>,
     // the Fangorn system keys for the given universe
     // at some point we will want to enable 'multiverse' support
@@ -53,13 +60,17 @@ pub struct DecryptionClient<D: DocStore, I: IntentStore, P: PlaintextStore> {
     threshold: u8,
     // the app store
     app_store: AppStore<D, I, P>,
+    resolver: R,
 }
 
-impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
+impl<D: DocStore, I: IntentStore, P: PlaintextStore, R: RpcAddressResolver>
+    DecryptionClient<D, I, P, R>
+{
     pub fn new(
         config_path: &str,
         system_keys: SystemPublicKeys<E>,
         app_store: AppStore<D, I, P>,
+        resolver: R,
     ) -> Result<Self, DecryptionClientError> {
         let config_hex = fs::read_to_string(config_path)
             .map_err(|e| DecryptionClientError::ConfigReadError(e.to_string()))?;
@@ -73,6 +84,7 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
             app_store,
             system_keys,
             threshold: 1, // just hardcoded to 1 for now, easy
+            resolver,
         })
     }
 
@@ -99,6 +111,8 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
             .await
             .map_err(|e| DecryptionClientError::DocstoreError(e.to_string()))?
             .ok_or(DecryptionClientError::CiphertextNotFound)?;
+
+        println!("we got the ciphertext");
 
         let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..])
             .map_err(|_| DecryptionClientError::DeserializationError)?;
@@ -142,13 +156,12 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
         ak: &AggregateKey<E>,
     ) -> Result<Vec<PartialDecryption<E>>, DecryptionClientError> {
         let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
-
         // TODO: make this configurable/dynamic based on threshold
-        for i in 0..self.threshold as usize {
+        for i in 0..self.threshold as usize { 
             let node_id = ak.lag_pks[i].id;
-            let rpc_port = get_rpc_port(node_id)?;
+            let rpc_addr_url = self.resolver.resolve_rpc_address(node_id).await?;
 
-            let mut client = RpcClient::connect(format!("http://127.0.0.1:{}", rpc_port))
+            let mut client = RpcClient::connect(rpc_addr_url)
                 .await
                 .map_err(|e| DecryptionClientError::RpcError(e.to_string()))?;
 

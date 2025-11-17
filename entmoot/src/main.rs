@@ -1,7 +1,8 @@
 // use color_eyre::Result;
 use anyhow::Result;
-
+use core::net::SocketAddr;
 use fangorn::{backend::SubstrateBackend, node::Node, types::*};
+use iroh::{NodeAddr, PublicKey as IrohPublicKey};
 use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
 use ratatui::style::Modifier;
 use ratatui::{
@@ -13,6 +14,7 @@ use ratatui::{
 use ratatui_explorer::{FileExplorer, Theme};
 use std::sync::Arc;
 use std::time::Duration;
+use std::str::FromStr;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 use tui_textarea::TextArea;
@@ -29,6 +31,10 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(author, version, about = "entmoot")]
 pub struct Cli {
+    #[arg(long)]
+    pub bootstrap_pubkey: String,
+    #[arg(long)]
+    pub bootstrap_rpc: String,
     #[arg(long)]
     pub ticket: String,
 }
@@ -159,7 +165,7 @@ impl App {
 }
 
 // TODO: This is duplicated in quickbeam
-async fn build_node() -> Node<E> {
+async fn build_node(bootstrap_peers: Vec<NodeAddr>) -> Node<E> {
     // setup channels for state synchronization
     let (tx, rx) = flume::unbounded();
     // initialize node parameters and state
@@ -170,17 +176,33 @@ async fn build_node() -> Node<E> {
     let arc_state = Arc::new(Mutex::new(state));
     let arc_state_clone = Arc::clone(&arc_state);
 
-    Node::build(params, rx, arc_state).await
+    let mut node = Node::build(params, rx, arc_state).await;
+    // connect to peers
+    node.try_connect_peers(Some(bootstrap_peers).clone())
+        .await
+        .unwrap();
+
+    node
 }
 
 fn main() -> color_eyre::Result<()> {
     let args = Cli::parse();
     let ticket = args.ticket;
+    let bootstrap_pubkey = args.bootstrap_pubkey;
+    let bootstrap_rpc = args.bootstrap_rpc;
 
     color_eyre::install()?;
     let mut terminal = ratatui::init();
     tokio::runtime::Runtime::new().unwrap().block_on(async {
-        let node = build_node().await;
+        let pubkey = IrohPublicKey::from_str(&bootstrap_pubkey).ok().unwrap();
+        let socket: SocketAddr = bootstrap_rpc.parse().ok().unwrap();
+        let boot = NodeAddr::from((
+                pubkey,
+                None,
+                vec![socket].as_slice(),
+            ));
+
+        let node = build_node(vec![boot]).await;
 
         App::new(node, &ticket)
             .run(&mut terminal)

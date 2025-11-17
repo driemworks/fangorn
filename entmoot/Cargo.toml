@@ -20,3 +20,4 @@ subxt-signer.workspace = true
 anyhow.workspace = true
 hex.workspace = true
 flume.workspace = true
+iroh.workspace = true

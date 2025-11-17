@@ -11,6 +11,7 @@ use silent_threshold_encryption::{
 
 use codec::{Decode, Encode};
 
+pub const RPC_KEY_PREFIX: &str = "rpc-addr-";
 pub const CONFIG_KEY: &str = "config-key";
 
 /// the curve (bls12-381)
@@ -23,6 +24,7 @@ pub enum Tag {
     Config,
     Hint,
     Doc,
+    Rpc,
 }
 
 #[derive(Clone, Debug, Encode, Decode)]

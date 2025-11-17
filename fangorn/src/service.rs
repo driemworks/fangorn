@@ -126,6 +126,10 @@ pub async fn build_full_service<C: Pairing>(
         .await
         .unwrap();
 
+    publish_rpc_address(&node, &doc_stream, config.index, config.rpc_port)
+        .await
+        .unwrap();
+
     spawn_rpc_service(
         arc_state_clone,
         config.rpc_port,
@@ -305,6 +309,50 @@ async fn publish_node_hint<C: Pairing>(
     Ok(())
 }
 
+async fn publish_rpc_address<C: Pairing>(
+    node: &Node<C>,
+    doc_stream: &Doc<FlumeConnector<Response, Request>>,
+    index: usize,
+    rpc_port: u16,
+) -> Result<()> {
+    // discover the public IP address
+    // let public_ip = match get_public_ip().await {
+    //     Some(ip) => ip,
+    //     None => {
+    //         println!("Warning: Could not determine public IP. Publishing localhost address.");
+    //         "127.0.0.1".to_string()
+    //     }
+    // };
+
+    let public_ip = get_local_ip();
+
+    let public_rpc_addr = format!("http://{}:{}", public_ip, rpc_port);
+
+    let announcement = Announcement {
+        tag: Tag::Rpc,
+        data: public_rpc_addr.clone().into_bytes(),
+    };
+
+    let key = format!("{}{}", RPC_KEY_PREFIX, index);
+
+    // todo: make new more general wrapper (not same as iroh_docstore, should refactor the names)
+    // publish the public RPC address string to the document
+    doc_stream
+        .set_bytes(
+            node.docs().authors().default().await?,
+            key,
+            announcement.encode(),
+        )
+        .await
+        .unwrap();
+
+    println!(
+        "Published RPC address {} for index {}",
+        public_rpc_addr, index
+    );
+    Ok(())
+}
+
 /// Spawn the state synchronization background task
 fn spawn_state_sync_service<C: Pairing>(
     doc_stream: Doc<FlumeConnector<Response, Request>>,
@@ -357,6 +405,7 @@ async fn run_state_sync<C: Pairing>(
                                 if announcement.tag != Tag::Doc {
                                     tx.send(announcement).unwrap();
                                 }
+
                                 break;
                             }
                         }
@@ -377,10 +426,9 @@ async fn spawn_rpc_service<C: Pairing>(
     node: Node<C>,
     ticket: String,
 ) -> Result<()> {
-    let addr_str = format!("127.0.0.1:{}", rpc_port);
+    let addr_str = format!("0.0.0.0:{}", rpc_port);
     let addr = addr_str.parse().unwrap();
 
-    // let doc_store = Arc::new(LocalDocStore::new("tmp/docs/"));
     let doc_store = Arc::new(IrohDocStore::new(node.clone(), ticket).await);
 
     // initialize backend (todo: add param to config node url instead of hardcoding it)
@@ -440,4 +488,19 @@ fn generate_config(size: usize) -> Result<Vec<u8>> {
     println!("> Saved config to disk");
 
     Ok(bytes)
+}
+
+
+fn get_local_ip() -> String {
+    local_ip_address::local_ip().unwrap().to_string()
+}
+
+async fn get_public_ip() -> Option<String> {
+    match public_ip::addr().await {
+        Some(ip) => Some(ip.to_string()),
+        None => {
+            eprintln!("Failed to discover public IP address.");
+            None
+        }
+    }
 }
