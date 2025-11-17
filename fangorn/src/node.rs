@@ -23,6 +23,7 @@ pub(crate) type BlobsClient = iroh_blobs::rpc::client::blobs::Client<
 pub(crate) type DocsClient = iroh_docs::rpc::client::docs::Client<
     FlumeConnector<iroh_docs::rpc::proto::Response, iroh_docs::rpc::proto::Request>,
 >;
+
 /// A node...
 #[derive(Clone)]
 pub struct Node<C: Pairing> {

@@ -25,7 +25,9 @@ use crate::backend::SubstrateBackend;
 use crate::gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget};
 use crate::node::*;
 use crate::rpc::server::{NodeServer, RpcServer};
-use crate::storage::{contract_store::ContractIntentStore, local_store::LocalDocStore};
+use crate::storage::{
+    contract_store::ContractIntentStore, iroh_docstore::IrohDocStore, local_store::LocalDocStore,
+};
 use crate::types::*;
 
 /// Configuration for starting a full node service
@@ -124,14 +126,20 @@ pub async fn build_full_service<C: Pairing>(
         .await
         .unwrap();
 
-    spawn_rpc_service(arc_state_clone, config.rpc_port, &config.contract_addr)
-        .await
-        .unwrap();
+    spawn_rpc_service(
+        arc_state_clone,
+        config.rpc_port,
+        &config.contract_addr,
+        node.clone(),
+        ticket.clone(),
+    )
+    .await
+    .unwrap();
 
     // // main service loop
     // run_service_loop().await
     Ok(ServiceHandle {
-        node: node.clone(),
+        node,
         ticket,
         doc: doc_stream,
     })
@@ -322,7 +330,7 @@ async fn run_state_sync<C: Pairing>(
     let peers = bootstrap_peers.unwrap_or_default();
     doc_stream.start_sync(peers).await.unwrap();
 
-    // subscribe to changes to the doc
+    // subscribe to changes to the doc_stream
     let mut sub = doc_stream.subscribe().await.unwrap();
     let blobs = node.blobs().clone();
 
@@ -346,7 +354,9 @@ async fn run_state_sync<C: Pairing>(
                             if let Ok(msg) = message_content {
                                 let bytes = msg.to_vec();
                                 let announcement = Announcement::decode(&mut &bytes[..]).unwrap();
-                                tx.send(announcement).unwrap();
+                                if announcement.tag != Tag::Doc {
+                                    tx.send(announcement).unwrap();
+                                }
                                 break;
                             }
                         }
@@ -364,11 +374,14 @@ async fn spawn_rpc_service<C: Pairing>(
     state: Arc<Mutex<State<C>>>,
     rpc_port: u16,
     contract_addr: &str,
+    node: Node<C>,
+    ticket: String,
 ) -> Result<()> {
     let addr_str = format!("127.0.0.1:{}", rpc_port);
     let addr = addr_str.parse().unwrap();
 
-    let doc_store = Arc::new(LocalDocStore::new("tmp/docs/"));
+    // let doc_store = Arc::new(LocalDocStore::new("tmp/docs/"));
+    let doc_store = Arc::new(IrohDocStore::new(node.clone(), ticket).await);
 
     // initialize backend (todo: add param to config node url instead of hardcoding it)
     let backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), None).await?);

@@ -7,4 +7,5 @@ edition = "2024"
 anyhow.workspace = true
 clap.workspace = true
 fangorn.workspace = true
+flume.workspace = true
 tokio.workspace = true

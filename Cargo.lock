@@ -2723,9 +2723,11 @@ name = "entmoot"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clap",
  "color-eyre",
  "crossterm 0.29.0",
  "fangorn",
+ "flume",
  "hex",
  "ratatui 0.29.0",
  "ratatui-explorer",
@@ -8041,6 +8043,7 @@ dependencies = [
  "anyhow",
  "clap",
  "fangorn",
+ "flume",
  "tokio",
 ]
 

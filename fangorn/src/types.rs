@@ -18,10 +18,11 @@ pub type E = ark_bls12_381::Bls12_381;
 /// the g2 group
 pub type G2 = <E as Pairing>::G2;
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, PartialEq)]
 pub enum Tag {
     Config,
     Hint,
+    Doc,
 }
 
 #[derive(Clone, Debug, Encode, Decode)]
@@ -102,6 +103,10 @@ impl<C: Pairing> State<C> {
                 } else {
                     self.hints = Some(vec![hint]);
                 }
+            }
+            _ => {
+                // do nothing for other tags for now
+                // eventually we could use this to charge for storage?
             }
         }
     }

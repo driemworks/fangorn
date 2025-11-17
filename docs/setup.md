@@ -109,7 +109,8 @@ Note that decryption exposes the password to verifiers, making this best used as
 --config-path config.txt \
 --keystore-dir tmp/keystore \
 --intent "Password(test)" \
---contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7" \
+--ticket docaaacbx6mbsmg2rg54c5urp4p44ymv2y3rv6gps7zurmdt2muihu3hfzmagzz74jr7ja4uw2ootcwwprvtc2pmcwwktanlehepcrytnyymlvywajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55ruhwyeayavqolfponju
 ```
 
 **Decryption**
@@ -118,9 +119,10 @@ Note that decryption exposes the password to verifiers, making this best used as
 ./target/debug/quickbeam decrypt \
 --filename test.txt \
 --config-path config.txt \
---witness test \ 
+--witness test \
 --pt-filename test.txt \
---contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7" \
+--ticket docaaacbx6mbsmg2rg54c5urp4p44ymv2y3rv6gps7zurmdt2muihu3hfzmagzz74jr7ja4uw2ootcwwprvtc2pmcwwktanlehepcrytnyymlvywajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55ruhwyeayavqolfponju
 ```
 
 #### PSP22 Based Encryption

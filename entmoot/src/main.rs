@@ -1,7 +1,7 @@
 // use color_eyre::Result;
 use anyhow::Result;
 
-use fangorn::backend::SubstrateBackend;
+use fangorn::{backend::SubstrateBackend, node::Node, types::*};
 use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
 use ratatui::style::Modifier;
 use ratatui::{
@@ -11,11 +11,27 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 use ratatui_explorer::{FileExplorer, Theme};
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::runtime::Runtime;
+use tokio::sync::Mutex;
 use tui_textarea::TextArea;
 
 use crate::menus::encryption::intents_screen;
-use crate::menus::{decryption::{decrypt_screen}, encryption::{encrypt_fileselect_screen, encryption_screen}, key_results_screen};
+use crate::menus::{
+    decryption::decrypt_screen,
+    encryption::{encrypt_fileselect_screen, encryption_screen},
+    key_results_screen,
+};
+
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about = "entmoot")]
+pub struct Cli {
+    #[arg(long)]
+    pub ticket: String,
+}
 
 pub mod menus;
 
@@ -29,10 +45,9 @@ const PSP22_INPUT_PLACEHOLDER: &str = "Please enter the psp22 contract address";
 const PSP22_INPUT_TITLE: &str = "Contract Address";
 
 const PSP22_TOKEN_COUNT_PLACEHOLDER: &str = "Numbers only";
-const PSP22_TOKEN_TITLE: &str = "Token Amount";
+const PSP22_TOKEN_TITLE: &str = "Minimum Balance";
 
 const WS_URL: &str = "ws://localhost:9944";
-
 
 // 1. Enum to manage the active screen/view
 #[derive(Debug)]
@@ -45,7 +60,7 @@ pub enum CurrentScreen {
     IntentSelection,
 }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct App {
     menu_state: ListState,
     intent_list_state: ListState,
@@ -77,11 +92,13 @@ pub struct App {
     sr25519_intent: bool,
 
     is_encrypt_path: bool,
-    substrate_backend: Option<SubstrateBackend>
+    substrate_backend: Option<SubstrateBackend>,
+    node: Node<E>,
+    ticket: String,
 }
 
-impl Default for App {
-    fn default() -> Self {
+impl App {
+    fn new(node: Node<E>, ticket: &String) -> Self {
         let mut state = ListState::default();
         state.select(Some(0));
 
@@ -113,24 +130,63 @@ impl Default for App {
             generated_pubkey: None,
             file_explorer,
             file_path: None,
-            password_input: initialize_input_field(String::from(PWD_INPUT_PLACEHOLDER), String::from(PWD_INPUT_TITLE), true),
-            filename_input: initialize_input_field(String::from(FILENAME_INPUT_PLACEHOLDER), String::from(FILENAME_INPUT_TITLE), false),
-            contract_address_input: initialize_input_field(String::from(PSP22_INPUT_PLACEHOLDER), String::from(PSP22_INPUT_TITLE), false),
-            token_count_input: initialize_input_field(String::from(PSP22_TOKEN_COUNT_PLACEHOLDER), String::from(PSP22_TOKEN_TITLE), false),
+            password_input: initialize_input_field(
+                String::from(PWD_INPUT_PLACEHOLDER),
+                String::from(PWD_INPUT_TITLE),
+                true,
+            ),
+            filename_input: initialize_input_field(
+                String::from(FILENAME_INPUT_PLACEHOLDER),
+                String::from(FILENAME_INPUT_TITLE),
+                false,
+            ),
+            contract_address_input: initialize_input_field(
+                String::from(PSP22_INPUT_PLACEHOLDER),
+                String::from(PSP22_INPUT_TITLE),
+                false,
+            ),
+            token_count_input: initialize_input_field(
+                String::from(PSP22_TOKEN_COUNT_PLACEHOLDER),
+                String::from(PSP22_TOKEN_TITLE),
+                false,
+            ),
             encrypt_input_selection: 0,
-            decrypt_input_selection: 0
+            decrypt_input_selection: 0,
+            node,
+            ticket: ticket.to_string(),
         }
     }
 }
 
+// TODO: This is duplicated in quickbeam
+async fn build_node() -> Node<E> {
+    // setup channels for state synchronization
+    let (tx, rx) = flume::unbounded();
+    // initialize node parameters and state
+    // start on port 4000
+    // todo: can we remove the index field? sk unused here
+    let params = StartNodeParams::<E>::rand(4000, 0);
+    let state = State::<E>::empty(params.secret_key.clone());
+    let arc_state = Arc::new(Mutex::new(state));
+    let arc_state_clone = Arc::clone(&arc_state);
+
+    Node::build(params, rx, arc_state).await
+}
+
 fn main() -> color_eyre::Result<()> {
+    let args = Cli::parse();
+    let ticket = args.ticket;
+
     color_eyre::install()?;
     let mut terminal = ratatui::init();
-    tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on( async {
-            App::default().run(&mut terminal).await.expect("An error occurred running the UI");
-        });
+    tokio::runtime::Runtime::new().unwrap().block_on(async {
+        let node = build_node().await;
+
+        App::new(node, &ticket)
+            .run(&mut terminal)
+            .await
+            .expect("An error occurred running the UI");
+    });
     ratatui::restore();
     Ok(())
 }
@@ -163,11 +219,21 @@ impl App {
                             KeyCode::Enter | KeyCode::Char(' ') | KeyCode::Right => self.select(),
                             _ => {}
                         },
-                        CurrentScreen::KeyResults => key_results_screen::handle_input(self, key.code),
-                        CurrentScreen::EncryptFileSelectScreen => encrypt_fileselect_screen::handle_input(self, key.code, event)?,
-                        CurrentScreen::EncryptionInputScreen => encryption_screen::handle_input(self, key).await,
-                        CurrentScreen::DecryptScreen => decrypt_screen::handle_input(self, key).await,
-                        CurrentScreen::IntentSelection => intents_screen::handle_input(self, key.code).await,
+                        CurrentScreen::KeyResults => {
+                            key_results_screen::handle_input(self, key.code)
+                        }
+                        CurrentScreen::EncryptFileSelectScreen => {
+                            encrypt_fileselect_screen::handle_input(self, key.code, event)?
+                        }
+                        CurrentScreen::EncryptionInputScreen => {
+                            encryption_screen::handle_input(self, key).await
+                        }
+                        CurrentScreen::DecryptScreen => {
+                            decrypt_screen::handle_input(self, key).await
+                        }
+                        CurrentScreen::IntentSelection => {
+                            intents_screen::handle_input(self, key.code).await
+                        }
                     }
                 }
             }
@@ -238,8 +304,12 @@ impl App {
         match self.current_screen {
             CurrentScreen::Main => self.render_main_screen(frame),
             CurrentScreen::KeyResults => key_results_screen::render_key_results_screen(self, frame),
-            CurrentScreen::EncryptFileSelectScreen => encrypt_fileselect_screen::render_file_explorer_screen(self, frame),
-            CurrentScreen::EncryptionInputScreen => encryption_screen::render_encryption_inputs(self, frame),
+            CurrentScreen::EncryptFileSelectScreen => {
+                encrypt_fileselect_screen::render_file_explorer_screen(self, frame)
+            }
+            CurrentScreen::EncryptionInputScreen => {
+                encryption_screen::render_encryption_inputs(self, frame)
+            }
             CurrentScreen::DecryptScreen => decrypt_screen::render_decrypt_info(self, frame),
             CurrentScreen::IntentSelection => intents_screen::render_intents_screen(self, frame),
         }
@@ -270,10 +340,26 @@ impl App {
     }
 
     pub fn reset_input_fields(&mut self) {
-        self.password_input = initialize_input_field(String::from(PWD_INPUT_PLACEHOLDER), String::from(PWD_INPUT_TITLE), true);
-        self.filename_input = initialize_input_field(String::from(FILENAME_INPUT_PLACEHOLDER), String::from(FILENAME_INPUT_TITLE), false);
-        self.contract_address_input = initialize_input_field(String::from(PSP22_INPUT_PLACEHOLDER), String::from(PSP22_INPUT_TITLE), false);
-        self.token_count_input = initialize_input_field(String::from(PSP22_TOKEN_COUNT_PLACEHOLDER), String::from(PSP22_TOKEN_TITLE), false);
+        self.password_input = initialize_input_field(
+            String::from(PWD_INPUT_PLACEHOLDER),
+            String::from(PWD_INPUT_TITLE),
+            true,
+        );
+        self.filename_input = initialize_input_field(
+            String::from(FILENAME_INPUT_PLACEHOLDER),
+            String::from(FILENAME_INPUT_TITLE),
+            false,
+        );
+        self.contract_address_input = initialize_input_field(
+            String::from(PSP22_INPUT_PLACEHOLDER),
+            String::from(PSP22_INPUT_TITLE),
+            false,
+        );
+        self.token_count_input = initialize_input_field(
+            String::from(PSP22_TOKEN_COUNT_PLACEHOLDER),
+            String::from(PSP22_TOKEN_TITLE),
+            false,
+        );
     }
 
     pub fn reset_intent_list(&mut self) {
@@ -288,7 +374,11 @@ impl App {
         textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::HIDDEN));
         textarea.set_cursor_style(Style::default().add_modifier(Modifier::HIDDEN));
         textarea.set_style(Style::default().fg(Color::DarkGray));
-        let inactivate_block = textarea.block().unwrap().clone().border_style(Style::default().fg(Color::DarkGray));
+        let inactivate_block = textarea
+            .block()
+            .unwrap()
+            .clone()
+            .border_style(Style::default().fg(Color::DarkGray));
         textarea.set_block(inactivate_block);
     }
 
@@ -296,17 +386,24 @@ impl App {
         textarea.set_cursor_line_style(Style::default().add_modifier(Modifier::UNDERLINED));
         textarea.set_cursor_style(Style::default().add_modifier(Modifier::REVERSED));
         textarea.set_style(Style::default().fg(Color::LightGreen));
-        let activate_block = textarea.block().unwrap().clone().border_style(Color::LightGreen);
+        let activate_block = textarea
+            .block()
+            .unwrap()
+            .clone()
+            .border_style(Color::LightGreen);
         textarea.set_block(activate_block);
     }
 
     pub fn indicate_error(textarea: &mut TextArea<'_>) {
         textarea.set_style(Style::default().fg(Color::Red));
-        let error_block = textarea.block().unwrap().clone().border_style(Style::default().fg(Color::Red));
+        let error_block = textarea
+            .block()
+            .unwrap()
+            .clone()
+            .border_style(Style::default().fg(Color::Red));
         textarea.set_placeholder_text("Input cannot be empty");
         textarea.set_block(error_block);
     }
-
 }
 
 fn render_title(title_area: Rect, frame: &mut Frame) {
@@ -387,6 +484,11 @@ fn initialize_input_field(placeholder: String, title: String, masked: bool) -> T
     }
     textarea.set_placeholder_text(placeholder);
     textarea.set_style(Style::default().fg(Color::LightGreen));
-    textarea.set_block(Block::default().borders(Borders::ALL).border_style(Color::LightGreen).title(title));
+    textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Color::LightGreen)
+            .title(title),
+    );
     textarea
 }
