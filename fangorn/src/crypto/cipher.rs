@@ -1,3 +1,4 @@
+use crate::crypto::decrypt::DecryptionClientError;
 use crate::rpc::server::*;
 use crate::storage::{
     contract_store::ContractIntentStore,
@@ -48,7 +49,7 @@ pub async fn handle_decrypt(
     witness_string: &String,
     pt_filename: &String,
     contract_addr: &String,
-) {
+) -> Result<(), DecryptionClientError>{
     let (sys_keys, _registry, app_store) = testnet_setup(contract_addr, None).await;
 
     // Parse witnesses
@@ -58,8 +59,8 @@ pub async fn handle_decrypt(
     let client = DecryptionClient::new(config_path, sys_keys, app_store).unwrap();
     client
         .decrypt(filename, &witnesses, pt_filename)
-        .await
-        .unwrap();
+        .await?;
+    Ok(())
 }
 
 /// an app store configured for all nodes running on the same machine,

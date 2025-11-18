@@ -2,6 +2,7 @@
 use anyhow::Result;
 
 use fangorn::backend::SubstrateBackend;
+use ratatui::buffer::Buffer;
 use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
 use ratatui::style::Modifier;
 use ratatui::{
@@ -15,6 +16,7 @@ use std::time::Duration;
 use tui_textarea::TextArea;
 
 use crate::menus::encryption::intents_screen;
+use crate::menus::error_handler::{self, ErrorType, Popup};
 use crate::menus::{decryption::{decrypt_screen}, encryption::{encrypt_fileselect_screen, encryption_screen}, key_results_screen};
 use crate::constants::*;
 
@@ -62,7 +64,11 @@ pub struct App {
     current_screen: CurrentScreen,
 
     generated_pubkey: Option<String>,
-    
+
+    display_error: bool,
+    error_popup: Popup,
+    error_type: ErrorType,
+
     // the file explorer: todo - this could probably be an option, load it when we select the screen
     file_explorer: FileExplorer,
     // the file path of the message to be encrypted (plaintext)
@@ -128,6 +134,9 @@ impl Default for App {
             current_screen: CurrentScreen::Main,
             generated_pubkey: None,
             file_explorer,
+            error_popup: error_handler::Popup::initialize(),
+            error_type: ErrorType::Default,
+            display_error: false,
             file_path: None,
             password_input: initialize_input_field(String::from(PWD_INPUT_PLACEHOLDER), String::from(PWD_INPUT_TITLE), true),
             filename_input: initialize_input_field(String::from(FILENAME_INPUT_PLACEHOLDER), String::from(FILENAME_INPUT_TITLE), false),
@@ -153,7 +162,10 @@ fn main() -> color_eyre::Result<()> {
 
 impl App {
     async fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<()> {
-        self.substrate_backend = Some(SubstrateBackend::new(String::from(WS_URL), None).await?);
+        self.substrate_backend = SubstrateBackend::new(String::from(WS_URL), None).await.ok().or_else(|| {
+            self.display_error(ErrorType::SubstrateBackendErr);
+            None
+        });
         loop {
             // --- DRAW PHASE ---
             terminal.draw(|frame| {
@@ -168,22 +180,32 @@ impl App {
                     if key.kind != KeyEventKind::Press {
                         continue;
                     }
-                    match self.current_screen {
-                        CurrentScreen::Main => match key.code {
-                            KeyCode::Esc | KeyCode::Char('q') => {
-                                // Quit the whole application
-                                break;
+                    if self.display_error {
+                        match key.code {
+                            KeyCode::Esc => {
+                                self.current_screen = CurrentScreen::Main;
+                                self.display_error = false;
                             }
-                            KeyCode::Up | KeyCode::Char('k') => self.previous(),
-                            KeyCode::Down | KeyCode::Char('j') => self.next(),
-                            KeyCode::Enter | KeyCode::Char(' ') | KeyCode::Right => self.select(),
                             _ => {}
-                        },
-                        CurrentScreen::KeyResults => key_results_screen::handle_input(self, key.code),
-                        CurrentScreen::EncryptFileSelectScreen => encrypt_fileselect_screen::handle_input(self, key.code, event)?,
-                        CurrentScreen::EncryptionInputScreen => encryption_screen::handle_input(self, key).await,
-                        CurrentScreen::DecryptScreen => decrypt_screen::handle_input(self, key).await,
-                        CurrentScreen::IntentSelection => intents_screen::handle_input(self, key.code).await,
+                        }
+                    } else {
+                        match self.current_screen {
+                            CurrentScreen::Main => match key.code {
+                                KeyCode::Esc | KeyCode::Char('q') => {
+                                    // Quit the whole application
+                                    break;
+                                }
+                                KeyCode::Up | KeyCode::Char('k') => self.previous(),
+                                KeyCode::Down | KeyCode::Char('j') => self.next(),
+                                KeyCode::Enter | KeyCode::Char(' ') | KeyCode::Right => self.select(),
+                                _ => {}
+                            },
+                            CurrentScreen::KeyResults => key_results_screen::handle_input(self, key.code),
+                            CurrentScreen::EncryptFileSelectScreen => encrypt_fileselect_screen::handle_input(self, key.code, event)?,
+                            CurrentScreen::EncryptionInputScreen => encryption_screen::handle_input(self, key).await,
+                            CurrentScreen::DecryptScreen => decrypt_screen::handle_input(self, key).await,
+                            CurrentScreen::IntentSelection => intents_screen::handle_input(self, key.code).await,
+                        }
                     }
                 }
             }
@@ -268,6 +290,11 @@ impl App {
                 .title(self.menu_title.clone()),
             frame.area(),
         );
+        if self.display_error {
+            let mut popup = error_handler::Popup::initialize();
+            popup.set_error_type(self.error_type.clone());
+            popup.render(frame);
+        }
     }
 
     fn render_main_screen(&mut self, frame: &mut Frame) {
@@ -321,6 +348,11 @@ impl App {
         let error_block = textarea.block().unwrap().clone().border_style(Style::default().fg(Color::Red));
         textarea.set_placeholder_text("Input cannot be empty");
         textarea.set_block(error_block);
+    }
+
+    pub fn display_error(&mut self, error_type: ErrorType) {
+        self.error_type = error_type;
+        self.display_error = true;
     }
 
 }

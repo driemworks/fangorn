@@ -51,10 +51,18 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     }
                 } else {
                     let config_path = String::from("config.txt");
-                    let witness_string = &prepare_witness_string(app, password).await.expect("Something went wrong when creating witness string");
+                    let witness_string = &prepare_witness_string(app, password).await.ok().or_else(|| {
+                        app.display_error(crate::menus::error_handler::ErrorType::WitnessErr);
+                        cleanup(app);
+                        None
+                    });
                     let contract_addr = String::from("5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7");
                     
-                    handle_decrypt(&config_path, &filename, witness_string, &filename, &contract_addr).await;
+                    handle_decrypt(&config_path, &filename, witness_string.as_ref().unwrap(), &filename, &contract_addr).await.ok().or_else(|| {
+                        app.display_error(crate::menus::error_handler::ErrorType::DecryptErr);
+                        cleanup(app);
+                        None
+                    });
                     cleanup(app);
                 }
             } else {
@@ -65,7 +73,11 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     let witness_string = &prepare_witness_string(app, String::from("")).await.expect("Something went wrong when creating witness string");
                     let contract_addr = String::from("5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7");
                     
-                    handle_decrypt(&config_path, &filename, witness_string, &filename, &contract_addr).await;
+                    handle_decrypt(&config_path, &filename, witness_string, &filename, &contract_addr).await.ok().or_else(|| {
+                        app.display_error(crate::menus::error_handler::ErrorType::DecryptErr);
+                        cleanup(app);
+                        None
+                    });
                     cleanup(app);
                 }
             } 
