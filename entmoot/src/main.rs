@@ -1,8 +1,8 @@
 // use color_eyre::Result;
 use anyhow::Result;
 use core::net::SocketAddr;
-use fangorn::{backend::SubstrateBackend, node::Node, types::*};
-use iroh::{NodeAddr, PublicKey as IrohPublicKey};
+use fangorn::{backend::SubstrateBackend, Node, types::*};
+use iroh::{EndpointAddr, PublicKey as IrohPublicKey};
 use ratatui::crossterm::event::{self, poll, Event, KeyCode, KeyEventKind};
 use ratatui::style::Modifier;
 use ratatui::{
@@ -15,7 +15,6 @@ use ratatui_explorer::{FileExplorer, Theme};
 use std::sync::Arc;
 use std::time::Duration;
 use std::str::FromStr;
-use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 use tui_textarea::TextArea;
 
@@ -66,7 +65,6 @@ pub enum CurrentScreen {
     IntentSelection,
 }
 
-// #[derive(Debug)]
 pub struct App {
     menu_state: ListState,
     intent_list_state: ListState,
@@ -165,16 +163,15 @@ impl App {
 }
 
 // TODO: This is duplicated in quickbeam
-async fn build_node(bootstrap_peers: Vec<NodeAddr>) -> Node<E> {
+async fn build_node(bootstrap_peers: Vec<EndpointAddr>) -> Node<E> {
     // setup channels for state synchronization
-    let (tx, rx) = flume::unbounded();
+    let (_tx, rx) = flume::unbounded();
     // initialize node parameters and state
     // start on port 4000
     // todo: can we remove the index field? sk unused here
     let params = StartNodeParams::<E>::rand(4000, 0);
     let state = State::<E>::empty(params.secret_key.clone());
     let arc_state = Arc::new(Mutex::new(state));
-    let arc_state_clone = Arc::clone(&arc_state);
 
     let mut node = Node::build(params, rx, arc_state).await;
     // connect to peers
@@ -196,11 +193,7 @@ fn main() -> color_eyre::Result<()> {
     tokio::runtime::Runtime::new().unwrap().block_on(async {
         let pubkey = IrohPublicKey::from_str(&bootstrap_pubkey).ok().unwrap();
         let socket: SocketAddr = bootstrap_rpc.parse().ok().unwrap();
-        let boot = NodeAddr::from((
-                pubkey,
-                None,
-                vec![socket].as_slice(),
-            ));
+        let boot = EndpointAddr::new(pubkey).with_ip_addr(socket);
 
         let node = build_node(vec![boot]).await;
 

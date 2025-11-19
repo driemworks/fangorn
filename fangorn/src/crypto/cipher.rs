@@ -1,4 +1,4 @@
-use crate::node::Node;
+use crate::Node;
 use crate::rpc::{resolver::IrohRpcResolver, server::*};
 use crate::storage::{
     contract_store::ContractIntentStore,
@@ -31,21 +31,21 @@ pub async fn handle_encrypt(
     node: Node<E>,
     ticket: &String,
 ) {
-    let seed = load_mnemonic(keystore_path);
-    let (sys_keys, gadget_registry, app_store) =
-        iroh_testnet_setup(contract_addr, Some(&seed), node, ticket.clone()).await;
+    // let seed = load_mnemonic(keystore_path);
+    // let (sys_keys, gadget_registry, app_store) =
+    //     iroh_testnet_setup(contract_addr, Some(&seed), node, ticket.clone()).await;
 
-    let message = app_store
-        .pt_store
-        .read_plaintext(message_path)
-        .await
-        .expect("Something went wrong while reading PT");
+    // let message = app_store
+    //     .pt_store
+    //     .read_plaintext(message_path)
+    //     .await
+    //     .expect("Something went wrong while reading PT");
 
-    let client = EncryptionClient::new(config_path, sys_keys, app_store, gadget_registry);
-    client
-        .encrypt(&message, filename.as_bytes(), &intent_str)
-        .await
-        .unwrap();
+    // let client = EncryptionClient::new(config_path, sys_keys, app_store, gadget_registry);
+    // client
+    //     .encrypt(&message, filename.as_bytes(), &intent_str)
+    //     .await
+    //     .unwrap();
 }
 
 pub async fn handle_decrypt(
@@ -57,25 +57,24 @@ pub async fn handle_decrypt(
     node: Node<E>,
     ticket: &String,
 ) {
-    // let (sys_keys, _registry, app_store) = local_testnet_setup(contract_addr, None).await;
-    let (sys_keys, gadget_registry, app_store) =
-        iroh_testnet_setup(contract_addr, None, node.clone(), ticket.clone()).await;
-    // Parse witnesses
-    let witnesses: Vec<&str> = witness_string.trim().split(',').map(|s| s.trim()).collect();
+    // let (sys_keys, gadget_registry, app_store) =
+    //     iroh_testnet_setup(contract_addr, None, node.clone(), ticket.clone()).await;
+    // // Parse witnesses
+    // let witnesses: Vec<&str> = witness_string.trim().split(',').map(|s| s.trim()).collect();
 
-    let doc_ticket = DocTicket::from_str(&ticket).unwrap();
-    let doc_stream = node.docs().import(doc_ticket).await.unwrap();
-    let resolver = IrohRpcResolver {
-        node,
-        doc_stream,
-    };
+    // let doc_ticket = DocTicket::from_str(&ticket).unwrap();
+    // let doc_stream = node.docs().import(doc_ticket).await.unwrap();
+    // let resolver = IrohRpcResolver {
+    //     node,
+    //     doc_stream,
+    // };
 
-    // Decrypt
-    let client = DecryptionClient::new(config_path, sys_keys, app_store, resolver).unwrap();
-    client
-        .decrypt(filename, &witnesses, pt_filename)
-        .await
-        .unwrap();
+    // // Decrypt
+    // let client = DecryptionClient::new(config_path, sys_keys, app_store, resolver).unwrap();
+    // client
+    //     .decrypt(filename, &witnesses, pt_filename)
+    //     .await
+    //     .unwrap();
 }
 
 /// an app store that uses the iroh nodes for storage

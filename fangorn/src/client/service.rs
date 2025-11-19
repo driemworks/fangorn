@@ -2,28 +2,26 @@ use anyhow::Result;
 use ark_ec::pairing::Pairing;
 use ark_serialize::CanonicalSerialize;
 use codec::{Decode, Encode};
-use core::net::SocketAddr;
+use core::net::{IpAddr, Ipv4Addr, SocketAddr};
 use core::str::FromStr;
 use futures::prelude::*;
-use iroh::{NodeAddr, PublicKey as IrohPublicKey};
+use iroh::{EndpointAddr, PublicKey as IrohPublicKey};
 use iroh_docs::{
+    api::{protocol::ShareMode, Doc},
+    // client::{Doc, ShareMode},
     engine::LiveEvent,
-    rpc::{
-        client::docs::{Doc, ShareMode},
-        proto::{Request, Response},
-    },
+    protocol::Docs,
     store::{FlatQuery, QueryBuilder},
     DocTicket,
 };
-use quic_rpc::transport::flume::FlumeConnector;
 use std::sync::Arc;
 use std::{fs::OpenOptions, io::Write, thread, time::Duration};
 use tokio::sync::Mutex;
 use tonic::transport::Server;
 
 use crate::backend::SubstrateBackend;
+use crate::client::node::*;
 use crate::gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget};
-use crate::node::*;
 use crate::rpc::server::{NodeServer, RpcServer};
 use crate::storage::{
     contract_store::ContractIntentStore, iroh_docstore::IrohDocStore, local_store::LocalDocStore,
@@ -37,7 +35,7 @@ pub struct ServiceConfig {
     pub index: usize,
     pub is_bootstrap: bool,
     pub ticket: Option<String>,
-    pub bootstrap_peers: Option<Vec<NodeAddr>>,
+    pub bootstrap_peers: Option<Vec<EndpointAddr>>,
     pub contract_addr: String,
 }
 
@@ -46,15 +44,13 @@ impl ServiceConfig {
     pub fn build_bootstrap_peers(
         pubkey: Option<String>,
         ip: Option<String>,
-    ) -> Option<Vec<NodeAddr>> {
+    ) -> Option<Vec<EndpointAddr>> {
+        // TODO: error handling
         if let (Some(pubkey_str), Some(ip_str)) = (pubkey, ip) {
             let pubkey = IrohPublicKey::from_str(&pubkey_str).ok().unwrap();
             let socket: SocketAddr = ip_str.parse().ok().unwrap();
-            Some(vec![NodeAddr::from((
-                pubkey,
-                None,
-                vec![socket].as_slice(),
-            ))])
+            let addr = EndpointAddr::new(pubkey).with_ip_addr(socket);
+            Some(vec![addr])
         } else {
             None
         }
@@ -64,7 +60,7 @@ impl ServiceConfig {
 pub struct ServiceHandle<C: Pairing> {
     pub node: Node<C>,
     pub ticket: String,
-    pub doc: Doc<FlumeConnector<Response, Request>>,
+    // pub doc: Docs,
 }
 
 /// Build and start the full Fangorn node service
@@ -74,8 +70,8 @@ pub async fn build_full_service<C: Pairing>(
 ) -> Result<ServiceHandle<C>> {
     // setup channels for state synchronization
     let (tx, rx) = flume::unbounded();
-
     // initialize node parameters and state
+    // TODO: should use a secure keystore
     let params = StartNodeParams::<C>::rand(config.bind_port, config.index);
     let state = State::<C>::empty(params.secret_key.clone());
     let arc_state = Arc::new(Mutex::new(state));
@@ -108,12 +104,13 @@ pub async fn build_full_service<C: Pairing>(
     thread::sleep(Duration::from_secs(3));
 
     // sync: load and distribute config
-    load_and_distribute_config(&node, &doc_stream, &tx)
+    load_and_distribute_config(&node, doc_stream.clone(), &tx.clone())
         .await
         .unwrap();
+
     // sync: load previous hints (if not bootstrap)
     if !config.is_bootstrap {
-        load_previous_hints(&node, &doc_stream, config.index, &tx)
+        load_previous_hints(&node, doc_stream.clone(), config.index, &tx.clone())
             .await
             .unwrap();
     }
@@ -122,13 +119,13 @@ pub async fn build_full_service<C: Pairing>(
     thread::sleep(Duration::from_secs(1));
 
     // publish our own hint
-    publish_node_hint(&node, &doc_stream, config.index, &tx)
+    publish_node_hint(&node, doc_stream, config.index, &tx)
         .await
         .unwrap();
 
-    publish_rpc_address(&node, &doc_stream, config.index, config.rpc_port)
-        .await
-        .unwrap();
+    // publish_rpc_address(&node, &doc_stream, config.index, config.rpc_port)
+    //     .await
+    //     .unwrap();
 
     spawn_rpc_service(
         arc_state_clone,
@@ -140,12 +137,10 @@ pub async fn build_full_service<C: Pairing>(
     .await
     .unwrap();
 
-    // // main service loop
-    // run_service_loop().await
+    // main service loop
     Ok(ServiceHandle {
         node,
         ticket,
-        doc: doc_stream,
     })
 }
 
@@ -156,19 +151,20 @@ async fn setup_document_stream<C: Pairing>(
     ticket: Option<String>,
     max_committee_size: usize,
     tx: &flume::Sender<Announcement>,
-) -> Result<(Doc<FlumeConnector<Response, Request>>, String)> {
+) -> Result<(Doc, String)> {
     if is_bootstrap {
         println!("Initial Startup: Generating new config");
 
         // Generate config and create document
         let config_bytes = generate_config(max_committee_size).unwrap();
+        
         let doc = node.docs().create().await.unwrap();
 
         // Create and share ticket
         let ticket = doc
             .share(
                 ShareMode::Write,
-                iroh_docs::rpc::AddrInfoOptions::RelayAndAddresses,
+                iroh_docs::api::protocol::AddrInfoOptions::RelayAndAddresses,
             )
             .await
             .unwrap();
@@ -198,7 +194,8 @@ async fn setup_document_stream<C: Pairing>(
 
         doc_stream
             .set_bytes(
-                node.docs().authors().default().await?,
+                // just get the first key we have
+                node.docs().author_default().await.unwrap(),
                 CONFIG_KEY,
                 config_announcement.encode(),
             )
@@ -221,7 +218,7 @@ async fn setup_document_stream<C: Pairing>(
 /// Load config from document and distribute to state
 async fn load_and_distribute_config<C: Pairing>(
     node: &Node<C>,
-    doc_stream: &Doc<FlumeConnector<Response, Request>>,
+    doc_stream: Doc,
     tx: &flume::Sender<Announcement>,
 ) -> Result<()> {
     let config_query = QueryBuilder::<FlatQuery>::default()
@@ -232,7 +229,7 @@ async fn load_and_distribute_config<C: Pairing>(
     let config = cfg_entry.collect::<Vec<_>>().await;
 
     let hash = config[0].as_ref().unwrap().content_hash();
-    let content = node.blobs().read_to_bytes(hash).await.unwrap();
+    let content = node.blobs().get_bytes(hash).await.unwrap();
     let announcement = Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
 
     tx.send(announcement).unwrap();
@@ -243,7 +240,7 @@ async fn load_and_distribute_config<C: Pairing>(
 /// Load hints from previous nodes in the network
 async fn load_previous_hints<C: Pairing>(
     node: &Node<C>,
-    doc_stream: &Doc<FlumeConnector<Response, Request>>,
+    doc_stream: Doc,
     our_index: usize,
     tx: &flume::Sender<Announcement>,
 ) -> Result<()> {
@@ -257,7 +254,7 @@ async fn load_previous_hints<C: Pairing>(
         let entry_list = doc_stream.get_many(hint_query.build()).await.unwrap();
         let entry = entry_list.collect::<Vec<_>>().await;
         let hash = entry[0].as_ref().unwrap().content_hash();
-        let content = node.blobs().read_to_bytes(hash).await.unwrap();
+        let content = node.blobs().get_bytes(hash).await.unwrap();
         let announcement =
             Announcement::decode(&mut content.slice(..).to_vec().as_slice()).unwrap();
         tx.send(announcement).unwrap();
@@ -271,7 +268,8 @@ async fn load_previous_hints<C: Pairing>(
 /// Publish this node's hint to the network
 async fn publish_node_hint<C: Pairing>(
     node: &Node<C>,
-    doc_stream: &Doc<FlumeConnector<Response, Request>>,
+    doc_stream: Doc,
+    // automate this?
     index: usize,
     tx: &flume::Sender<Announcement>,
 ) -> Result<()> {
@@ -298,7 +296,7 @@ async fn publish_node_hint<C: Pairing>(
     // Publish to network
     doc_stream
         .set_bytes(
-            node.docs().authors().default().await.unwrap(),
+            node.docs().author_default().await.unwrap(),
             index.to_string(),
             hint_announcement.encode(),
         )
@@ -309,56 +307,12 @@ async fn publish_node_hint<C: Pairing>(
     Ok(())
 }
 
-async fn publish_rpc_address<C: Pairing>(
-    node: &Node<C>,
-    doc_stream: &Doc<FlumeConnector<Response, Request>>,
-    index: usize,
-    rpc_port: u16,
-) -> Result<()> {
-    // discover the public IP address
-    // let public_ip = match get_public_ip().await {
-    //     Some(ip) => ip,
-    //     None => {
-    //         println!("Warning: Could not determine public IP. Publishing localhost address.");
-    //         "127.0.0.1".to_string()
-    //     }
-    // };
-
-    let public_ip = get_local_ip();
-
-    let public_rpc_addr = format!("http://{}:{}", public_ip, rpc_port);
-
-    let announcement = Announcement {
-        tag: Tag::Rpc,
-        data: public_rpc_addr.clone().into_bytes(),
-    };
-
-    let key = format!("{}{}", RPC_KEY_PREFIX, index);
-
-    // todo: make new more general wrapper (not same as iroh_docstore, should refactor the names)
-    // publish the public RPC address string to the document
-    doc_stream
-        .set_bytes(
-            node.docs().authors().default().await?,
-            key,
-            announcement.encode(),
-        )
-        .await
-        .unwrap();
-
-    println!(
-        "Published RPC address {} for index {}",
-        public_rpc_addr, index
-    );
-    Ok(())
-}
-
 /// Spawn the state synchronization background task
 fn spawn_state_sync_service<C: Pairing>(
-    doc_stream: Doc<FlumeConnector<Response, Request>>,
+    doc_stream: Doc,
     node: Node<C>,
     tx: flume::Sender<Announcement>,
-    bootstrap_peers: Option<Vec<NodeAddr>>,
+    bootstrap_peers: Option<Vec<EndpointAddr>>,
 ) {
     n0_future::task::spawn(async move {
         if let Err(e) = run_state_sync(doc_stream, node, tx, bootstrap_peers).await {
@@ -369,10 +323,10 @@ fn spawn_state_sync_service<C: Pairing>(
 
 /// Run the state synchronization loop
 async fn run_state_sync<C: Pairing>(
-    doc_stream: Doc<FlumeConnector<Response, Request>>,
+    doc_stream: Doc,
     node: Node<C>,
     tx: flume::Sender<Announcement>,
-    bootstrap_peers: Option<Vec<NodeAddr>>,
+    bootstrap_peers: Option<Vec<EndpointAddr>>,
 ) -> Result<()> {
     // to sync the doc with peers we need to read the state of the doc and load it
     let peers = bootstrap_peers.unwrap_or_default();
@@ -386,7 +340,7 @@ async fn run_state_sync<C: Pairing>(
         if let Some(evt) = event {
             println!("{:?}", evt);
             if let LiveEvent::InsertRemote { entry, .. } = evt {
-                let msg_body = blobs.read_to_bytes(entry.content_hash()).await;
+                let msg_body = blobs.get_bytes(entry.content_hash()).await;
                 match msg_body {
                     Ok(msg) => {
                         let bytes = msg.to_vec();
@@ -398,7 +352,7 @@ async fn run_state_sync<C: Pairing>(
                         // may still be syncing so try again (3x)
                         for _ in 0..3 {
                             thread::sleep(Duration::from_secs(1));
-                            let message_content = blobs.read_to_bytes(entry.content_hash()).await;
+                            let message_content = blobs.get_bytes(entry.content_hash()).await;
                             if let Ok(msg) = message_content {
                                 let bytes = msg.to_vec();
                                 let announcement = Announcement::decode(&mut &bytes[..]).unwrap();
@@ -490,17 +444,16 @@ fn generate_config(size: usize) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
+// #[cfg(feature = "local")]
+// async fn get_rpc_addr<C: Pairing>(node: &Node<C>) -> String {
+//     let node_addr = node.router.endpoint().addr().addrs.first();
+//     let public_ip = node_addr.direct_addresses().last().clone().unwrap();
+//     public_ip.to_string()
+// }
 
-fn get_local_ip() -> String {
-    local_ip_address::local_ip().unwrap().to_string()
-}
-
-async fn get_public_ip() -> Option<String> {
-    match public_ip::addr().await {
-        Some(ip) => Some(ip.to_string()),
-        None => {
-            eprintln!("Failed to discover public IP address.");
-            None
-        }
-    }
-}
+// #[cfg(not(feature = "local"))]
+// async fn get_rpc_addr<C: Pairing>(node: &Node<C>) -> String {
+//     let node_addr = node.node.net().node_addr().await.unwrap();
+//     let public_ip = node_addr.direct_addresses().next().clone().unwrap();
+//     public_ip.to_string()
+// }

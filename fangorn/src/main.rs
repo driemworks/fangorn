@@ -1,13 +1,12 @@
 use anyhow::Result;
 use clap::Parser;
-use fangorn::cli::{FangornNodeCli as Cli, FangornNodeCommands as Commands};
-use fangorn::service::{build_full_service, ServiceConfig};
+use fangorn::client::cli::{FangornNodeCli as Cli, FangornNodeCommands as Commands};
+use fangorn::client::service::{build_full_service, ServiceConfig};
 use fangorn::types::*;
 
 // https://hackmd.io/3968Gr5hSSmef-nptg2GRw
 // https://hackmd.io/xqYBrigYQwyKM_0Sn5Xf4w
 // https://eprint.iacr.org/2024/263.pdf
-const MAX_COMMITTEE_SIZE: usize = 2;
 
 #[tokio::main]
 async fn main() -> Result<()> {

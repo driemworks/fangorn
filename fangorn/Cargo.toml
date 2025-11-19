@@ -11,6 +11,7 @@ thiserror.workspace = true
 
 iroh.workspace = true
 iroh-gossip.workspace = true
+n0-error.workspace = true
 n0-future.workspace = true
 silent-threshold-encryption.workspace = true
 subxt.workspace = true
@@ -60,3 +61,6 @@ local-ip-address.workspace = true
 
 [build-dependencies]
 tonic-build = "0.13.0"
+
+[features]
+local = []

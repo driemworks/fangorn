@@ -14,10 +14,14 @@ use codec::{Decode, Encode};
 pub const RPC_KEY_PREFIX: &str = "rpc-addr-";
 pub const CONFIG_KEY: &str = "config-key";
 
+pub const MAX_COMMITTEE_SIZE: usize = 10;
+
 /// the curve (bls12-381)
 pub type E = ark_bls12_381::Bls12_381;
 /// the g2 group
 pub type G2 = <E as Pairing>::G2;
+
+pub type OpaqueCid = Vec<u8>;
 
 #[derive(Clone, Debug, Encode, Decode, PartialEq)]
 pub enum Tag {
@@ -43,7 +47,7 @@ pub struct StartNodeParams<C: Pairing> {
 impl<C: Pairing> StartNodeParams<C> {
     pub fn rand(bind_port: u16, index: usize) -> Self {
         Self {
-            iroh_secret_key: IrohSecretKey::generate(OsRng),
+            iroh_secret_key: IrohSecretKey::generate(&mut rand::rng()),
             secret_key: SecretKey::<C>::new(&mut OsRng, index),
             bind_port,
         }

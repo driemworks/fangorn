@@ -18,8 +18,6 @@ use silent_threshold_encryption::{
 use std::fs;
 use thiserror::Error;
 
-const MAX_COMMITTEE_SIZE: usize = 3;
-
 #[derive(Error, Debug)]
 pub enum DecryptionClientError {
     #[error("An error occurred while communicating with the docstore: {0}")]
@@ -156,7 +154,6 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore, R: RpcAddressResolver>
         ak: &AggregateKey<E>,
     ) -> Result<Vec<PartialDecryption<E>>, DecryptionClientError> {
         let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
-        // TODO: make this configurable/dynamic based on threshold
         for i in 0..self.threshold as usize { 
             let node_id = ak.lag_pks[i].id;
             let rpc_addr_url = self.resolver.resolve_rpc_address(node_id).await?;
@@ -203,22 +200,5 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore, R: RpcAddressResolver>
             &self.config.crs,
         )
         .map_err(|e| DecryptionClientError::DecryptionError(e.to_string()))
-    }
-}
-
-// todo: This needs to be made dynamic when new nodes join
-// mapping their index to their ip and port
-// in this case we drop ip since everything is runnning locally
-// note: this means we can only support three nodes max right now,
-// due to the poor design...
-fn get_rpc_port(node_id: usize) -> Result<u16, DecryptionClientError> {
-    match node_id {
-        0 => Ok(30332),
-        1 => Ok(30334),
-        2 => Ok(30335),
-        _ => Err(DecryptionClientError::RpcError(format!(
-            "Unknown node ID: {}",
-            node_id
-        ))),
     }
 }

@@ -6,7 +6,7 @@ use fangorn::{
         keystore::{Keystore, Sr25519Keystore},
         FANGORN,
     },
-    node::Node,
+    Node,
     types::*,
 };
 use std::sync::Arc;
@@ -178,14 +178,13 @@ async fn main() -> Result<()> {
 
 async fn build_node() -> Node<E> {
     // setup channels for state synchronization
-    let (tx, rx) = flume::unbounded();
+    let (_tx, rx) = flume::unbounded();
     // initialize node parameters and state
     // start on port 4000
     // todo: can we remove the index field? sk unused here
     let params = StartNodeParams::<E>::rand(4000, 0);
     let state = State::<E>::empty(params.secret_key.clone());
     let arc_state = Arc::new(Mutex::new(state));
-    let arc_state_clone = Arc::clone(&arc_state);
 
     Node::build(params, rx, arc_state).await
 }
