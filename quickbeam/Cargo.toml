@@ -8,3 +8,4 @@ anyhow.workspace = true
 clap.workspace = true
 fangorn.workspace = true
 tokio.workspace = true
+sp-core.workspace = true

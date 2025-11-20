@@ -8041,6 +8041,7 @@ dependencies = [
  "anyhow",
  "clap",
  "fangorn",
+ "sp-core 38.1.0",
  "tokio",
 ]
 

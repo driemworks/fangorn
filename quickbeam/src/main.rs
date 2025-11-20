@@ -1,18 +1,24 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand};
-use fangorn::{
-    crypto::{
+use clap::{Parser, Subcommand, ValueEnum};
+use fangorn::crypto::{
         FANGORN,
         cipher::{handle_decrypt, handle_encrypt},
-        keystore::{Keystore, Sr25519Keystore},
-    },
-};
+        keystore::{IrohKeystore, Keystore, Sr25519Keystore},
+    };
+use sp_core::crypto::SecretString;
 
 #[derive(Parser, Debug)]
 #[command(name = "quickbeam", version = "1.0")]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+enum StoreType {
+    Sr25519,
+    Ed25519,
+    Bls12_381
 }
 
 /// Define available subcommands
@@ -22,6 +28,19 @@ enum Commands {
         // the keystore directory
         #[arg(long)]
         keystore_dir: String,
+        
+    },
+    KeygenPswd {
+
+        #[arg(long)]
+        keystore_dir: String,
+
+        #[arg(long)]
+        password: SecretString,
+
+        #[arg(value_enum)]
+        store_type: StoreType,
+
     },
     Inspect {
         // the keystore directory
@@ -97,6 +116,24 @@ async fn main() -> Result<()> {
                 "Keys in keystore: {:?}",
                 keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
             );
+        }
+        Some(Commands::KeygenPswd { keystore_dir, password , store_type}) => {
+            match store_type {
+                StoreType::Sr25519 => {
+                     let keystore = Sr25519Keystore::new_with_password(keystore_dir.into(), FANGORN, password).unwrap();
+                    keystore.generate_key().unwrap();
+                    let keys = keystore.list_keys()?;
+                    println!(
+                        "Keys in pasword keystore: {:?}",
+                        keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
+                    );
+                }
+                StoreType::Ed25519 => {
+                    let keystore = IrohKeystore::new_with_password(keystore_dir.into(), FANGORN, password).unwrap();
+                    keystore.generate_key().unwrap();
+                }
+                _ => {}
+            }
         }
         Some(Commands::Sign { keystore_dir, nonce }) => {
             let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
