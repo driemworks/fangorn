@@ -4,7 +4,7 @@
 SIGNAL_FILE="/tmp/fangorn_signal_$$"
 
 # the ink! smart contract address
-CONTRACT_ADDR="5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+CONTRACT_ADDR="5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR"
 
 # Cleanup function to be called on exit
 cleanup() {

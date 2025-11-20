@@ -84,19 +84,19 @@ impl SharedStore<Cid, Data> for LocalDocStore {
         Ok(Some(ciphertext_bytes))
     }
 
-    async fn remove(&self, cid: &Cid) -> Result<()> {
-        let filepath = self.cid_to_filename(&cid.to_string());
+    // async fn remove(&self, cid: &Cid) -> Result<()> {
+    //     let filepath = self.cid_to_filename(&cid.to_string());
 
-        // Check if file exists
-        if filepath.exists() {
-            fs::remove_file(&filepath).await?;
-            // println!("Removed data for CID: {}", &cid.to_string());
-        } else {
-            // println!("No data found for CID: {}", &cid.to_string());
-        }
+    //     // Check if file exists
+    //     if filepath.exists() {
+    //         fs::remove_file(&filepath).await?;
+    //         // println!("Removed data for CID: {}", &cid.to_string());
+    //     } else {
+    //         // println!("No data found for CID: {}", &cid.to_string());
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 }
 
 impl DocStore for LocalDocStore {}
@@ -142,7 +142,7 @@ impl LocalIntentStore {
     }
 }
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Encode, Decode)]
 pub struct Entry {
     cid: OpaqueCid,
     intents: Vec<Intent>,
@@ -156,21 +156,19 @@ impl IntentStore for LocalIntentStore {
         cid: &Cid,
         intents: Vec<Intent>,
     ) -> Result<()> {
-
         let message_path =  String::from_utf8(filename.to_vec()).unwrap();
-
         let entry = Entry { cid: cid.to_bytes().to_vec(), intents };
-
         self.write(&entry.encode(), message_path);
-
         Ok(())
     }
 
     async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Vec<Intent>)>> {
+        // todo
         Ok(None)
     }
 
     async fn remove_intent(&self, filename: &[u8]) -> Result<()> {
+        // todo
         Ok(())
     }
 }

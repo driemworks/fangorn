@@ -1,4 +1,5 @@
 use super::*;
+use anyhow::Result;
 use ark_ec::pairing::Pairing;
 use async_trait::async_trait;
 use cid::Cid;
@@ -8,35 +9,35 @@ use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::Arc;
 use tokio::fs;
 
-use crate::Node;
+use crate::backend::iroh::SharedIrohBackend;
+use crate::client::Node;
 use crate::types::*;
-use iroh::{PublicKey as IrohPublicKey};
+use iroh::PublicKey as IrohPublicKey;
 use iroh_docs::{
+    api::Doc,
     engine::LiveEvent,
-    // rpc::{
-    //     client::docs::{Doc, ShareMode},
-    //     proto::{Request, Response},
-    // },
     store::{FlatQuery, QueryBuilder},
     DocTicket,
 };
 use quic_rpc::transport::flume::FlumeConnector;
 
-// / The codec for generating CIDs
+// The codec for generating CIDs
 const RAW: u64 = 0x55;
 
 pub struct IrohDocStore<C: Pairing> {
     pub node: Node<C>,
-    // pub doc_stream: Doc<FlumeConnector<Response, Request>>,
+    doc: Doc,
+    backend: Arc<dyn SharedIrohBackend>,
 }
 
 impl<C: Pairing> IrohDocStore<C> {
-    pub async fn new(node: Node<C>, ticket: String) -> Self {
-        // let doc_ticket = DocTicket::from_str(&ticket).unwrap();
-        // let doc_stream = node.docs().import(doc_ticket).await.unwrap();
-        Self { node  }
+    pub async fn new(node: Node<C>, ticket: &str, backend: Arc<dyn SharedIrohBackend>) -> Self {
+        let doc_ticket = DocTicket::from_str(&ticket).unwrap();
+        let doc = node.docs().import(doc_ticket).await.unwrap();
+        Self { node, doc, backend }
     }
 
     /// build a unique key for the data (it's a cid)
@@ -56,45 +57,31 @@ impl<C: Pairing> SharedStore<Cid, Data> for IrohDocStore<C> {
             data: data.to_vec(),
         };
 
-        // self.doc_stream
-        //     .set_bytes(
-        //         self.node.docs().authors().default().await?,
-        //         cid.to_string(),
-        //         announcement.encode(),
-        //     )
-        //     .await?;
+        self.backend
+            .write(&self.doc, &cid.to_string(), &announcement.encode())
+            .await?;
 
         Ok(cid)
     }
 
     async fn fetch(&self, cid: &Cid) -> Result<Option<Data>> {
-        // let entry = self
-        //     .doc_stream
-        //     .get_one(
-        //         QueryBuilder::<FlatQuery>::default()
-        //             .key_exact(cid.to_string())
-        //             .build(),
-        //     )
-        //     .await?;
+        if let Some(content) = self.backend.read(&self.doc, &cid.to_string(), None).await? {
+            let announcement = Announcement::decode(&mut &content[..])?;
+            return Ok(Some(announcement.data));
+        }
 
-        // match entry {
-        //     Some(e) => {
-        //         let hash = e.content_hash();
-        //         let content = self.node.blobs().read_to_bytes(hash).await?;
-        //         let announcement = Announcement::decode(&mut &content[..])?;
-        //         Ok(Some(announcement.data))
-        //     }
-        //     None => Ok(None),
-        // }
         Ok(None)
     }
 
-    async fn remove(&self, cid: &Cid) -> Result<()> {
-        // self.doc_stream
-        //     .del(self.node.docs().authors().default().await?, cid.to_string())
-        //     .await?;
-        Ok(())
-    }
+    // async fn remove(&self, cid: &Cid) -> Result<()> {
+    //     self.doc
+    //         .del(
+    //             self.node.docs().author_default().await.unwrap(),
+    //             cid.to_string(),
+    //         )
+    //         .await?;
+    //     Ok(())
+    // }
 }
 
 impl<C: Pairing> DocStore for IrohDocStore<C> {}

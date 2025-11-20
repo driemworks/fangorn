@@ -8,20 +8,22 @@ use futures::prelude::*;
 use iroh::{EndpointAddr, PublicKey as IrohPublicKey};
 use iroh_docs::{
     api::{protocol::ShareMode, Doc},
-    // client::{Doc, ShareMode},
     engine::LiveEvent,
     protocol::Docs,
     store::{FlatQuery, QueryBuilder},
     DocTicket,
 };
+use silent_threshold_encryption::aggregate::SystemPublicKeys;
 use std::sync::Arc;
 use std::{fs::OpenOptions, io::Write, thread, time::Duration};
-use tokio::sync::Mutex;
+use subxt::config::polkadot::AccountId32;
+use tokio::sync::{mpsc, Mutex, RwLock};
 use tonic::transport::Server;
 
-use crate::backend::SubstrateBackend;
+use crate::backend::{iroh::IrohBackend, SubstrateBackend};
 use crate::client::node::*;
 use crate::gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget};
+use crate::pool::{pool::*, watcher::*};
 use crate::rpc::server::{NodeServer, RpcServer};
 use crate::storage::{
     contract_store::ContractIntentStore, iroh_docstore::IrohDocStore, local_store::LocalDocStore,
@@ -77,7 +79,7 @@ pub async fn build_full_service<C: Pairing>(
     let arc_state = Arc::new(Mutex::new(state));
     let arc_state_clone = Arc::clone(&arc_state);
 
-    let mut node = Node::build(params, rx, arc_state).await;
+    let mut node = Node::build(params, rx, arc_state.clone()).await;
 
     node.try_connect_peers(config.bootstrap_peers.clone())
         .await
@@ -119,29 +121,36 @@ pub async fn build_full_service<C: Pairing>(
     thread::sleep(Duration::from_secs(1));
 
     // publish our own hint
-    publish_node_hint(&node, doc_stream, config.index, &tx)
+    publish_node_hint(&node, doc_stream.clone(), config.index, &tx)
         .await
         .unwrap();
 
-    // publish_rpc_address(&node, &doc_stream, config.index, config.rpc_port)
-    //     .await
-    //     .unwrap();
+    if config.is_bootstrap {
+        thread::sleep(Duration::from_secs(1));
 
-    spawn_rpc_service(
-        arc_state_clone,
-        config.rpc_port,
-        &config.contract_addr,
-        node.clone(),
-        ticket.clone(),
-    )
-    .await
-    .unwrap();
+        // Publish initial system keys
+        publish_system_keys(&node, &doc_stream.clone(), &arc_state_clone, &tx).await?;
+
+        // Monitor for new hints and auto-update
+        spawn_system_keys_updater(
+            node.clone(),
+            doc_stream.clone(),
+            arc_state.clone(),
+            tx.clone(),
+        )
+        .await?;
+
+        println!("System keys updater started");
+    } else {
+        // Non-bootstrap: just load once
+        load_system_keys(&node, &doc_stream, &tx).await?;
+    }
+    spawn_pool_watcher(node.clone(), ticket.clone(), arc_state_clone.clone())
+        .await
+        .unwrap();
 
     // main service loop
-    Ok(ServiceHandle {
-        node,
-        ticket,
-    })
+    Ok(ServiceHandle { node, ticket })
 }
 
 /// Setup the document stream for state synchronization
@@ -157,7 +166,7 @@ async fn setup_document_stream<C: Pairing>(
 
         // Generate config and create document
         let config_bytes = generate_config(max_committee_size).unwrap();
-        
+
         let doc = node.docs().create().await.unwrap();
 
         // Create and share ticket
@@ -372,6 +381,149 @@ async fn run_state_sync<C: Pairing>(
     Ok(())
 }
 
+/// Monitor for new hints and republish system keys
+async fn spawn_system_keys_updater<C: Pairing>(
+    node: Node<C>,
+    doc_stream: Doc,
+    state: Arc<Mutex<State<C>>>,
+    tx: flume::Sender<Announcement>,
+) -> Result<()> {
+    n0_future::task::spawn(async move {
+        let mut last_hint_count = 0;
+
+        loop {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+
+            let state_guard = state.lock().await;
+            let current_hint_count = state_guard.hints.as_ref().map(|h| h.len()).unwrap_or(0);
+            drop(state_guard);
+
+            // New hint detected
+            if current_hint_count > last_hint_count {
+                println!(
+                    "New hint detected ({} total), regenerating system keys",
+                    current_hint_count
+                );
+
+                if let Err(e) = publish_system_keys(&node, &doc_stream, &state, &tx).await {
+                    eprintln!("Failed to publish system keys: {:?}", e);
+                } else {
+                    last_hint_count = current_hint_count;
+                }
+            }
+        }
+    });
+
+    Ok(())
+}
+
+/// Publish/update system keys (called on new hints)
+async fn publish_system_keys<C: Pairing>(
+    node: &Node<C>,
+    doc_stream: &Doc,
+    state: &Arc<Mutex<State<C>>>,
+    tx: &flume::Sender<Announcement>,
+) -> Result<()> {
+    let state_guard = state.lock().await;
+
+    let config = state_guard
+        .config
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("Config not available"))?;
+
+    let hints = state_guard
+        .hints
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("Hints not available"))?;
+
+    if hints.is_empty() {
+        return Err(anyhow::anyhow!("No hints available yet"));
+    }
+
+    // Generate system keys from all current hints
+    let system_keys = SystemPublicKeys::<C>::new(hints.clone(), &config.crs, &config.lag_polys, 1)?;
+
+    let mut bytes = Vec::new();
+    system_keys.serialize_compressed(&mut bytes)?;
+    println!("✅ Published updated system keys ({} hints)", hints.len());
+    drop(state_guard);
+
+    // Publish to doc (overwrites previous)
+    let announcement = Announcement {
+        tag: Tag::SystemKeys,
+        data: bytes,
+    };
+
+    tx.send(announcement.clone())?;
+
+    doc_stream
+        .set_bytes(
+            node.docs().author_default().await?,
+            SYSTEM_KEYS_KEY,
+            announcement.encode(),
+        )
+        .await?;
+
+    Ok(())
+}
+
+/// Non-bootstrap nodes sync system keys
+async fn load_system_keys<C: Pairing>(
+    node: &Node<C>,
+    doc_stream: &Doc,
+    tx: &flume::Sender<Announcement>,
+) -> Result<()> {
+    let query = QueryBuilder::<FlatQuery>::default()
+        .key_exact(SYSTEM_KEYS_KEY)
+        .limit(1);
+
+    let entries = doc_stream.get_many(query.build()).await?;
+    let entry_vec = entries.collect::<Vec<_>>().await;
+
+    if let Some(Ok(entry)) = entry_vec.first() {
+        let hash = entry.content_hash();
+        let content = node.blobs().get_bytes(hash).await?;
+        let announcement = Announcement::decode(&mut &content[..])?;
+
+        tx.send(announcement)?;
+        println!("✅ Loaded system keys from network");
+    }
+
+    Ok(())
+}
+
+async fn spawn_pool_watcher<C: Pairing>(
+    node: Node<C>,
+    ticket: String,
+    state: Arc<Mutex<State<C>>>,
+) -> Result<()> {
+    let iroh_backend = Arc::new(IrohBackend::new(node.clone()));
+    let pool = Arc::new(RwLock::new(IrohPool::new(iroh_backend, &ticket).await?));
+    // poll every 100ms
+    let watcher = PollingWatcher::new(pool.clone(), Duration::from_millis(100));
+    // up to 100 reqs per 100ms interval (that is too many...)
+    let (tx, mut rx) = mpsc::channel(100);
+
+    // watcher
+    let watcher_handle = n0_future::task::spawn(async move {
+        if let Err(e) = watcher.watch(tx).await {
+            eprintln!("Pool watcher error: {:?}", e);
+        }
+    });
+
+    // worker
+    n0_future::task::spawn(async move {
+        while let Some(req) = rx.recv().await {
+            println!("New request received: {}", req.id());
+            // if let Err(e) = process_decryption_request(req, &node, &state, &pool).await {
+            //     eprintln!("Request processing error: {:?}", e);
+            // }
+        }
+    });
+
+    println!("Request Pool watcher started");
+    Ok(())
+}
 /// Spawn the RPC server
 async fn spawn_rpc_service<C: Pairing>(
     state: Arc<Mutex<State<C>>>,
@@ -383,10 +535,12 @@ async fn spawn_rpc_service<C: Pairing>(
     let addr_str = format!("0.0.0.0:{}", rpc_port);
     let addr = addr_str.parse().unwrap();
 
-    let doc_store = Arc::new(IrohDocStore::new(node.clone(), ticket).await);
-
-    // initialize backend (todo: add param to config node url instead of hardcoding it)
+    // initialize substrate backend (todo: add param to config node url instead of hardcoding it)
     let backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), None).await?);
+    // initialize iroh backend
+    let iroh_backend = Arc::new(IrohBackend::new(node.clone()));
+
+    let doc_store = Arc::new(IrohDocStore::new(node.clone(), &ticket, iroh_backend).await);
 
     let intent_store = Arc::new(ContractIntentStore::new(
         contract_addr.to_string(),
@@ -422,6 +576,29 @@ async fn spawn_rpc_service<C: Pairing>(
     Ok(())
 }
 
+// async fn process_decryption_request<C: Pairing>(
+//     req: DecryptionRequest,
+//     state: &Arc<Mutex<State<C>>>,
+//     pool: &Arc<RwLock<IrohPool<C>>>,
+// ) -> Result<()> {
+//     // Just decrypt - no intent verification needed for PoC
+//     let state_guard = state.lock().await;
+
+//     let ciphertext = Ciphertext::<C>::deserialize_compressed(&req.ciphertext[..])?;
+//     let partial = state_guard.sk.partial_decryption(&ciphertext);
+//     drop(state_guard);
+
+//     let mut partial_bytes = Vec::new();
+//     partial.serialize_compressed(&mut partial_bytes)?;
+
+//     // Submit attestation
+//     let pool_guard = pool.read().await;
+//     pool_guard.submit_partial_attestation(&req.id, &partial_bytes).await?;
+
+//     println!("Submitted partial decryption");
+//     Ok(())
+// }
+
 /// Generate the initial config (for bootstrap nodes)
 fn generate_config(size: usize) -> Result<Vec<u8>> {
     use ark_serialize::CanonicalSerialize;
@@ -443,17 +620,3 @@ fn generate_config(size: usize) -> Result<Vec<u8>> {
 
     Ok(bytes)
 }
-
-// #[cfg(feature = "local")]
-// async fn get_rpc_addr<C: Pairing>(node: &Node<C>) -> String {
-//     let node_addr = node.router.endpoint().addr().addrs.first();
-//     let public_ip = node_addr.direct_addresses().last().clone().unwrap();
-//     public_ip.to_string()
-// }
-
-// #[cfg(not(feature = "local"))]
-// async fn get_rpc_addr<C: Pairing>(node: &Node<C>) -> String {
-//     let node_addr = node.node.net().node_addr().await.unwrap();
-//     let public_ip = node_addr.direct_addresses().next().clone().unwrap();
-//     public_ip.to_string()
-// }

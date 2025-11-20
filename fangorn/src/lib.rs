@@ -4,6 +4,7 @@ pub mod backend;
 pub mod client;
 pub mod crypto;
 pub mod gadget;
+pub mod pool;
 pub mod rpc;
 pub mod storage;
 pub mod types;

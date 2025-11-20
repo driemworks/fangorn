@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use anyhow::Result;
-use fangorn::backend::BlockchainBackend;
+use fangorn::backend::Backend;
 use fangorn::crypto::cipher::handle_decrypt;
 use fangorn::crypto::keystore::KeystoreError;
 use fangorn::utils::{decode_public_key, load_mnemonic};

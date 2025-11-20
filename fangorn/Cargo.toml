@@ -54,6 +54,7 @@ iroh-blobs.workspace = true
 quic-rpc.workspace = true
 flume.workspace = true
 
+bincode.workspace = true
 cid.workspace = true
 multihash-codetable.workspace = true
 public-ip.workspace = true

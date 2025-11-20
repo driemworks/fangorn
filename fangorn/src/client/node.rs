@@ -59,9 +59,12 @@ impl<C: Pairing> Node<C> {
         println!("Building the node...");
         let endpoint = Endpoint::builder()
             .secret_key(params.iroh_secret_key.clone())
-            // TODO: This is so bad
-            .discovery(MdnsDiscovery::builder().build(params.iroh_secret_key.public()).unwrap())
-            // mdns discovery?
+            // TODO: keystore integration
+            .discovery(
+                MdnsDiscovery::builder()
+                    .build(params.iroh_secret_key.public())
+                    .unwrap(),
+            )
             .bind_addr_v4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, params.bind_port))
             .bind()
             .await
@@ -134,11 +137,13 @@ impl<C: Pairing> Node<C> {
     }
 
     async fn connect_to_peer_for_multiple_protocols(&self, peer_addr: EndpointAddr) {
-        let _blobs_conn = self.endpoint
+        let _blobs_conn = self
+            .endpoint
             .connect(peer_addr.clone(), BLOBS_ALPN)
             .await
             .unwrap();
-        let _docs_conn = self.endpoint
+        let _docs_conn = self
+            .endpoint
             .connect(peer_addr.clone(), DOCS_ALPN)
             .await
             .unwrap();

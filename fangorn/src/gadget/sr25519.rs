@@ -1,4 +1,7 @@
-use crate::{backend::BlockchainBackend, gadget::*};
+use crate::{
+    backend::{substrate::SubstrateBackend, Backend},
+    gadget::*,
+};
 use async_trait::async_trait;
 use sp_core::{sr25519, Pair};
 use std::fmt::Debug;
@@ -7,11 +10,11 @@ use std::fmt::Debug;
 #[derive(Debug)]
 pub struct Sr25519Gadget {
     /// The blockchain backend
-    backend: Arc<dyn BlockchainBackend>,
+    backend: Arc<SubstrateBackend>,
 }
 
 impl Sr25519Gadget {
-    pub fn new(backend: Arc<dyn BlockchainBackend>) -> Self {
+    pub fn new(backend: Arc<SubstrateBackend>) -> Self {
         Self { backend }
     }
 }

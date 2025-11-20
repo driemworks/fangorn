@@ -1,6 +1,6 @@
 use crate::{crypto::decrypt::*, Node, types::*};
 use iroh_docs::{
-    protocol::Docs,
+    api::Doc,
     engine::LiveEvent,
     store::{FlatQuery, QueryBuilder},
     DocTicket,
@@ -15,7 +15,7 @@ pub trait RpcAddressResolver {
 }
 
 pub struct IrohRpcResolver {
-    // pub doc_stream: Doc,
+    pub doc: Doc,
     pub node: Node<E>,
 }
 

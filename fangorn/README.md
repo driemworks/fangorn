@@ -57,7 +57,7 @@ For example, to start a bootnode that runs the iroh networking layer on 9933 and
 --rpc-port 30332 \
 --is-bootstrap \
 --index 0  \
---contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+--contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR"
 ```
 
 and to sync with it, we must copy the public key and ticket output in the node logs on startup. The necessary config (KZG params) are gossiped to the incoming node from the bootstrap.
@@ -70,7 +70,7 @@ and to sync with it, we must copy the public key and ticket output in the node l
 --bootstrap-ip 172.255.255.255:9932 \
 --ticket docaaacaxzwhvoasmzkscqxaeciht74plakvljgysk4opsq7cmyfqzbmm5aafq5yjk3ci3y2ra4kt5lhpu7hafvrzhlcu5ss2yw6ahcaf43wc47aajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55ruhz54ayavqolfponju \
 --index 1 \
---contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+--contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR"
 ```
 
 ## RPC

@@ -10,7 +10,7 @@ pub mod iroh_docstore;
 pub mod local_store;
 
 /// the raw data type for storage
-type Data = Vec<u8>;
+pub type Data = Vec<u8>;
 
 /// The SharedStore manages key-value mappings against some shared storage backend
 #[async_trait]
@@ -21,8 +21,8 @@ pub trait SharedStore<K, V>: Send + Sync {
     /// fetch data by key
     async fn fetch(&self, k: &K) -> Result<Option<V>>;
 
-    /// Remove data associated with a key
-    async fn remove(&self, k: &K) -> Result<()>;
+    // /// Remove data associated with a key
+    // async fn remove(&self, k: &K) -> Result<()>;
 }
 
 /// The docstore is a SharedStore where the key is a cid

@@ -134,6 +134,8 @@ async fn main() -> Result<()> {
         }) => {
             // setup node
             let node = build_node().await;
+            // sync, read all keys, compute latest encryption key
+            // in practice, this should be read from a contract or something.
 
             handle_encrypt(
                 message_path,
@@ -157,6 +159,7 @@ async fn main() -> Result<()> {
         }) => {
             // setup node
             let node = build_node().await;
+
             handle_decrypt(
                 config_path,
                 filename,
