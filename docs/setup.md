@@ -110,7 +110,10 @@ Note that decryption exposes the password to verifiers, making this best used as
 --keystore-dir tmp/keystore \
 --intent "Password(test)" \
 --contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR" \
---ticket docaaacalxk6jpj4lcnx3olmkibj2lh7m5hjbuxsjzmbzqnndohzv3v3y47ahj4xsoibwvjvopobmyhpo363hr3nvltkshwpijdwdhqt5npe6s7mayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimjx4bqcafmdszl3tkn
+--ticket docaaacbhvy6gjfzbx5uoxybzs2ql5b2fffvwmi5fhzbk5xnqyyv6naccjhaes4exdlcdh5zjwatg7yf6gjg5isxdghdi4jlobnylqnz7ons5esqayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimv3qbqcafmdszl3tkn \
+--bootstrap-pubkey 25c25c6b10cfdca6c099bf82f8c937512b8cc71a3895b82dc2e0dcfdcd974928 \
+--bootstrap-url 172.28.178.189:9933 \
+--system-keys-dir tmp/sys/key
 ```
 
 **Decryption**
@@ -121,8 +124,11 @@ Note that decryption exposes the password to verifiers, making this best used as
 --config-path config.txt \
 --witness test \
 --pt-filename test.txt \
---contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7" \
---ticket docaaacbx6mbsmg2rg54c5urp4p44ymv2y3rv6gps7zurmdt2muihu3hfzmagzz74jr7ja4uw2ootcwwprvtc2pmcwwktanlehepcrytnyymlvywajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55ruhwyeayavqolfponju
+--contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR" \
+--ticket docaaacbhvy6gjfzbx5uoxybzs2ql5b2fffvwmi5fhzbk5xnqyyv6naccjhaes4exdlcdh5zjwatg7yf6gjg5isxdghdi4jlobnylqnz7ons5esqayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimv3qbqcafmdszl3tkn \
+--bootstrap-pubkey 25c25c6b10cfdca6c099bf82f8c937512b8cc71a3895b82dc2e0dcfdcd974928 \
+--bootstrap-url 172.28.178.189:9933 \
+--system-keys-dir tmp/sys/key
 ```
 
 #### PSP22 Based Encryption

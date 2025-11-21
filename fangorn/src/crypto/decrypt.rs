@@ -111,18 +111,18 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
             .map_err(|e| DecryptionClientError::IntentStoreError(e.to_string()))?
             .ok_or_else(|| DecryptionClientError::IntentNotFound(filename.to_string()))?;
 
-        let ciphertext_bytes = self
-            .app_store
-            .doc_store
-            .fetch(&cid)
-            .await
-            .map_err(|e| DecryptionClientError::DocstoreError(e.to_string()))?
-            .ok_or(DecryptionClientError::CiphertextNotFound)?;
+        // let ciphertext_bytes = self
+        //     .app_store
+        //     .doc_store
+        //     .fetch(&cid)
+        //     .await
+        //     .map_err(|e| DecryptionClientError::DocstoreError(e.to_string()))?
+        //     .ok_or(DecryptionClientError::CiphertextNotFound)?;
 
-        println!("we got the ciphertext");
+        // println!("we got the ciphertext");
 
-        let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..])
-            .map_err(|_| DecryptionClientError::DeserializationError)?;
+        // let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..])
+        //     .map_err(|_| DecryptionClientError::DeserializationError)?;
 
         // prepare witnesses
         let witness_hex = self.encode_witnesses(witnesses)?;

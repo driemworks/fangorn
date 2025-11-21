@@ -17,7 +17,7 @@ pub const RPC_KEY_PREFIX: &str = "rpc-addr-";
 pub const CONFIG_KEY: &str = "config-key-";
 pub const SYSTEM_KEYS_KEY: &str = "sys-keys-";
 
-pub const MAX_COMMITTEE_SIZE: usize = 10;
+pub const MAX_COMMITTEE_SIZE: usize = 2;
 
 /// the curve (bls12-381)
 pub type E = ark_bls12_381::Bls12_381;

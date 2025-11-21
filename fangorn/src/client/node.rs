@@ -118,6 +118,7 @@ impl<C: Pairing> Node<C> {
     }
 
     /// join the gossip topic by connecting to known peers, if any
+    // also peers does not need to be an option here!
     pub async fn try_connect_peers(&mut self, peers: Option<Vec<EndpointAddr>>) -> Result<()> {
         match peers {
             Some(bootstrap) => {

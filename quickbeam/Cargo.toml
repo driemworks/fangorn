@@ -5,7 +5,10 @@ edition = "2024"
 
 [dependencies]
 anyhow.workspace = true
+ark-serialize.workspace = true
 clap.workspace = true
 fangorn.workspace = true
 flume.workspace = true
 tokio.workspace = true
+iroh.workspace = true
+silent-threshold-encryption.workspace = true

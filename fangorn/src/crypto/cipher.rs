@@ -41,14 +41,11 @@ pub async fn handle_encrypt(
     contract_addr: &String,
     node: Node<E>,
     ticket: &String,
+    sys_keys: SystemPublicKeys<E>,
 ) {
     let seed = load_mnemonic(keystore_path);
     let (gadget_registry, app_store) =
         iroh_testnet_setup(contract_addr, Some(&seed), node.clone(), ticket.clone()).await;
-
-    let sys_keys = load_system_keys_from_doc(&node, ticket)
-        .await
-        .expect("Failed to load system keys");
 
     let message = app_store
         .pt_store
@@ -71,16 +68,13 @@ pub async fn handle_decrypt(
     contract_addr: &String,
     node: Node<E>,
     ticket: &String,
+    sys_keys: SystemPublicKeys<E>,
 ) {
     // we could split this up now with a public witness:
     // that's pretty pointless to put on chain or make public though...
     // we 100% need to do a zk approach here!!! z
     let (gadget_registry, app_store) =
         iroh_testnet_setup(contract_addr, None, node.clone(), ticket.clone()).await;
-
-    let sys_keys = load_system_keys_from_doc(&node, ticket)
-        .await
-        .expect("Failed to load system keys");
 
     // Parse witnesses
     let witnesses: Vec<&str> = witness_string.trim().split(',').map(|s| s.trim()).collect();
@@ -169,35 +163,37 @@ async fn iroh_testnet_setup(
     (gadget_registry, app_store)
 }
 
-async fn load_system_keys_from_doc<C: Pairing>(
-    node: &Node<C>,
-    ticket: &str,
-) -> Result<SystemPublicKeys<C>> {
-    let doc_ticket = DocTicket::from_str(ticket)?;
-    let doc = node.docs().import(doc_ticket).await?;
+// async fn load_system_keys_from_doc<C: Pairing>(
+//     node: &Node<C>,
+//     ticket: &str,
+// ) -> Result<SystemPublicKeys<C>> {
+//     let doc_ticket = DocTicket::from_str(ticket)?;
+//     let doc = node.docs().import(doc_ticket).await?;
 
-    // Query for system keys
-    let query = QueryBuilder::<FlatQuery>::default()
-        .key_exact(SYSTEM_KEYS_KEY)
-        .limit(1);
+//     // Query for system keys
+//     let query = QueryBuilder::<FlatQuery>::default()
+//         .key_exact(SYSTEM_KEYS_KEY)
+//         .limit(1);
 
-    let entries = doc.get_many(query.build()).await?;
-    let entry_vec = entries.collect::<Vec<_>>().await;
+//     let entries = doc.get_many(query.build()).await?;
+//     let entry_vec = entries.collect::<Vec<_>>().await;
 
-    let entry = entry_vec
-        .first()
-        .ok_or_else(|| anyhow::anyhow!("System keys not found in doc"))?
-        .as_ref()
-        .map_err(|e| anyhow::anyhow!("Failed to get entry: {:?}", e))?;
+//     println!("GOT ENTRIES {:?}", entry_vec);
 
-    // Fetch content
-    let hash = entry.content_hash();
-    let content = node.blobs().get_bytes(hash).await?;
-    let announcement = Announcement::decode(&mut &content[..])?;
+//     let entry = entry_vec
+//         .first()
+//         .ok_or_else(|| anyhow::anyhow!("System keys not found in doc"))?
+//         .as_ref()
+//         .map_err(|e| anyhow::anyhow!("Failed to get entry: {:?}", e))?;
 
-    // Deserialize system keys
-    let sys_keys = SystemPublicKeys::<C>::deserialize_compressed(&announcement.data[..])?;
+//     // Fetch content
+//     let hash = entry.content_hash();
+//     let content = node.blobs().get_bytes(hash).await?;
+//     let announcement = Announcement::decode(&mut &content[..])?;
 
-    println!("✅ Loaded system keys from network");
-    Ok(sys_keys)
-}
+//     // Deserialize system keys
+//     let sys_keys = SystemPublicKeys::<C>::deserialize_compressed(&announcement.data[..])?;
+
+//     println!("Loaded system keys from network");
+//     Ok(sys_keys)
+// }

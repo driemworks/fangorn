@@ -7915,9 +7915,12 @@ name = "quickbeam"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ark-serialize 0.5.0",
  "clap",
  "fangorn",
  "flume",
+ "iroh",
+ "silent-threshold-encryption",
  "tokio",
 ]
 

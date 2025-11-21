@@ -131,7 +131,9 @@ pub async fn build_full_service<C: Pairing>(
         // Publish initial system keys
         publish_system_keys(&node, &doc_stream.clone(), &arc_state_clone, &tx).await?;
 
-        // Monitor for new hints and auto-update
+        // monitor for new hints and auto-update system keys
+        // in the future, this should be driven by consensus or something
+        // so this is sort of the 'proof of authority'/bootstrap-does-it-all model
         spawn_system_keys_updater(
             node.clone(),
             doc_stream.clone(),
@@ -141,10 +143,9 @@ pub async fn build_full_service<C: Pairing>(
         .await?;
 
         println!("System keys updater started");
-    } else {
-        // Non-bootstrap: just load once
-        load_system_keys(&node, &doc_stream, &tx).await?;
     }
+
+    // watch the request pool
     spawn_pool_watcher(node.clone(), ticket.clone(), arc_state_clone.clone())
         .await
         .unwrap();
@@ -436,17 +437,26 @@ async fn publish_system_keys<C: Pairing>(
         .as_ref()
         .ok_or_else(|| anyhow::anyhow!("Hints not available"))?;
 
-    if hints.is_empty() {
-        return Err(anyhow::anyhow!("No hints available yet"));
+    // need at least 2 nodes
+    if hints.len() <= 1 {
+        return Ok(());
     }
 
     // Generate system keys from all current hints
-    let system_keys = SystemPublicKeys::<C>::new(hints.clone(), &config.crs, &config.lag_polys, 1)?;
+    let k = 1;
+    let system_keys = SystemPublicKeys::<C>::new(hints.clone(), &config.crs, &config.lag_polys, k)?;
 
     let mut bytes = Vec::new();
     system_keys.serialize_compressed(&mut bytes)?;
-    println!("✅ Published updated system keys ({} hints)", hints.len());
+    println!("Published updated system keys ({} hints: {:?})", hints.len(), bytes.len());
     drop(state_guard);
+
+    // this is a bit messy
+    // write to a local file
+    let dir = "tmp/sys";
+    let filepath = "tmp/sys/key";
+    std::fs::create_dir_all(dir).unwrap();
+    std::fs::write(filepath, &bytes).unwrap();
 
     // Publish to doc (overwrites previous)
     let announcement = Announcement {
@@ -463,31 +473,6 @@ async fn publish_system_keys<C: Pairing>(
             announcement.encode(),
         )
         .await?;
-
-    Ok(())
-}
-
-/// Non-bootstrap nodes sync system keys
-async fn load_system_keys<C: Pairing>(
-    node: &Node<C>,
-    doc_stream: &Doc,
-    tx: &flume::Sender<Announcement>,
-) -> Result<()> {
-    let query = QueryBuilder::<FlatQuery>::default()
-        .key_exact(SYSTEM_KEYS_KEY)
-        .limit(1);
-
-    let entries = doc_stream.get_many(query.build()).await?;
-    let entry_vec = entries.collect::<Vec<_>>().await;
-
-    if let Some(Ok(entry)) = entry_vec.first() {
-        let hash = entry.content_hash();
-        let content = node.blobs().get_bytes(hash).await?;
-        let announcement = Announcement::decode(&mut &content[..])?;
-
-        tx.send(announcement)?;
-        println!("✅ Loaded system keys from network");
-    }
 
     Ok(())
 }

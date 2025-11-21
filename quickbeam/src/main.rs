@@ -1,4 +1,5 @@
 use anyhow::Result;
+use ark_serialize::CanonicalDeserialize;
 use clap::{Parser, Subcommand};
 use fangorn::{
     crypto::{
@@ -6,10 +7,16 @@ use fangorn::{
         keystore::{Keystore, Sr25519Keystore},
         FANGORN,
     },
-    Node,
     types::*,
+    Node,
 };
+use iroh::{EndpointAddr, PublicKey as IrohPublicKey};
+use silent_threshold_encryption::aggregate::SystemPublicKeys;
+use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
 use tokio::sync::Mutex;
 
 #[derive(Parser, Debug)]
@@ -59,8 +66,16 @@ enum Commands {
         #[arg(long)]
         contract_addr: String,
         /// the ticket for reading/writing to fangorn's docstream
+        /// note: this is only needed when we are using the iroh docstore
+        /// maybe we should make this more generic somehow
         #[arg(long)]
         ticket: String,
+        #[arg(long)]
+        system_keys_dir: String,
+        #[arg(long)]
+        bootstrap_url: String,
+        #[arg(long)]
+        bootstrap_pubkey: String,
     },
     /// request to decrypt a message
     /// prepare a witness + send to t-of-n node RPCs
@@ -85,6 +100,12 @@ enum Commands {
         /// the ticket for reading/writing to fangorn's docstream
         #[arg(long)]
         ticket: String,
+        #[arg(long)]
+        system_keys_dir: String,
+        #[arg(long)]
+        bootstrap_url: String,
+        #[arg(long)]
+        bootstrap_pubkey: String,
     },
 }
 
@@ -131,9 +152,28 @@ async fn main() -> Result<()> {
             intent,
             contract_addr,
             ticket,
+            system_keys_dir,
+            bootstrap_url,
+            bootstrap_pubkey,
         }) => {
+            // todo: should probably read the config file in this context
+            // read the system keys
+            // TODO: realistically this should be done by reading from a contract or similar
+            // and probably is input as a param directly? not sure yet
+            let sys_keys_bytes =
+                std::fs::read(system_keys_dir).expect("Failed to read syskeys file");
+            let sys_keys =
+                SystemPublicKeys::<E>::deserialize_compressed(&sys_keys_bytes[..]).unwrap();
+
             // setup node
-            let node = build_node().await;
+            let mut node = build_node().await;
+            // connect to bootstrap
+            let pubkey = IrohPublicKey::from_str(&bootstrap_pubkey).ok().unwrap();
+            let socket: SocketAddr = bootstrap_url.parse().ok().unwrap();
+            let boot = EndpointAddr::new(pubkey).with_ip_addr(socket);
+            node.try_connect_peers(Some(vec![boot])).await?;
+            // wait for initial sync
+            thread::sleep(Duration::from_secs(3));
             // sync, read all keys, compute latest encryption key
             // in practice, this should be read from a contract or something.
 
@@ -146,6 +186,7 @@ async fn main() -> Result<()> {
                 contract_addr,
                 node,
                 ticket,
+                sys_keys,
             )
             .await;
         }
@@ -156,9 +197,24 @@ async fn main() -> Result<()> {
             pt_filename,
             contract_addr,
             ticket,
+            system_keys_dir,
+            bootstrap_url,
+            bootstrap_pubkey,
         }) => {
+            let sys_keys_bytes =
+                std::fs::read(system_keys_dir).expect("Failed to read syskeys file");
+            let sys_keys =
+                SystemPublicKeys::<E>::deserialize_compressed(&sys_keys_bytes[..]).unwrap();
+
             // setup node
-            let node = build_node().await;
+            let mut node = build_node().await;
+            // connect to bootstrap
+            let pubkey = IrohPublicKey::from_str(&bootstrap_pubkey).ok().unwrap();
+            let socket: SocketAddr = bootstrap_url.parse().ok().unwrap();
+            let boot = EndpointAddr::new(pubkey).with_ip_addr(socket);
+            node.try_connect_peers(Some(vec![boot])).await?;
+            // wait for initial sync
+            thread::sleep(Duration::from_secs(3));
 
             handle_decrypt(
                 config_path,
@@ -168,6 +224,7 @@ async fn main() -> Result<()> {
                 contract_addr,
                 node,
                 ticket,
+                sys_keys,
             )
             .await;
         }
