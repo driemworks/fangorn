@@ -1,11 +1,17 @@
+use std::{io::Read, time::SystemTime};
+
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
-use fangorn::crypto::{
+use fangorn::{backend::substrate::runtime::runtime_apis::core::types::version, crypto::{
+        vault::*,
         FANGORN,
         cipher::{handle_decrypt, handle_encrypt},
         keystore::{IrohKeystore, Keystore, Sr25519Keystore},
-    };
-use sp_core::crypto::SecretString;
+    }};
+use secrecy::{ExposeSecret, ExposeSecretMut, SecretBox, SecretString, zeroize::Zeroizing};
+use sp_core::crypto::Zeroize;
+use ark_std::rand::rngs::OsRng;
+// use sp_core::crypto::{ExposeSecret, SecretString};
 
 #[derive(Parser, Debug)]
 #[command(name = "quickbeam", version = "1.0")]
@@ -16,9 +22,8 @@ struct Cli {
 
 #[derive(Clone, Debug, ValueEnum)]
 enum StoreType {
-    Sr25519,
-    Ed25519,
-    Bls12_381
+    Polkadot,
+    Fangorn,
 }
 
 /// Define available subcommands
@@ -31,6 +36,18 @@ enum Commands {
         
     },
     KeygenPswd {
+
+        #[arg(long)]
+        keystore_dir: String,
+
+        #[arg(long)]
+        password: SecretString,
+
+        #[arg(value_enum)]
+        store_type: StoreType,
+
+    },
+    InspectPswd {
 
         #[arg(long)]
         keystore_dir: String,
@@ -118,23 +135,40 @@ async fn main() -> Result<()> {
             );
         }
         Some(Commands::KeygenPswd { keystore_dir, password , store_type}) => {
+            let mut deref_pass = password.to_owned();
             match store_type {
-                StoreType::Sr25519 => {
-                     let keystore = Sr25519Keystore::new_with_password(keystore_dir.into(), FANGORN, password).unwrap();
-                    keystore.generate_key().unwrap();
-                    let keys = keystore.list_keys()?;
-                    println!(
-                        "Keys in pasword keystore: {:?}",
-                        keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
-                    );
+                StoreType::Polkadot => {
+                    // create sr25519 identity
+
                 }
-                StoreType::Ed25519 => {
-                    let keystore = IrohKeystore::new_with_password(keystore_dir.into(), FANGORN, password).unwrap();
-                    keystore.generate_key().unwrap();
+                StoreType::Fangorn => {
+                    // create ed25519 identity
+                    let mut vault = Vault::create(keystore_dir, &mut deref_pass, "fangorn").unwrap();
+                    deref_pass.expose_secret_mut().zeroize();
+                    deref_pass.zeroize();
+
+                    let key_stuff = iroh::SecretKey::generate(OsRng);
+                    println!("Key stuff: {:?}", key_stuff.secret());
+                    vault.store_bytes("fang_key", &key_stuff.to_bytes()).unwrap();
+
                 }
-                _ => {}
             }
-        }
+        }Some(Commands::InspectPswd{keystore_dir, password, store_type}) => {
+            let mut deref_pass = password.to_owned();
+
+            let mut vault = Vault::open(keystore_dir, &mut deref_pass, "fangorn").unwrap();
+            deref_pass.expose_secret_mut().zeroize();
+            deref_pass.zeroize();
+
+            let key_retrieval = vault.get("fang_key").unwrap();
+            println!("length: {:?}", key_retrieval.expose_secret().len());
+            // let reader = 
+            let mut secret_bytes = [0u8;32];
+            key_retrieval.expose_secret().read(&mut secret_bytes)?;
+            let key_verify = iroh::SecretKey::from_bytes(&secret_bytes);
+            println!("Key read: {:?}", key_verify.secret());
+
+        } 
         Some(Commands::Sign { keystore_dir, nonce }) => {
             let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
             let key = keystore.list_keys()?[0];

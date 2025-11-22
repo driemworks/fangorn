@@ -53,6 +53,11 @@ iroh-blobs.workspace = true
 quic-rpc.workspace = true
 flume.workspace = true
 
+argon2.workspace = true
+chacha20poly1305.workspace = true
+zeroize.workspace = true
+secrecy.workspace = true
+
 cid.workspace = true
 multihash-codetable.workspace = true
 

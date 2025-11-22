@@ -9,3 +9,6 @@ clap.workspace = true
 fangorn.workspace = true
 tokio.workspace = true
 sp-core.workspace = true
+secrecy.workspace = true
+iroh.workspace = true
+ark-std.workspace = true
