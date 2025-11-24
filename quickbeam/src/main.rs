@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use fangorn::{backend::substrate::runtime::runtime_apis::core::types::version, crypto::{
         FANGORN,
         cipher::{handle_decrypt, handle_encrypt},
-        keystore::{IrohKeystore, Keystore, Sr25519Keystore},
+        keystore::{IrohKeystore, Keystore, Sr25519Keystore}, keyvault::{IrohKeyVault, KeyVault, Sr25519KeyVault},
     }};
 use rust_vault::Vault;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretBox, SecretString, zeroize::Zeroizing};
@@ -139,34 +139,43 @@ async fn main() -> Result<()> {
             match store_type {
                 StoreType::Polkadot => {
                     // create sr25519 identity
+                    let vault = Vault::create(keystore_dir, &mut deref_pass, "fangorn").unwrap();
+                    let keyvault = Sr25519KeyVault::new(vault);
+                    let public_key = keyvault.generate_key(String::from("sr25519")).unwrap();
+                    println!("generated new keypair. PubKey: {:?}", public_key);
 
                 }
                 StoreType::Fangorn => {
                     // create ed25519 identity
-                    let mut vault = Vault::create(keystore_dir, &mut deref_pass, "fangorn").unwrap();
-                    deref_pass.expose_secret_mut().zeroize();
-                    deref_pass.zeroize();
-
-                    let key_stuff = iroh::SecretKey::generate(OsRng);
-                    println!("Key stuff: {:?}", key_stuff.secret());
-                    vault.store_bytes("fang_key", &key_stuff.to_bytes()).unwrap();
+                    let vault = Vault::create(keystore_dir, &mut deref_pass, "fangorn").unwrap();
+                    let keyvault = IrohKeyVault::new(vault);
+                    let public_key = keyvault.generate_key(String::from("ed25519")).unwrap();
+                    println!("generated new keypair. Pubkey: {:?}", public_key)
 
                 }
             }
-        }Some(Commands::InspectPswd{keystore_dir, password, store_type}) => {
-            let mut deref_pass = password.to_owned();
-
-            let mut vault = Vault::open(keystore_dir, &mut deref_pass, "fangorn").unwrap();
             deref_pass.expose_secret_mut().zeroize();
             deref_pass.zeroize();
+        }
+        Some(Commands::InspectPswd{keystore_dir, password, store_type}) => {
+            let mut deref_pass = password.to_owned();
+            match store_type {
+                StoreType::Polkadot => {
+                    let vault = Vault::open(keystore_dir, &mut deref_pass, "fangorn").unwrap();
+                    let keyvault = Sr25519KeyVault::new(vault);
+                    let public_key = keyvault.get_public_key(String::from("sr25519")).unwrap();
+                    println!("read keypair. Pubkey: {:?}", public_key)
+                }
+                StoreType::Fangorn => {
+                    let vault = Vault::open(keystore_dir, &mut deref_pass, "fangorn").unwrap();
+                    let keyvault = IrohKeyVault::new(vault);
+                    let public_key = keyvault.get_public_key(String::from("ed25519")).unwrap();
+                    println!("read keypair. Pubkey: {:?}", public_key)                    
+                }
+            }
 
-            let key_retrieval = vault.get("fang_key").unwrap();
-            println!("length: {:?}", key_retrieval.expose_secret().len());
-            // let reader = 
-            let mut secret_bytes = [0u8;32];
-            key_retrieval.expose_secret().read(&mut secret_bytes)?;
-            let key_verify = iroh::SecretKey::from_bytes(&secret_bytes);
-            println!("Key read: {:?}", key_verify.secret());
+            deref_pass.expose_secret_mut().zeroize();
+            deref_pass.zeroize();
 
         } 
         Some(Commands::Sign { keystore_dir, nonce }) => {

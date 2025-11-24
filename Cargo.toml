@@ -36,7 +36,7 @@ ark-poly = "0.5.0"
 rand = "0.9.1"
 ark-bls12-381 = "0.5.0"
 rand_core = "0.9.3"
-bip39 = "2.2.0"
+bip39 = {version = "2.2.0", features = ["rand"]}
 sha2 = "0.10.9"
 
 # substrate
@@ -79,6 +79,7 @@ quic-rpc = "0.19.0"
 flume = "0.11.1"
 secrecy = "0.10.3"
 rust-vault = {git = "https://github.com/colemanirby/rust-vault.git", branch = "main"}
+# rust-vault = {path = "/home/coleman/Code/rust-vault"}
 
 #local deps
 fangorn = { path = "./fangorn" }
