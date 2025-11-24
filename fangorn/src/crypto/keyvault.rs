@@ -146,6 +146,7 @@ impl IrohKeyVault {
 impl KeyVault for IrohKeyVault {
     type Public = iroh::PublicKey;
     type Signature = ed25519::Signature;
+    // This is not used, but must be fulfilled for the KeyVault trait
     type Pair = sp_core::ed25519::Pair;
 
     fn generate_key(&self, key_name: String) -> Result<Self::Public, KeyVaultError> {
