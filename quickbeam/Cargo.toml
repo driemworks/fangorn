@@ -12,3 +12,4 @@ sp-core.workspace = true
 secrecy.workspace = true
 iroh.workspace = true
 ark-std.workspace = true
+rust-vault.workspace = true

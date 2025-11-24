@@ -3,11 +3,11 @@ use std::{io::Read, time::SystemTime};
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
 use fangorn::{backend::substrate::runtime::runtime_apis::core::types::version, crypto::{
-        vault::*,
         FANGORN,
         cipher::{handle_decrypt, handle_encrypt},
         keystore::{IrohKeystore, Keystore, Sr25519Keystore},
     }};
+use rust_vault::Vault;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretBox, SecretString, zeroize::Zeroizing};
 use sp_core::crypto::Zeroize;
 use ark_std::rand::rngs::OsRng;
