@@ -9,3 +9,4 @@ ciphertext.txt
 pubkey.txt
 ticket.txt
 tmp/
+metadata.scale
