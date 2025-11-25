@@ -19,6 +19,13 @@ use tokio::sync::Mutex;
 use tui_textarea::TextArea;
 
 use crate::menus::encryption::intents_screen;
+<<<<<<< HEAD
+use crate::menus::{decryption::{decrypt_screen}, encryption::{encrypt_fileselect_screen, encryption_screen}, key_results_screen};
+use crate::constants::*;
+
+pub mod menus;
+pub mod constants;
+=======
 use crate::menus::{
     decryption::decrypt_screen,
     encryption::{encrypt_fileselect_screen, encryption_screen},
@@ -53,6 +60,7 @@ const PSP22_TOKEN_COUNT_PLACEHOLDER: &str = "Numbers only";
 const PSP22_TOKEN_TITLE: &str = "Minimum Balance";
 
 const WS_URL: &str = "ws://localhost:9944";
+>>>>>>> 09a4dc7988e349e966841ec2051abbc8b67ab4b7
 
 // 1. Enum to manage the active screen/view
 #[derive(Debug)]
@@ -66,39 +74,71 @@ pub enum CurrentScreen {
 }
 
 pub struct App {
+
+    /// List state used to determine which row is 
+    /// indicated as selected on main menu.
     menu_state: ListState,
-    intent_list_state: ListState,
-    intent_list_items: Vec<(&'static str, bool)>,
-    menu_title: String,
+
+    /// Corresponding list for what options
+    /// are avaialable
     menu_items: Vec<&'static str>,
+
+    /// Controls what the title that is
+    /// displayed on the outermost box
+    /// that is common to all menus
+    menu_title: String,
+
+    /// List state used to determine which row is
+    /// indicated as selected on intents menu.
+    intent_list_state: ListState,
+
+    /// Corresponding list of intent names
+    /// and whether they have been chosen
+    /// for encyrption/decryption
+    intent_list_items: Vec<(&'static str, bool)>,
+
+    /// determines which menu/screen should be rendered
     current_screen: CurrentScreen,
+
     generated_pubkey: Option<String>,
+    
     // the file explorer: todo - this could probably be an option, load it when we select the screen
     file_explorer: FileExplorer,
     // the file path of the message to be encrypted (plaintext)
     file_path: Option<String>,
-    /// the text area for password input
-    /// Used for both encryption and decryption
-    password_input: TextArea<'static>,
 
+    /// various text inputs
+    filename_input: TextArea<'static>,
+    password_input: TextArea<'static>,
     contract_address_input: TextArea<'static>,
     token_count_input: TextArea<'static>,
-    /// the text area for filename input
-    /// only used during decryption
-    filename_input: TextArea<'static>,
 
     /// used to toggle between password_input and filename_input
+    /// on decryption and encryption screens
     decrypt_input_selection: u8,
     encrypt_input_selection: u8,
 
+    /// Mutliple uses:
+    /// Encryption - display the relevant fields and
+    ///              create relevant intents
+    /// Decryption - used to construct witness string
+    ///            - and conditionally display password input
     display_password_input: bool,
     display_contract_address_input: bool,
     sr25519_intent: bool,
 
+    /// Used to determine how to handle logic
+    /// on intents screen depending on 
+    /// if encrypting or decrypting
     is_encrypt_path: bool,
+<<<<<<< HEAD
+
+    substrate_backend: Option<SubstrateBackend>
+=======
     substrate_backend: Option<SubstrateBackend>,
     node: Node<E>,
     ticket: String,
+>>>>>>> 09a4dc7988e349e966841ec2051abbc8b67ab4b7
 }
 
 impl App {

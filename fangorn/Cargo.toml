@@ -53,6 +53,9 @@ iroh-docs.workspace = true
 iroh-blobs.workspace = true
 quic-rpc.workspace = true
 flume.workspace = true
+rust-vault.workspace = true
+secrecy.workspace = true
+ed25519 = "2.2.3"
 
 bincode.workspace = true
 cid.workspace = true
