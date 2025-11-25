@@ -1,13 +1,12 @@
 use anyhow::Result;
 use clap::Parser;
-use fangorn::cli::{FangornNodeCli as Cli, FangornNodeCommands as Commands};
-use fangorn::service::{ServiceConfig, build_full_service};
+use fangorn::client::cli::{FangornNodeCli as Cli, FangornNodeCommands as Commands};
+use fangorn::client::service::{build_full_service, ServiceConfig};
 use fangorn::types::*;
 
 // https://hackmd.io/3968Gr5hSSmef-nptg2GRw
 // https://hackmd.io/xqYBrigYQwyKM_0Sn5Xf4w
 // https://eprint.iacr.org/2024/263.pdf
-const MAX_COMMITTEE_SIZE: usize = 2;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -26,7 +25,8 @@ async fn main() -> Result<()> {
             bootstrap_ip,
             is_bootstrap,
             ticket,
-            contract_addr,
+            predicate_registry_contract_addr,
+            request_pool_contract_addr,
         }) => {
             let config = ServiceConfig {
                 bind_port: *bind_port,
@@ -42,16 +42,12 @@ async fn main() -> Result<()> {
                     bootstrap_pubkey.clone(),
                     bootstrap_ip.clone(),
                 ),
-                contract_addr: contract_addr.to_string(),
+                predicate_registry_contract_addr: predicate_registry_contract_addr.to_string(),
+                request_pool_contract_addr: request_pool_contract_addr.to_string(),
             };
             // start the service
-            // tokio::spawn(async move {
-            //     loop
             build_full_service::<E>(config, MAX_COMMITTEE_SIZE).await?;
             tokio::signal::ctrl_c().await?;
-            // });
-
-            // build_full_service::<E>(config, MAX_COMMITTEE_SIZE).await;
         }
         None => {
             // do nothing

@@ -5,13 +5,25 @@ use clap::{Parser, Subcommand, ValueEnum};
 use fangorn::{backend::substrate::runtime::{runtime_apis::core::types::version, sudo::storage::types::key}, crypto::{
         FANGORN,
         cipher::{handle_decrypt, handle_encrypt},
-        keystore::{IrohKeystore, Keystore, Sr25519Keystore}, keyvault::{IrohKeyVault, KeyVault, Sr25519KeyVault},
+        keystore::{Keystore, Sr25519Keystore}, keyvault::{IrohKeyVault, KeyVault, Sr25519KeyVault},
     }};
 use rust_vault::Vault;
-use secrecy::{ExposeSecret, ExposeSecretMut, SecretBox, SecretString, zeroize::Zeroizing};
-use sp_core::{ByteArray, bytes::{from_hex, to_hex}, crypto::{VrfPublic, Zeroize}, ed25519 as ed25519_substrate, hexdisplay::AsBytesRef, sr25519::Signature as SrSignature};
-use ark_std::rand::rngs::OsRng;
+use secrecy::{ExposeSecretMut, SecretString};
+use sp_core::{ByteArray, bytes::{from_hex, to_hex}, crypto::Zeroize, hexdisplay::AsBytesRef, sr25519::Signature as SrSignature};
 // use sp_core::crypto::{ExposeSecret, SecretString};
+use ark_serialize::CanonicalDeserialize;
+use fangorn::{
+    types::*,
+    Node,
+};
+use iroh::{EndpointAddr, PublicKey as IrohPublicKey};
+use silent_threshold_encryption::aggregate::SystemPublicKeys;
+use std::net::SocketAddr;
+use std::str::FromStr;
+use std::sync::Arc;
+use std::thread;
+use std::time::Duration;
+use tokio::sync::Mutex;
 
 #[derive(Parser, Debug)]
 #[command(name = "quickbeam", version = "1.0")]
@@ -120,8 +132,20 @@ enum Commands {
         /// the intent for encrypting the message
         #[arg(long)]
         intent: String,
+        /// the contract address
         #[arg(long)]
         contract_addr: String,
+        /// the ticket for reading/writing to fangorn's docstream
+        /// note: this is only needed when we are using the iroh docstore
+        /// maybe we should make this more generic somehow
+        #[arg(long)]
+        ticket: String,
+        #[arg(long)]
+        system_keys_dir: String,
+        #[arg(long)]
+        bootstrap_url: String,
+        #[arg(long)]
+        bootstrap_pubkey: String,
     },
     /// request to decrypt a message
     /// prepare a witness + send to t-of-n node RPCs
@@ -141,7 +165,22 @@ enum Commands {
         #[arg(long)]
         pt_filename: String,
         #[arg(long)]
+        keystore_dir: String,
+        /// the contract address
+        #[arg(long)]
         contract_addr: String,
+        /// the request pool contract
+        #[arg(long)]
+        request_pool_contract_addr: String,
+        /// the ticket for reading/writing to fangorn's docstream
+        #[arg(long)]
+        ticket: String,
+        #[arg(long)]
+        system_keys_dir: String,
+        #[arg(long)]
+        bootstrap_url: String,
+        #[arg(long)]
+        bootstrap_pubkey: String,
     },
 }
 
@@ -252,8 +291,8 @@ async fn main() -> Result<()> {
                     let public_key = keyvault.get_public_key(String::from("ed25519"), &mut deref_pass).unwrap();
                     let message_bytes = nonce.to_le_bytes();
                     let sig_vec = from_hex(&signature_hex).unwrap();
-                    let sig = ed25519::Signature::from_slice(sig_vec.as_slice()).unwrap();
-                    println!("Sig was reproduced?: {:?}", sig);
+                    let sig_bytes: [u8; 64] = sig_vec.try_into().unwrap();
+                    let sig = iroh::Signature::from_bytes(&sig_bytes);
                     let result = IrohKeyVault::verify(&public_key, &message_bytes, &sig);
                     println!("Was sig verified: {:?}", result);           
                 }
@@ -261,12 +300,18 @@ async fn main() -> Result<()> {
             deref_pass.expose_secret_mut().zeroize();
             deref_pass.zeroize();
         }
-        Some(Commands::Sign { keystore_dir, nonce }) => {
+        Some(Commands::Sign {
+            keystore_dir,
+            nonce,
+        }) => {
             let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
             let key = keystore.list_keys()?[0];
             let message_bytes = nonce.to_le_bytes();
-            let signature = keystore.sign(&key, &message_bytes); 
-            println!("Produced a signature on the nonce {:?}: {:?}", nonce, signature);
+            let signature = keystore.sign(&key, &message_bytes);
+            println!(
+                "Produced a signature on the nonce {:?}: {:?}",
+                nonce, signature
+            );
         }
         Some(Commands::Encrypt {
             message_path,
@@ -275,7 +320,32 @@ async fn main() -> Result<()> {
             keystore_dir,
             intent,
             contract_addr,
+            ticket,
+            system_keys_dir,
+            bootstrap_url,
+            bootstrap_pubkey,
         }) => {
+            // todo: should probably read the config file in this context
+            // read the system keys
+            // TODO: realistically this should be done by reading from a contract or similar
+            // and probably is input as a param directly? not sure yet
+            let sys_keys_bytes =
+                std::fs::read(system_keys_dir).expect("Failed to read syskeys file");
+            let sys_keys =
+                SystemPublicKeys::<E>::deserialize_compressed(&sys_keys_bytes[..]).unwrap();
+
+            // setup node
+            let mut node = build_node().await;
+            // connect to bootstrap
+            let pubkey = IrohPublicKey::from_str(&bootstrap_pubkey).ok().unwrap();
+            let socket: SocketAddr = bootstrap_url.parse().ok().unwrap();
+            let boot = EndpointAddr::new(pubkey).with_ip_addr(socket);
+            node.try_connect_peers(Some(vec![boot])).await?;
+            // wait for initial sync
+            thread::sleep(Duration::from_secs(3));
+            // sync, read all keys, compute latest encryption key
+            // in practice, this should be read from a contract or something.
+
             handle_encrypt(
                 message_path,
                 filename,
@@ -283,6 +353,9 @@ async fn main() -> Result<()> {
                 keystore_dir,
                 intent,
                 contract_addr,
+                node,
+                ticket,
+                sys_keys,
             )
             .await;
         }
@@ -291,9 +364,42 @@ async fn main() -> Result<()> {
             filename,
             witness,
             pt_filename,
+            keystore_dir,
             contract_addr,
+            request_pool_contract_addr,
+            ticket,
+            system_keys_dir,
+            bootstrap_url,
+            bootstrap_pubkey,
         }) => {
-            handle_decrypt(config_path, filename, witness, pt_filename, contract_addr).await;
+            let sys_keys_bytes =
+                std::fs::read(system_keys_dir).expect("Failed to read syskeys file");
+            let sys_keys =
+                SystemPublicKeys::<E>::deserialize_compressed(&sys_keys_bytes[..]).unwrap();
+
+            // setup node
+            let mut node = build_node().await;
+            // connect to bootstrap
+            let pubkey = IrohPublicKey::from_str(&bootstrap_pubkey).ok().unwrap();
+            let socket: SocketAddr = bootstrap_url.parse().ok().unwrap();
+            let boot = EndpointAddr::new(pubkey).with_ip_addr(socket);
+            node.try_connect_peers(Some(vec![boot])).await?;
+            // wait for initial sync
+            thread::sleep(Duration::from_secs(2));
+
+            handle_decrypt(
+                config_path,
+                filename,
+                witness,
+                pt_filename,
+                keystore_dir,
+                contract_addr,
+                request_pool_contract_addr,
+                node,
+                ticket,
+                sys_keys,
+            )
+            .await;
         }
         None => {
             // do nothing
@@ -301,4 +407,17 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+async fn build_node() -> Node<E> {
+    // setup channels for state synchronization
+    let (_tx, rx) = flume::unbounded();
+    // initialize node parameters and state
+    // start on port 4000
+    // todo: can we remove the index field? sk unused here
+    let params = StartNodeParams::<E>::rand(4000, 0);
+    let state = State::<E>::empty(params.secret_key.clone());
+    let arc_state = Arc::new(Mutex::new(state));
+
+    Node::build(params, rx, arc_state).await
 }

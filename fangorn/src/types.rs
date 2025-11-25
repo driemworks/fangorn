@@ -4,6 +4,7 @@ use iroh::SecretKey as IrohSecretKey;
 use ark_ec::pairing::Pairing;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::rngs::OsRng;
+use silent_threshold_encryption::aggregate::SystemPublicKeys;
 use silent_threshold_encryption::{
     crs::CRS,
     setup::{LagPolys, PublicKey, SecretKey},
@@ -11,17 +12,26 @@ use silent_threshold_encryption::{
 
 use codec::{Decode, Encode};
 
-pub const CONFIG_KEY: &str = "config-key";
+pub const RPC_KEY_PREFIX: &str = "rpc-addr-";
+pub const CONFIG_KEY: &str = "config-key-";
+pub const SYSTEM_KEYS_KEY: &str = "sys-keys-";
+
+pub const MAX_COMMITTEE_SIZE: usize = 2;
 
 /// the curve (bls12-381)
 pub type E = ark_bls12_381::Bls12_381;
 /// the g2 group
 pub type G2 = <E as Pairing>::G2;
 
-#[derive(Clone, Debug, Encode, Decode)]
+pub type OpaqueCid = Vec<u8>;
+
+#[derive(Clone, Debug, Encode, Decode, PartialEq)]
 pub enum Tag {
     Config,
     Hint,
+    Doc,
+    SystemKeys,
+    DecryptionRequest,
 }
 
 #[derive(Clone, Debug, Encode, Decode)]
@@ -39,8 +49,11 @@ pub struct StartNodeParams<C: Pairing> {
 /// params to start a new node
 impl<C: Pairing> StartNodeParams<C> {
     pub fn rand(bind_port: u16, index: usize) -> Self {
+        // build new
+        // let path = format!("tmp/keystore/{}/")
         Self {
-            iroh_secret_key: IrohSecretKey::generate(OsRng),
+            // sr25519_secret_key:
+            iroh_secret_key: IrohSecretKey::generate(&mut rand::rng()),
             secret_key: SecretKey::<C>::new(&mut OsRng, index),
             bind_port,
         }
@@ -72,6 +85,7 @@ pub struct State<C: Pairing> {
     pub hints: Option<Vec<PublicKey<C>>>,
     // TODO: secure vault for key mgmt
     pub sk: SecretKey<C>,
+    pub system_keys: Option<SystemPublicKeys<C>>,
 }
 
 impl<C: Pairing> State<C> {
@@ -79,6 +93,7 @@ impl<C: Pairing> State<C> {
         Self {
             config: None,
             hints: None,
+            system_keys: None,
             sk,
         }
     }
@@ -92,7 +107,6 @@ impl<C: Pairing> State<C> {
                 self.config = Some(config.clone());
             }
             Tag::Hint => {
-                println!("Received Hint");
                 let hint: PublicKey<C> =
                     PublicKey::deserialize_compressed(&announcement.data[..]).unwrap();
                 if let Some(h) = &self.hints {
@@ -102,6 +116,12 @@ impl<C: Pairing> State<C> {
                 } else {
                     self.hints = Some(vec![hint]);
                 }
+
+                // if bootstrap => compute new system keys and publish it
+            }
+            _ => {
+                // do nothing for other tags for now
+                // eventually we could use this to charge for storage?
             }
         }
     }

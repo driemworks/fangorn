@@ -150,12 +150,12 @@ impl IrohKeyVault {
 
 impl KeyVault for IrohKeyVault {
     type Public = iroh::PublicKey;
-    type Signature = ed25519::Signature;
+    type Signature = iroh::Signature;
     // This is not used, but must be fulfilled for the KeyVault trait
     type Pair = sp_core::ed25519::Pair;
 
     fn generate_key(&self, key_name: String, file_password: &mut SecretString) -> Result<Self::Public, KeyVaultError> {
-        let iroh_sk = IrohSecretKey::generate(OsRng);
+        let iroh_sk = IrohSecretKey::generate(&mut rand::rng());
         let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
         self.vault.write().unwrap().store_bytes(key_name.as_str(), &iroh_sk.to_bytes(), &mut vault_password, file_password).unwrap();
         Ok(iroh_sk.public())

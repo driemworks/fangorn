@@ -11,6 +11,7 @@ thiserror.workspace = true
 
 iroh.workspace = true
 iroh-gossip.workspace = true
+n0-error.workspace = true
 n0-future.workspace = true
 silent-threshold-encryption.workspace = true
 subxt.workspace = true
@@ -56,8 +57,14 @@ rust-vault.workspace = true
 secrecy.workspace = true
 ed25519 = "2.2.3"
 
+bincode.workspace = true
 cid.workspace = true
 multihash-codetable.workspace = true
+public-ip.workspace = true
+local-ip-address.workspace = true
 
 [build-dependencies]
 tonic-build = "0.13.0"
+
+[features]
+local = []

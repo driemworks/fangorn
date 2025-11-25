@@ -74,14 +74,14 @@ Encrypts a plaintext message under a specific intent/policy.
 | `--intent` | The condition under which the message is encrypted. |
 | `--contract_addr` | The address of the iris contract. |
 
-```bash
+``` bash
 quickbeam encrypt \
-    --message_path ./my_secret.txt \
-    --filename "secret_doc_2025" \
-    --config_path ./config.config \
-    --keystore-dir /path/to/keystore \
-    --intent "Password(strong_password)" \
-    --contract_addr 0x...
+    --message-path test.txt \
+    --filename "test.txt" \
+    --config_path config.config \
+    --keystore_dir /tmp/keystore \
+    --intent "Password(test)" \
+    --contract_addr 5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR
 ```
 
 #### Decrypt

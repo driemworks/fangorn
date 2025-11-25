@@ -1,11 +1,13 @@
 use super::*;
 use async_trait::async_trait;
 use cid::Cid;
+use codec::{Decode, Encode};
 use multihash_codetable::{Code, MultihashDigest};
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use tokio::fs;
+use crate::types::*;
 
 /// The codec for generating CIDs
 const RAW: u64 = 0x55;
@@ -82,22 +84,94 @@ impl SharedStore<Cid, Data> for LocalDocStore {
         Ok(Some(ciphertext_bytes))
     }
 
-    async fn remove(&self, cid: &Cid) -> Result<()> {
-        let filepath = self.cid_to_filename(&cid.to_string());
+    // async fn remove(&self, cid: &Cid) -> Result<()> {
+    //     let filepath = self.cid_to_filename(&cid.to_string());
 
-        // Check if file exists
-        if filepath.exists() {
-            fs::remove_file(&filepath).await?;
-            // println!("Removed data for CID: {}", &cid.to_string());
-        } else {
-            // println!("No data found for CID: {}", &cid.to_string());
-        }
+    //     // Check if file exists
+    //     if filepath.exists() {
+    //         fs::remove_file(&filepath).await?;
+    //         // println!("Removed data for CID: {}", &cid.to_string());
+    //     } else {
+    //         // println!("No data found for CID: {}", &cid.to_string());
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 }
 
 impl DocStore for LocalDocStore {}
+
+// local intent store
+pub struct LocalIntentStore {
+    pub intents_dir: String,
+}
+
+impl LocalIntentStore {
+    pub fn new(intents_dir: &str) -> Self {
+        Self {
+            intents_dir: intents_dir.to_string(),
+        }
+    }
+
+    /// Ensure the plaintext directory exists
+    async fn ensure_dir(&self) -> Result<()> {
+        fs::create_dir_all(&self.intents_dir).await?;
+        Ok(())
+    }
+
+    /// Write data to disk as hex-encoded
+    /// TODO: can implify the impl (fs::write) if we make this async
+    fn write(&self, data: &Data, filepath: String) {
+        
+        let filepath = PathBuf::from(&self.intents_dir).join(format!("{}", filepath));
+
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(filepath)
+            .unwrap();
+
+        // let hex_enc = hex::encode(data);
+        write!(&mut file, "{:?}", data).unwrap();
+    }
+
+    async fn read(&self, message_path: String) -> Vec<u8> {
+        let message_path = PathBuf::from(&self.intents_dir).join(format!("{}", message_path));
+        fs::read(message_path).await.expect("provide a valid path")
+    }
+}
+
+#[derive(Encode, Decode)]
+pub struct Entry {
+    cid: OpaqueCid,
+    intents: Vec<Intent>,
+}
+
+#[async_trait]
+impl IntentStore for LocalIntentStore {
+    async fn register_intent(
+        &self,
+        filename: &[u8],
+        cid: &Cid,
+        intents: Vec<Intent>,
+    ) -> Result<()> {
+        let message_path =  String::from_utf8(filename.to_vec()).unwrap();
+        let entry = Entry { cid: cid.to_bytes().to_vec(), intents };
+        self.write(&entry.encode(), message_path);
+        Ok(())
+    }
+
+    async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Vec<Intent>)>> {
+        // todo
+        Ok(None)
+    }
+
+    async fn remove_intent(&self, filename: &[u8]) -> Result<()> {
+        // todo
+        Ok(())
+    }
+}
 
 // local pt store impl
 

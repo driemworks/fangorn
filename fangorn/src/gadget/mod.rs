@@ -14,7 +14,7 @@ pub use psp22::Psp22Gadget;
 pub use sr25519::Sr25519Gadget;
 
 #[async_trait]
-pub trait Gadget: Send + Sync + Debug {
+pub trait Gadget: Send + Sync {
     /// The gadget's intent type identifier
     fn intent_type_id(&self) -> &'static str;
 
@@ -47,7 +47,9 @@ impl std::fmt::Display for IntentError {
 
 impl std::error::Error for IntentError {}
 
+
 /// Registry for gadgets to allow for extensible gadgets to be used
+#[derive(Clone)]
 pub struct GadgetRegistry {
     gadgets: HashMap<String, Arc<dyn Gadget>>,
 }
@@ -136,7 +138,7 @@ impl GadgetRegistry {
 }
 
 /// An intent represents raw user input that can be parsed by the given gadget
-#[derive(Clone, Debug, Serialize, Deserialize, Encode, Decode)]
+#[derive(Clone, Serialize, Deserialize, Encode, Decode)]
 pub struct Intent {
     pub intent_type: String,
     pub statement: Vec<u8>,

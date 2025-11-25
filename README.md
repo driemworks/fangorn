@@ -5,30 +5,6 @@
 
 ---
 
-- **Hackathon**: https://polkadot.devpost.com/
-- **Track**: 3 - Polkadot Tinkerers
-- **Team**: Tony Riemer & Coleman Irby
-- **Github**: 
-  - Fangorn: https://github.com/driemworks/fangorn
-  - Silent-Threshold-Encryption Fork: https://github.com/driemworks/silent-threshold-encryption/tree/dev
-- **Description**: Decentralized Conditional Access Control: Encrypt data under provable conditions, decrypted by a trustless network.
-
----
-
-**TL;DR**
-- **What**: Trustless & distributed network for encrypting data under provable conditions (witness encryption)
-- **Why**: NFTs prove ownership but don't grant access. Platforms control access through permissions, not ownership.
-- **How**: Silent threshold encryption + Polkadot smart contracts = token-gated content that actually works.
-- **Impact**: Creators control how their data is accessed, buyers own forever.
-
----
-
-→ [Brief (2 minute) overview](https://www.youtube.com/watch?v=TcbqWT5AMy4)
-
-→ [5 minute demo](https://www.youtube.com/watch?v=GCo14J6t220)
-
----
-
 Fangorn is a distributed threshold encryption network enabling practical witness encryption on Polkadot.
 
 It allows you to encrypt data under public statements (**intents**) that are stored onchain, with decryption possible if and only if that condition is provably met (with a valid **witness**). 
@@ -43,7 +19,7 @@ It also supports a modular and dynamic storage backend, which  can be customized
 - decentralized conditional access control via extensible gadgets framework
 - censorship/ransomware resistance
 - fault tolerant, robust, and permissionless threshold encryption network
-- built on Polkadot: enabling token-gated content and more
+- configurable backend with multi-chain support possible
 
 ### Intent Bound Data
 
@@ -176,3 +152,5 @@ This is a proof-of-concept only. While there remains significant work in increas
 ## License
 
 Apache 2.0
+
+

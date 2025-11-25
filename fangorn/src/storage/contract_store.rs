@@ -1,20 +1,21 @@
 use super::*;
 use crate::{
-    backend::BlockchainBackend,
+    backend::{substrate::ContractBackend, Backend},
     gadget::Intent,
 };
 use async_trait::async_trait;
 use cid::Cid;
 use std::sync::Arc;
-use subxt::ext::codec::Encode;
+use subxt::{config::substrate::AccountId32, ext::codec::Encode};
 
+#[derive(Clone)]
 pub struct ContractIntentStore {
     contract_address: String,
-    backend: Arc<dyn BlockchainBackend>,
+    backend: Arc<dyn ContractBackend>,
 }
 
 impl ContractIntentStore {
-    pub fn new(contract_address: String, backend: Arc<dyn BlockchainBackend>) -> Self {
+    pub fn new(contract_address: String, backend: Arc<dyn ContractBackend>) -> Self {
         Self {
             contract_address,
             backend,
@@ -30,17 +31,22 @@ impl IntentStore for ContractIntentStore {
         // convert vec of intents to bytes (scale encoded)
         let intent_bytes = intent.encode();
 
-        let selector = self.backend.selector("register");
+        let selector = "register_predicate";
 
         let mut data = Vec::new();
         data.extend(filename.encode());
         data.extend(cid_bytes.encode());
         data.extend(intent_bytes.encode());
 
+        // TODO: clean this up, it's used all over rn
         let contract_addr_bytes = crate::utils::decode_contract_addr(&self.contract_address);
 
         self.backend
-            .call_contract(contract_addr_bytes, selector, data)
+            .write(
+                &AccountId32(contract_addr_bytes),
+                &selector.to_string(),
+                &data,
+            )
             .await?;
 
         Ok(())
@@ -49,17 +55,18 @@ impl IntentStore for ContractIntentStore {
     async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Vec<Intent>)>> {
         use subxt::ext::codec::Decode;
 
-        let selector = self.backend.selector("read");
+        let method = "read";
 
         let mut data = Vec::new();
         data.extend(filename.to_vec().encode());
-
-        let contract_addr_bytes: [u8; 32] =
-            crate::utils::decode_contract_addr(&self.contract_address);
-
+        let contract_addr_bytes = crate::utils::decode_contract_addr(&self.contract_address);
         let result = self
             .backend
-            .query_contract(contract_addr_bytes, selector, data)
+            .read(
+                &AccountId32(contract_addr_bytes),
+                &method.to_string(),
+                Some(data),
+            )
             .await?;
 
         // TODO: use the same struct here and in the contract, exactly
@@ -69,7 +76,8 @@ impl IntentStore for ContractIntentStore {
             intent: Vec<u8>,
         }
 
-        let mut data = result;
+        // todo
+        let mut data = result.unwrap();
         if !data.is_empty() {
             data.remove(0);
         }
@@ -88,12 +96,16 @@ impl IntentStore for ContractIntentStore {
         let mut data = Vec::new();
         data.extend(filename.to_vec().encode());
 
-        let selector = self.backend.selector("remove");
+        let selector = "remove_predicate";
 
         let contract_addr_bytes = crate::utils::decode_contract_addr(&self.contract_address);
 
         self.backend
-            .call_contract(contract_addr_bytes, selector, data)
+            .write(
+                &AccountId32(contract_addr_bytes),
+                &selector.to_string(),
+                &data,
+            )
             .await?;
 
         Ok(())

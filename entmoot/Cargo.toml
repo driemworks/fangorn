@@ -6,6 +6,7 @@ edition = "2024"
 homepage = "https://idealabs.network"
 
 [dependencies]
+clap.workspace = true
 color-eyre.workspace = true
 crossterm.workspace = true
 ratatui.workspace = true
@@ -18,3 +19,5 @@ subxt.workspace = true
 subxt-signer.workspace = true
 anyhow.workspace = true
 hex.workspace = true
+flume.workspace = true
+iroh.workspace = true

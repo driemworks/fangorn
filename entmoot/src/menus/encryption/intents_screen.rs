@@ -12,7 +12,6 @@ use ratatui::{
     Frame,
 };
 
-
 use crate::{App, CurrentScreen};
 
 pub async fn handle_input(app: &mut App, key_code: KeyCode) {
@@ -23,20 +22,23 @@ pub async fn handle_input(app: &mut App, key_code: KeyCode) {
             app.reset_intent_list();
         }
         KeyCode::Enter => {
-
             app.display_password_input = app.intent_list_items.get(0).unwrap().1;
             app.display_contract_address_input = app.intent_list_items.get(1).unwrap().1;
             app.sr25519_intent = app.intent_list_items.get(2).unwrap().1;
 
-            if !app.sr25519_intent & !app.display_contract_address_input && !app.display_password_input {
+            if !app.sr25519_intent & !app.display_contract_address_input
+                && !app.display_password_input
+            {
 
                 //TODO: Implement error message to show that says "At least one intent must be selected"
-
             } else {
                 if app.is_encrypt_path {
                     // If only the sr25519 intent is chosen, we can directly encrypt since no more user
                     // input is needed.
-                    if app.sr25519_intent && !app.display_contract_address_input && !app.display_password_input {
+                    if app.sr25519_intent
+                        && !app.display_contract_address_input
+                        && !app.display_password_input
+                    {
                         let file_path = app.file_path.as_mut().unwrap();
                         let filename_raw = Path::new(file_path)
                             .file_name()
@@ -46,8 +48,19 @@ pub async fn handle_input(app: &mut App, key_code: KeyCode) {
                         let config_path = String::from("config.txt");
                         let keystore_path = String::from("tmp/keystore");
                         let intent_str = String::from("Sr25519()");
-                        let contract_addr = String::from("5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7");
-                        handle_encrypt(&filename, &filename, &config_path, &keystore_path, &intent_str, &contract_addr).await;
+                        let contract_addr =
+                            String::from("5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7");
+                        handle_encrypt(
+                            &filename,
+                            &filename,
+                            &config_path,
+                            &keystore_path,
+                            &intent_str,
+                            &contract_addr,
+                            app.node.clone(),
+                            &app.ticket,
+                        )
+                        .await;
                         app.current_screen = CurrentScreen::Main;
                         app.generated_pubkey = None;
                         app.reset_intent_list();
@@ -88,16 +101,15 @@ pub async fn handle_input(app: &mut App, key_code: KeyCode) {
 }
 
 pub fn render_intents_screen(app: &mut App, frame: &mut Frame) {
-
     let vertical_layout = Layout::vertical([
         Constraint::Max(1),
-        Constraint::Min(10),    // Menu
-        Constraint::Length(3),  // Footer
+        Constraint::Min(10),   // Menu
+        Constraint::Length(3), // Footer
     ]);
 
     let [_, menu_area, footer_area] = vertical_layout.areas(frame.area());
 
-        // Center the menu
+    // Center the menu
     let menu_layout = Layout::vertical([
         Constraint::Percentage(30),
         Constraint::Length((app.intent_list_items.len() * 3) as u16),
@@ -112,7 +124,8 @@ pub fn render_intents_screen(app: &mut App, frame: &mut Frame) {
     ]);
     let [_, centered_menu, _] = horizontal_layout.areas(menu_area);
 
-    let menu_items: Vec<ListItem> = app.intent_list_items
+    let menu_items: Vec<ListItem> = app
+        .intent_list_items
         .iter()
         .enumerate()
         .map(|(i, (item, item_selected))| {
@@ -123,11 +136,12 @@ pub fn render_intents_screen(app: &mut App, frame: &mut Frame) {
                 _ => "•",
             };
             if *item_selected {
-                ListItem::new(format!("  {}  {}", icon, item)).style(Style::default().fg(Color::LightGreen))
+                ListItem::new(format!("  {}  {}", icon, item))
+                    .style(Style::default().fg(Color::LightGreen))
             } else {
-                ListItem::new(format!("  {}  {}", icon, item)).style(Style::default().fg(Color::White))
+                ListItem::new(format!("  {}  {}", icon, item))
+                    .style(Style::default().fg(Color::White))
             }
-            
         })
         .collect();
 
@@ -145,7 +159,6 @@ pub fn render_intents_screen(app: &mut App, frame: &mut Frame) {
 
     frame.render_stateful_widget(list, centered_menu, &mut app.intent_list_state);
     render_footer(footer_area, frame);
-
 }
 
 fn next(app: &mut App) {
@@ -184,8 +197,9 @@ fn select(app: &mut App) {
 }
 
 fn render_footer(area: Rect, frame: &mut Frame) {
-    let footer = Paragraph::new("↑↓: Navigate  │  Space: Select/Deselect | Enter: Submit  │  Esc/q: Quit")
-        .style(Style::default().fg(Color::DarkGray))
-        .alignment(Alignment::Center);
+    let footer =
+        Paragraph::new("↑↓: Navigate  │  Space: Select/Deselect | Enter: Submit  │  Esc/q: Quit")
+            .style(Style::default().fg(Color::DarkGray))
+            .alignment(Alignment::Center);
     frame.render_widget(footer, area);
 }
