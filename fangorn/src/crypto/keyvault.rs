@@ -34,10 +34,10 @@ pub trait KeyVault {
     /// The pair type (private + public key)
     type Pair: PairT;
 
-    fn get_public_key(&self, key_name: String,) -> Result<Self::Public, KeyVaultError>;
+    fn get_public_key(&self, key_name: String, file_password: &mut SecretString) -> Result<Self::Public, KeyVaultError>;
 
     /// Generate a new keypair and return the public key
-    fn generate_key(&self, key_name: String) -> Result<Self::Public, KeyVaultError>;
+    fn generate_key(&self, key_name: String, file_password: &mut SecretString) -> Result<Self::Public, KeyVaultError>;
 
     /// List all public keys in the keystore
     fn list_keys(&self) -> Result<Vec<String>, KeyVaultError>;
@@ -46,7 +46,7 @@ pub trait KeyVault {
     fn has_key(&self, key_name: String) -> bool;
 
     /// Sign a message with the specified public key
-    fn sign(&self, key_name: String, message: &[u8])
+    fn sign(&self, key_name: String, message: &[u8], file_password: &mut SecretString)
     -> Result<Self::Signature, KeyVaultError>;
 
     /// Verify a signature (can be static since verification only needs the public key)
@@ -83,17 +83,19 @@ impl KeyVault for Sr25519KeyVault {
     type Signature = sr25519::Signature;
     type Pair = sr25519::Pair;
 
-    fn generate_key(&self, key_name: String) -> Result<Self::Public, KeyVaultError> {
+    fn generate_key(&self, key_name: String, file_password: &mut SecretString) -> Result<Self::Public, KeyVaultError> {
         // SecretString::new(Mnemonic::ge)
         let secret_mnemonic = SecretString::new(Mnemonic::generate(24).unwrap().to_string().into());
 
         let (pair, seed) = Self::Pair::from_phrase(&secret_mnemonic.expose_secret(), None)
         .expect("Failed to generate keypair from mnemonic");
 
+        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
+
         // Lock the vault for writing and write the entire keypair
         self.vault.write()
             .map_err(|_| KeyVaultError::Keystore("Failed to lock vault".to_string()))?
-            .store_bytes(&key_name, &seed).unwrap();
+            .store_bytes(&key_name, &seed, &mut vault_password, file_password).unwrap();
 
         Ok(pair.public())
 
@@ -107,9 +109,10 @@ impl KeyVault for Sr25519KeyVault {
         self.vault.try_read().unwrap().contains(key_name.as_str())
     }
 
-    fn get_public_key(&self, key_name: String) -> Result<Self::Public, KeyVaultError> {
+    fn get_public_key(&self, key_name: String, file_password: &mut SecretString) -> Result<Self::Public, KeyVaultError> {
         // lock vault for writing since the vault state is modified on read
-        let seed_bytes = self.vault.write().unwrap().get(&key_name).unwrap();
+        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
+        let seed_bytes = self.vault.write().unwrap().get(&key_name, &mut vault_password, file_password).unwrap();
         let pair = Self::Pair::from_seed_slice(seed_bytes.expose_secret()).unwrap();
         Ok(pair.public())
     }
@@ -118,9 +121,11 @@ impl KeyVault for Sr25519KeyVault {
         &self,
         key_name: String,
         message: &[u8],
+        file_password: &mut SecretString,
     ) -> Result<Self::Signature, KeyVaultError> {
         // lock vault for writing since the vault state is modified on read
-        let seed_bytes = self.vault.write().unwrap().get(&key_name).unwrap();
+        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
+        let seed_bytes = self.vault.write().unwrap().get(&key_name, &mut vault_password, file_password).unwrap();
         let pair = Self::Pair::from_seed_slice(seed_bytes.expose_secret()).unwrap();
         Ok(pair.sign(message))
     }
@@ -149,9 +154,10 @@ impl KeyVault for IrohKeyVault {
     // This is not used, but must be fulfilled for the KeyVault trait
     type Pair = sp_core::ed25519::Pair;
 
-    fn generate_key(&self, key_name: String) -> Result<Self::Public, KeyVaultError> {
+    fn generate_key(&self, key_name: String, file_password: &mut SecretString) -> Result<Self::Public, KeyVaultError> {
         let iroh_sk = IrohSecretKey::generate(OsRng);
-        self.vault.write().unwrap().store_bytes(key_name.as_str(), &iroh_sk.to_bytes()).unwrap();
+        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
+        self.vault.write().unwrap().store_bytes(key_name.as_str(), &iroh_sk.to_bytes(), &mut vault_password, file_password).unwrap();
         Ok(iroh_sk.public())
     }
 
@@ -163,9 +169,10 @@ impl KeyVault for IrohKeyVault {
         self.vault.try_read().unwrap().contains(key_name.as_str())
     }
 
-    fn get_public_key(&self, key_name: String) -> Result<Self::Public, KeyVaultError> {
+    fn get_public_key(&self, key_name: String, file_password: &mut SecretString) -> Result<Self::Public, KeyVaultError> {
         // lock vault for writing since the vault state is modified on read
-        let secret_key = self.vault.write().unwrap().get(&key_name).unwrap();
+        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
+        let secret_key = self.vault.write().unwrap().get(&key_name, &mut vault_password, file_password).unwrap();
         let mut secret_bytes = [0u8;32];
         secret_key.expose_secret().read(&mut secret_bytes)?;
         let secret_key = IrohSecretKey::from_bytes(&secret_bytes);
@@ -176,8 +183,10 @@ impl KeyVault for IrohKeyVault {
         &self,
         key_name: String,
         message: &[u8],
+        file_password: &mut SecretString,
     ) -> Result<Self::Signature, KeyVaultError> {
-        let secret_key = self.vault.write().unwrap().get(&key_name).unwrap();
+        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
+        let secret_key = self.vault.write().unwrap().get(&key_name, &mut vault_password, file_password).unwrap();
         let mut secret_bytes = [0u8;32];
         secret_key.expose_secret().read(&mut secret_bytes)?;
         let secret_key = IrohSecretKey::from_bytes(&secret_bytes);

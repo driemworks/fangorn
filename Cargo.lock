@@ -8648,7 +8648,7 @@ dependencies = [
 [[package]]
 name = "rust-vault"
 version = "0.1.0"
-source = "git+https://github.com/colemanirby/rust-vault.git?branch=main#80937308ce6380f251ca9034a2366e23c006365b"
+source = "git+https://github.com/colemanirby/rust-vault.git?branch=main#e021b366debbfeed8ad17ac0cad3db55ce61efb7"
 dependencies = [
  "anyhow",
  "argon2",
