@@ -110,8 +110,8 @@ Note that decryption exposes the password to verifiers, making this best used as
 --keystore-dir tmp/keystore \
 --intent "Password(test)" \
 --contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR" \
---ticket docaaaca5fg6mhmpbibu3sgmgayui77j5tejsqhgx7as7zal3xgfh6t4c3aaeppyhcvzrx2deqooewarz3mhteb22kd2nktscp5wzt67rr6lvqc6ayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimb5ubqcafmdszl3tkn \
---bootstrap-pubkey 1efc1c55cc6fa1920e712c08e76c3cc81d6943d3553909fdb667efc63e5d602f \
+--ticket docaaacactewl2lh6fmo53frafuhgymaffgc3epwjxtr5bbtwuxq6zgum25afmdfthvord6j6prdhoptpjcjq7wr4n5mgr6k2kjf6zt2xwwm4g2gayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimb5ubqcafmdszl3tkn \
+--bootstrap-pubkey 5832ccf57447e4f9f119dcf9bd224c3f68f1bd61a3e569492fb33d5ed6670da3 \
 --bootstrap-url 172.28.178.189:9933 \
 --system-keys-dir tmp/sys/key
 ``` 
@@ -127,8 +127,8 @@ Note that decryption exposes the password to verifiers, making this best used as
 --pt-filename test.txt \
 --contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR" \
 --request-pool-contract-addr "5GM8iKpSrQmDS9sRUSfyoJvjzMZFCKZE2Dr9SwZrLpntiitn" \
---ticket docaaaca5fg6mhmpbibu3sgmgayui77j5tejsqhgx7as7zal3xgfh6t4c3aaeppyhcvzrx2deqooewarz3mhteb22kd2nktscp5wzt67rr6lvqc6ayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimb5ubqcafmdszl3tkn \
---bootstrap-pubkey 1efc1c55cc6fa1920e712c08e76c3cc81d6943d3553909fdb667efc63e5d602f \
+--ticket docaaacactewl2lh6fmo53frafuhgymaffgc3epwjxtr5bbtwuxq6zgum25afmdfthvord6j6prdhoptpjcjq7wr4n5mgr6k2kjf6zt2xwwm4g2gayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimb5ubqcafmdszl3tkn \
+--bootstrap-pubkey 5832ccf57447e4f9f119dcf9bd224c3f68f1bd61a3e569492fb33d5ed6670da3 \
 --bootstrap-url 172.28.178.189:9933 \
 --system-keys-dir tmp/sys/key
 ```

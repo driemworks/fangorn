@@ -220,8 +220,9 @@ async fn main() -> Result<()> {
             let socket: SocketAddr = bootstrap_url.parse().ok().unwrap();
             let boot = EndpointAddr::new(pubkey).with_ip_addr(socket);
             node.try_connect_peers(Some(vec![boot])).await?;
-            // wait for initial sync
-            thread::sleep(Duration::from_secs(2));
+            // wait for the node to be online
+            node.endpoint().online().await;
+            println!("🟢 RECEIVER is ONLINE");
 
             handle_decrypt(
                 config_path,

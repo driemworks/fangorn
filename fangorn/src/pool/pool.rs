@@ -24,6 +24,13 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
+/// A struct for messaging partial decryption across nodes 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Encode, Decode)]
+pub struct PartialDecryptionMessage {
+    pub filename: Vec<u8>,
+    pub partial_decryption_bytes: Vec<u8>
+}
+
 /// A message added to the bulletin board
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct DecryptionRequest {

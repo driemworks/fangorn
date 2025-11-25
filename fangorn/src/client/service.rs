@@ -642,6 +642,14 @@ async fn process_decryption_request<C: Pairing>(
                 let state = state.lock().await;
                 let partial_decryption = state.sk.partial_decryption(&ciphertext);
                 partial_decryption.serialize_compressed(&mut bytes).unwrap();
+
+                let pd_message = PartialDecryptionMessage {
+                    filename: req.filename,
+                    partial_decryption_bytes: bytes,
+                };
+
+                let msg_bytes = pd_message.encode();
+
                 println!("produced a partial decryption");
                 drop(state);
 
@@ -649,17 +657,21 @@ async fn process_decryption_request<C: Pairing>(
                 let endpoint = node.endpoint();
                 // try to connect to the recipient
                 let receiver_endpoint_addr: EndpointAddr = req.location.into();
-                println!("CONNECTING TO ENDPOINTADDR {:?}", receiver_endpoint_addr);
                 if let Ok(conn) = endpoint
                     .connect(receiver_endpoint_addr, crate::client::node::PD_ALPN)
                     .await
                 {
-                    println!("made a connection: attempting to send bytes");
-                    let mut send = conn.open_uni().await.anyerr().unwrap();
-                    send.write_all(&bytes).await.anyerr().unwrap();
-                    send.finish().anyerr().unwrap();
-                    // conn.close(0u32.into(), b"bye!");
-                    // endpoint.close().await;
+                    let (mut send, mut recv) = conn.open_bi().await.anyerr()?;
+                    send.write_all(&msg_bytes).await.anyerr()?;
+                    send.finish().anyerr()?;
+                    let response = recv.read_to_end(1000).await.anyerr()?;
+                    if response == msg_bytes {
+                        // send attestation
+                        
+                    }
+
+                    // Explicitly close the whole connection.
+                    conn.close(0u32.into(), b"Success - Goodbye!");
                 }
                 // then submit an attestation to the contract
             } else {

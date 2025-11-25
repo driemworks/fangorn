@@ -1,4 +1,5 @@
 use anyhow::Result;
+use ark_serialize::CanonicalDeserialize;
 use iroh::{
     discovery::{mdns::MdnsDiscovery, Discovery},
     endpoint::Connection,
@@ -11,8 +12,9 @@ use iroh_docs::{protocol::Docs, ALPN as DOCS_ALPN};
 use iroh_gossip::{net::Gossip, ALPN as GOSSIP_ALPN};
 use n0_error::{Result as N0Result, StdResultExt};
 
-use crate::types::*;
+use crate::{pool::pool::PartialDecryptionMessage, types::*};
 use ark_ec::pairing::Pairing;
+use codec::Decode;
 use silent_threshold_encryption::setup::PublicKey;
 use std::{
     net::{Ipv4Addr, SocketAddrV4},
@@ -21,7 +23,7 @@ use std::{
 use tokio::sync::Mutex;
 
 use quic_rpc::transport::flume::FlumeConnector;
-
+use silent_threshold_encryption::setup::PartialDecryption;
 use std::{fs::OpenOptions, io::Write};
 
 /// A node...
@@ -37,6 +39,8 @@ pub struct Node<C: Pairing> {
     docs: Docs,
     /// the node state
     state: Arc<Mutex<State<C>>>,
+    /// partial decryption receiver
+    pd_rx: flume::Receiver<PartialDecryption<C>>,
 }
 
 impl<C: Pairing> Node<C> {
@@ -75,7 +79,6 @@ impl<C: Pairing> Node<C> {
             .unwrap();
         // build gossip protocol
         let gossip = Gossip::builder().spawn(endpoint.clone());
-
         // build the store (memstore for now)
         let store = MemStore::new();
         let blobs = BlobsProtocol::new(&store, None);
@@ -84,9 +87,13 @@ impl<C: Pairing> Node<C> {
             .spawn(endpoint.clone(), store.clone().into(), gossip.clone())
             .await
             .unwrap();
+
+        let (pd_tx, pd_rx) = flume::unbounded();
+        let pd_handler = PartialDecryptionHandler { tx: pd_tx };
+
         // setup router
         let router = Router::builder(endpoint.clone())
-            .accept(PD_ALPN, Arc::new(PartialDecryptionHandler))
+            .accept(PD_ALPN, pd_handler)
             .accept(GOSSIP_ALPN, gossip.clone())
             .accept(BLOBS_ALPN, blobs.clone())
             .accept(DOCS_ALPN, docs.clone())
@@ -118,6 +125,7 @@ impl<C: Pairing> Node<C> {
             blobs,
             docs,
             state,
+            pd_rx,
         }
     }
 
@@ -174,33 +182,32 @@ impl<C: Pairing> Node<C> {
 
 pub const PD_ALPN: &[u8] = b"fangorn/partial-decryption/0";
 
-#[derive(Debug, Clone)]
-pub struct PartialDecryptionHandler;
+#[derive(Clone, Debug)]
+pub struct PartialDecryptionHandler<C: Pairing> {
+    tx: flume::Sender<PartialDecryption<C>>,
+}
 
-impl ProtocolHandler for PartialDecryptionHandler {
-    async fn accept(&self, connection: Connection) -> N0Result<(), AcceptError> {
-        println!("🔵 PartialDecryptionHandler invoked!");
+impl<C: Pairing> ProtocolHandler for PartialDecryptionHandler<C> {
+    async fn accept(&self, connection: Connection) -> Result<(), AcceptError> {
         let endpoint_id = connection.remote_id();
-        println!("Accepted connection from {endpoint_id}");
+        println!("accepted connection from {endpoint_id}");
 
-        match connection.accept_uni().await {
-            Ok(mut recv) => {
-                match recv.read_to_end(1024 * 1024).await {
-                    Ok(bytes) => {
-                        println!("✅ Received {} byte(s)", bytes.len());
-                        // TODO: Process the partial decryption here
-                        // let partial_decryption = PartialDecryption::deserialize_compressed(&bytes[..])?;
-                    }
-                    Err(e) => {
-                        eprintln!("❌ Error reading stream: {:?}", e);
-                    }
-                }
-            }
-            Err(e) => {
-                eprintln!("❌ Error accepting stream: {:?}", e);
-            }
-        }
+        let (mut send, mut recv) = connection.accept_bi().await.unwrap();
 
+        let bytes = recv.read_to_end(1024 * 1024).await.unwrap();
+        println!("Received bytes - attempting to decode");
+        let msg = PartialDecryptionMessage::decode(&mut &bytes[..]).unwrap();
+        println!("Decoded the message successfully");
+        // now deserialize the pd
+        let partial_decryption =
+            PartialDecryption::<C>::deserialize_compressed(&msg.partial_decryption_bytes[..])
+                .unwrap();
+
+        let _ = self.tx.send_async(partial_decryption.clone()).await;
+        // TODO: if the partial decryption is invalid, then do not echo back
+        send.write_all(&bytes).await.unwrap();
+        send.finish()?;
+        connection.closed().await;
         Ok(())
     }
 }

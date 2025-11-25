@@ -19,11 +19,7 @@ pub struct DecryptionRequest {
 #[ink::contract]
 mod request_pool {
     use super::*;
-    // use ink::prelude::vec::Vec;
     use ink::storage::Mapping;
-
-    // /// Opaque request (caller decodes)
-    // pub type Request = Vec<u8>;
 
     /// Opaque attestation (caller decodes)
     pub type Attestation = Vec<u8>;
@@ -48,7 +44,7 @@ mod request_pool {
 
     /// Threshold params (1 of 1)
     const THRESHOLD: u32 = 1;
-    const TOTAL_WORKERS: u32 = 1;
+    const TOTAL_WORKERS: u32 = 2;
 
     #[ink(event)]
     pub struct RequestAdded {
