@@ -33,7 +33,10 @@ pub enum FangornNodeCommands {
         ticket: String,
         /// The contract address
         #[arg(long, default_value="")]
-        contract_addr: String,
+        predicate_registry_contract_addr: String,
+        /// The request pool contract address
+        #[arg(long, default_value="")]
+        request_pool_contract_addr: String,
         /// The bootsrap node public key
         #[arg(long, default_value=None)]
         bootstrap_pubkey: Option<String>,

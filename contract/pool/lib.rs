@@ -1,12 +1,29 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+use ink::prelude::vec::Vec;
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
+pub struct GenericData(pub Vec<u8>);
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
+pub struct DecryptionRequest {
+    filename: GenericData,
+    witness_hex: GenericData,
+    location: GenericData,
+}
+
 #[ink::contract]
 mod request_pool {
-    use ink::prelude::vec::Vec;
+    use super::*;
+    // use ink::prelude::vec::Vec;
     use ink::storage::Mapping;
 
-    /// Opaque request (caller decodes)
-    pub type Request = Vec<u8>;
+    // /// Opaque request (caller decodes)
+    // pub type Request = Vec<u8>;
 
     /// Opaque attestation (caller decodes)
     pub type Attestation = Vec<u8>;
@@ -14,7 +31,7 @@ mod request_pool {
     #[ink(storage)]
     pub struct RequestPool {
         /// Requests indexed by ID
-        requests: Mapping<Vec<u8>, Request>,
+        requests: Mapping<Vec<u8>, DecryptionRequest>,
         /// All request IDs (unordered)
         request_ids: Vec<Vec<u8>>,
         /// Partial attestations: request_id -> (worker_id -> attestation)
@@ -23,15 +40,15 @@ mod request_pool {
         attestation_counts: Mapping<Vec<u8>, u32>,
         /// Final combined attestation (after threshold met)
         fulfilled_attestations: Mapping<Vec<u8>, Attestation>,
-        /// Authorized workers (5 workers for prototype)
+        /// Authorized workers
         authorized_workers: Vec<AccountId>,
         /// Count
         count: u64,
     }
 
-    /// Threshold params
-    const THRESHOLD: u32 = 3;
-    const TOTAL_WORKERS: u32 = 5;
+    /// Threshold params (1 of 1)
+    const THRESHOLD: u32 = 1;
+    const TOTAL_WORKERS: u32 = 1;
 
     #[ink(event)]
     pub struct RequestAdded {
@@ -83,13 +100,28 @@ mod request_pool {
 
         /// Add request (ID = hash of request bytes)
         #[ink(message)]
-        pub fn add(&mut self, request: Request) -> Result<(), Error> {
-            let id = self.hash_request(&request);
+        pub fn add(
+            &mut self,
+            filename: GenericData,
+            witness_hex: GenericData,
+            location: GenericData,
+        ) -> Result<(), Error> {
+            let mut input = Vec::new();
+            input.extend(filename.0.clone());
+            input.extend(witness_hex.0.clone());
+            input.extend(location.0.clone());
+
+            let id = self.hash_request(&input);
 
             if self.requests.contains(&id) {
                 return Err(Error::RequestAlreadyExists);
             }
 
+            let request = DecryptionRequest {
+                filename,
+                witness_hex,
+                location,
+            };
             self.requests.insert(&id, &request);
             self.request_ids.push(id.clone());
             self.count = self.count.saturating_add(1);
@@ -104,7 +136,7 @@ mod request_pool {
 
         /// Read all requests (unordered)
         #[ink(message)]
-        pub fn read_all(&self) -> Vec<Request> {
+        pub fn read_all(&self) -> Vec<DecryptionRequest> {
             self.request_ids
                 .iter()
                 .filter_map(|id| self.requests.get(id))
@@ -205,10 +237,10 @@ mod request_pool {
         }
 
         /// Helper: hash request to get ID
-        fn hash_request(&self, request: &Request) -> Vec<u8> {
+        fn hash_request(&self, data: &[u8]) -> Vec<u8> {
             use ink::env::hash::{Blake2x256, HashOutput};
             let mut output = <Blake2x256 as HashOutput>::Type::default();
-            ink::env::hash_bytes::<Blake2x256>(request, &mut output);
+            ink::env::hash_bytes::<Blake2x256>(data, &mut output);
             output.to_vec()
         }
 

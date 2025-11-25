@@ -4,7 +4,6 @@ use iroh::SecretKey as IrohSecretKey;
 use ark_ec::pairing::Pairing;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::rngs::OsRng;
-use iroh_docs::store::{FlatQuery, QueryBuilder};
 use silent_threshold_encryption::aggregate::SystemPublicKeys;
 use silent_threshold_encryption::{
     crs::CRS,
@@ -32,6 +31,7 @@ pub enum Tag {
     Hint,
     Doc,
     SystemKeys,
+    DecryptionRequest,
 }
 
 #[derive(Clone, Debug, Encode, Decode)]
@@ -118,11 +118,6 @@ impl<C: Pairing> State<C> {
                 }
 
                 // if bootstrap => compute new system keys and publish it
-            }
-            Tag::SystemKeys => {
-                let sys_keys =
-                    SystemPublicKeys::<C>::deserialize_compressed(&announcement.data[..]).unwrap();
-                self.system_keys = Some(sys_keys);
             }
             _ => {
                 // do nothing for other tags for now

@@ -11,7 +11,7 @@ resolver = "2"
 
 members = ["fangorn", "quickbeam", 
 # "entmoot", 
-"contract/iris", "contract/pool", "contract/psp22"]
+"contract/predicate-registry", "contract/pool", "contract/psp22"]
 
 [workspace.dependencies]
 async-trait = "0.1.89"

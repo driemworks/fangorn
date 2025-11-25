@@ -25,7 +25,8 @@ async fn main() -> Result<()> {
             bootstrap_ip,
             is_bootstrap,
             ticket,
-            contract_addr,
+            predicate_registry_contract_addr,
+            request_pool_contract_addr,
         }) => {
             let config = ServiceConfig {
                 bind_port: *bind_port,
@@ -41,7 +42,8 @@ async fn main() -> Result<()> {
                     bootstrap_pubkey.clone(),
                     bootstrap_ip.clone(),
                 ),
-                contract_addr: contract_addr.to_string(),
+                predicate_registry_contract_addr: predicate_registry_contract_addr.to_string(),
+                request_pool_contract_addr: request_pool_contract_addr.to_string(),
             };
             // start the service
             build_full_service::<E>(config, MAX_COMMITTEE_SIZE).await?;

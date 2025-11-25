@@ -8,6 +8,7 @@ use cid::Cid;
 use std::sync::Arc;
 use subxt::{config::substrate::AccountId32, ext::codec::Encode};
 
+#[derive(Clone)]
 pub struct ContractIntentStore {
     contract_address: String,
     backend: Arc<dyn ContractBackend>,
@@ -100,7 +101,11 @@ impl IntentStore for ContractIntentStore {
         let contract_addr_bytes = crate::utils::decode_contract_addr(&self.contract_address);
 
         self.backend
-            .write(&AccountId32(contract_addr_bytes), &selector.to_string(), &data)
+            .write(
+                &AccountId32(contract_addr_bytes),
+                &selector.to_string(),
+                &data,
+            )
             .await?;
 
         Ok(())

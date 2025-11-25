@@ -111,19 +111,6 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
             .map_err(|e| DecryptionClientError::IntentStoreError(e.to_string()))?
             .ok_or_else(|| DecryptionClientError::IntentNotFound(filename.to_string()))?;
 
-        // let ciphertext_bytes = self
-        //     .app_store
-        //     .doc_store
-        //     .fetch(&cid)
-        //     .await
-        //     .map_err(|e| DecryptionClientError::DocstoreError(e.to_string()))?
-        //     .ok_or(DecryptionClientError::CiphertextNotFound)?;
-
-        // println!("we got the ciphertext");
-
-        // let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..])
-        //     .map_err(|_| DecryptionClientError::DeserializationError)?;
-
         // prepare witnesses
         let witness_hex = self.encode_witnesses(witnesses)?;
 
@@ -138,9 +125,23 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
         // add decryption requests to the pool
         let mut locked_pool = self.pool.lock().await;
         locked_pool.add(decryption_request).await;
-        // let mut pool = self.pool.lock().unwrap();
 
-        // build request and submit it to the pool
+        // This isn't great... but it's fine for now I guess
+        // lets just wait until we get all the PDs here? Idk exactly...
+
+
+        // let ciphertext_bytes = self
+        //     .app_store
+        //     .doc_store
+        //     .fetch(&cid)
+        //     .await
+        //     .map_err(|e| DecryptionClientError::DocstoreError(e.to_string()))?
+        //     .ok_or(DecryptionClientError::CiphertextNotFound)?;
+
+        // println!("we got the ciphertext");
+
+        // let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..])
+        //     .map_err(|_| DecryptionClientError::DeserializationError)?;
 
         // let subset = vec![0, self.threshold as usize];
         // let (ak, _ek) =

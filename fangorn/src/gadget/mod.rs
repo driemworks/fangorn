@@ -47,7 +47,9 @@ impl std::fmt::Display for IntentError {
 
 impl std::error::Error for IntentError {}
 
+
 /// Registry for gadgets to allow for extensible gadgets to be used
+#[derive(Clone)]
 pub struct GadgetRegistry {
     gadgets: HashMap<String, Arc<dyn Gadget>>,
 }

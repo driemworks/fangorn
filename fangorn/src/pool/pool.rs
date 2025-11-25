@@ -1,4 +1,8 @@
-use crate::backend::{iroh::IrohBackend, Backend};
+use crate::{
+    backend::{iroh::IrohBackend, Backend},
+    client::node::Node,
+    types::*,
+};
 use anyhow::Result;
 use ark_ec::pairing::Pairing;
 use async_trait::async_trait;
@@ -23,7 +27,6 @@ use tokio::sync::RwLock;
 /// A message added to the bulletin board
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct DecryptionRequest {
-    // pub id: Vec<u8>,
     /// Unique identifier for the message
     pub filename: Vec<u8>,
     /// The actual message content
@@ -79,46 +82,51 @@ pub trait RequestPool {
 }
 pub struct IrohPool<C: Pairing> {
     backend: Arc<IrohBackend<C>>,
+    // TODO: this shouldn't need the node, it shoudl just use the backend
+    // but I don't feel like figuring that out right now
+    node: Node<C>,
     doc: Doc,
 }
 
 impl<C: Pairing> IrohPool<C> {
-    pub async fn new(backend: Arc<IrohBackend<C>>, ticket: &str) -> Result<Self> {
+    pub async fn new(backend: Arc<IrohBackend<C>>, node: Node<C>, ticket: &str) -> Result<Self> {
         let doc_ticket = DocTicket::from_str(ticket)?;
         let doc = backend.node.docs().import(doc_ticket).await?;
 
-        Ok(Self { backend, doc })
+        Ok(Self { backend, node, doc })
     }
 }
 
-pub const RequestPoolKey: &str = "request-pool-";
+pub const REQUEST_POOL_KEY: &str = "request-pool-";
 
 #[async_trait]
 impl<C: Pairing> RequestPool for IrohPool<C> {
     async fn add(&mut self, req: DecryptionRequest) -> Result<()> {
-        let id = format!("{}", req.id());
-        let data = req.encode();
+        println!("*************************** ADDING TO POOL");
 
-        self.backend.write(&self.doc, &id, &data).await?;
+        let id = format!("{}{}", REQUEST_POOL_KEY, req.id());
+
+        let announcement = Announcement {
+            tag: Tag::DecryptionRequest,
+            data: req.encode(),
+        };
+
+        self.backend.write(&self.doc, &id, &announcement.encode()).await?;
         Ok(())
     }
 
     async fn read_all(&self) -> Result<Vec<DecryptionRequest>> {
-        // Get all entries from doc
-        let query = QueryBuilder::<FlatQuery>::default().key_exact(RequestPoolKey);
+        // get all entries with request pool prefix
+        let query = QueryBuilder::<FlatQuery>::default().key_prefix(REQUEST_POOL_KEY);
         let entries = self.doc.get_many(query.build()).await?;
         let entries = entries.collect::<Vec<_>>().await;
 
         let mut requests = Vec::new();
         for entry in entries {
             let data = entry.unwrap();
-            let key = String::from_utf8_lossy(data.key());
-            // Fetch content via backend
-            if let Some(bytes) = self.backend.read(&self.doc, &key.to_string(), None).await? {
-                if let Ok(req) = DecryptionRequest::decode(&mut &bytes[..]) {
-                    requests.push(req);
-                }
-            }
+            let hash = data.content_hash();
+            let content = self.node.blobs().get_bytes(hash).await?;
+            println!("***************** got the content!");
         }
 
         Ok(requests)
@@ -129,17 +137,17 @@ impl<C: Pairing> RequestPool for IrohPool<C> {
         let entries = self.doc.get_many(query.build()).await?;
         let entries = entries.collect::<Vec<_>>().await;
 
-        // Count only request entries (not attestations)
-        let count = entries
-            .into_iter()
-            .filter(|e| {
-                let data = e.as_ref().unwrap();
-                let key = String::from_utf8_lossy(data.key());
-                !key.starts_with("attestation:")
-            })
-            .count();
+        // // Count only request entries (not attestations)
+        // let count = entries
+        //     .into_iter()
+        //     .filter(|e| {
+        //         let data = e.as_ref().unwrap();
+        //         let key = String::from_utf8_lossy(data.key());
+        //         !key.starts_with("attestation:")
+        //     })
+        //     .count();
 
-        Ok(count)
+        Ok(0)
     }
 
     async fn submit_partial_attestation(&self, id: &[u8], attestation: &[u8]) -> Result<()> {
@@ -167,11 +175,11 @@ impl<C: Pairing> IrohPool<C> {
         for entry in entries {
             let data = entry.unwrap();
             let key = String::from_utf8_lossy(data.key());
-            if key.starts_with(&prefix) {
-                if let Some(bytes) = self.backend.read(&self.doc, &key.to_string(), None).await? {
-                    attestations.push(bytes);
-                }
-            }
+            // if key.starts_with(&prefix) {
+            //     if let Some(bytes) = self.backend.read(&self.doc, &key.to_string(), None).await? {
+            //         attestations.push(bytes);
+            //     }
+            // }
         }
 
         Ok(attestations)

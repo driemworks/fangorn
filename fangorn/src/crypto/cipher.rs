@@ -11,7 +11,7 @@ use crate::{
     backend::{iroh::IrohBackend, SubstrateBackend},
     crypto::{decrypt::DecryptionClient, encrypt::EncryptionClient},
     gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget},
-    pool::pool::IrohPool,
+    pool::contract_pool::InkContractPool,
     storage::PlaintextStore,
     utils::load_mnemonic,
 };
@@ -30,7 +30,6 @@ use std::sync::Arc;
 use subxt::config::polkadot::AccountId32;
 use tokio::sync::Mutex;
 
-
 /// encrypt the message located at message_path
 pub async fn handle_encrypt(
     message_path: &String,
@@ -44,7 +43,7 @@ pub async fn handle_encrypt(
     sys_keys: SystemPublicKeys<E>,
 ) {
     let seed = load_mnemonic(keystore_path);
-    let (gadget_registry, app_store) =
+    let (gadget_registry, app_store, _) =
         iroh_testnet_setup(contract_addr, Some(&seed), node.clone(), ticket.clone()).await;
 
     let message = app_store
@@ -65,37 +64,45 @@ pub async fn handle_decrypt(
     filename: &String,
     witness_string: &String,
     pt_filename: &String,
+    keystore_path: &String,
     contract_addr: &String,
+    request_pool_contract_addr: &String,
     node: Node<E>,
     ticket: &String,
     sys_keys: SystemPublicKeys<E>,
 ) {
-    // we could split this up now with a public witness:
-    // that's pretty pointless to put on chain or make public though...
-    // we 100% need to do a zk approach here!!! z
-    let (gadget_registry, app_store) =
-        iroh_testnet_setup(contract_addr, None, node.clone(), ticket.clone()).await;
-
+    let seed = load_mnemonic(keystore_path);
+    let (gadget_registry, app_store, backend) =
+        iroh_testnet_setup(contract_addr, Some(&seed), node.clone(), ticket.clone()).await;
     // Parse witnesses
     let witnesses: Vec<&str> = witness_string.trim().split(',').map(|s| s.trim()).collect();
 
     let doc_ticket = DocTicket::from_str(&ticket).unwrap();
     let doc_stream = node.docs().import(doc_ticket).await.unwrap();
 
-    // initialize iroh backend for the decryption client
-    let iroh_backend = Arc::new(IrohBackend::new(node.clone()));
-    let request_pool = Arc::new(Mutex::new(
-        IrohPool::new(iroh_backend, ticket).await.unwrap(),
-    ));
+    // TODO: this should be injected from the client itself
+    let request_pool = Arc::new(Mutex::new(InkContractPool::new(
+        request_pool_contract_addr.to_string(),
+        backend,
+    )));
 
-    // Decrypt
+    // Decrypt client
     let client =
         DecryptionClient::new(config_path, sys_keys, app_store, request_pool, node.clone())
             .unwrap();
+
+    println!("> Requested decryption");
     client
         .request_decrypt(filename, &witnesses, pt_filename)
         .await
         .unwrap();
+
+    // now lets wait for partial decryptions to roll in (we only need one for now..)
+    // for now just loop, see if we print the message
+    loop {
+
+    }
+
 }
 
 /// an app store that uses the iroh nodes for storage
@@ -109,9 +116,7 @@ type LocalTestnetAppStore = AppStore<LocalDocStore, ContractIntentStore, LocalPl
 async fn local_testnet_setup(
     contract_addr: &String,
     seed: Option<&str>,
-) -> (GadgetRegistry, LocalTestnetAppStore) {
-    // let sys_keys = get_system_keys().await;
-
+) -> (GadgetRegistry, LocalTestnetAppStore, Arc<SubstrateBackend>) {
     // build the backend
     let backend = Arc::new(
         SubstrateBackend::new(crate::WS_URL.to_string(), seed)
@@ -126,11 +131,11 @@ async fn local_testnet_setup(
 
     let app_store = AppStore::new(
         LocalDocStore::new("tmp/docs/"),
-        ContractIntentStore::new(contract_addr.to_string(), backend),
+        ContractIntentStore::new(contract_addr.to_string(), backend.clone()),
         LocalPlaintextStore::new("tmp/plaintexts/"),
     );
 
-    (gadget_registry, app_store)
+    (gadget_registry, app_store, backend)
 }
 
 async fn iroh_testnet_setup(
@@ -138,7 +143,7 @@ async fn iroh_testnet_setup(
     seed: Option<&str>,
     node: Node<E>,
     ticket: String,
-) -> (GadgetRegistry, TestnetAppStore) {
+) -> (GadgetRegistry, TestnetAppStore, Arc<SubstrateBackend>) {
     // build the backend
     let backend = Arc::new(
         SubstrateBackend::new(crate::WS_URL.to_string(), seed)
@@ -156,11 +161,11 @@ async fn iroh_testnet_setup(
 
     let app_store = AppStore::new(
         IrohDocStore::new(node, &ticket, iroh_backend).await,
-        ContractIntentStore::new(contract_addr.to_string(), backend),
+        ContractIntentStore::new(contract_addr.to_string(), backend.clone()),
         LocalPlaintextStore::new("tmp/plaintexts/"),
     );
 
-    (gadget_registry, app_store)
+    (gadget_registry, app_store, backend)
 }
 
 // async fn load_system_keys_from_doc<C: Pairing>(

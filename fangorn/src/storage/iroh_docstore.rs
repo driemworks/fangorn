@@ -27,6 +27,7 @@ use quic_rpc::transport::flume::FlumeConnector;
 // The codec for generating CIDs
 const RAW: u64 = 0x55;
 
+#[derive(Clone)]
 pub struct IrohDocStore<C: Pairing> {
     pub node: Node<C>,
     doc: Doc,

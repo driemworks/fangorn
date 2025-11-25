@@ -18,19 +18,6 @@ impl<C: Pairing> IrohBackend<C> {
     pub fn new(node: Node<C>) -> Self {
         Self { node }
     }
-
-    // pub fn load_doc(&self, ticket: String) -> Doc {
-    //     let doc_ticket = DocTicket::from_str(&ticket).unwrap();
-    //     let doc = self.node.docs().import(doc_ticket).await.unwrap();
-    //     doc
-    // }
-
-    // /// build a unique key for the data (it's a cid)
-    // fn build_cid(&self, data: &Data) -> Cid {
-    //     let hash = Code::Sha2_256.digest(data);
-    //     let cid = Cid::new_v1(RAW, hash);
-    //     cid
-    // }
 }
 
 impl<C: Pairing> SharedIrohBackend for IrohBackend<C> {}

@@ -48,6 +48,7 @@ pub trait PlaintextStore {
     async fn write_to_pt_store(&self, filename: &String, data: &Vec<u8>) -> Result<()>;
 }
 
+// TODO: we need a more elaborate way to handle multistorage
 /// A compound of a each store type
 pub struct AppStore<D: DocStore, I: IntentStore, P: PlaintextStore> {
     pub doc_store: D,

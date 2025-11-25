@@ -1,7 +1,8 @@
 use super::*;
-use crate::backend::Backend;
+use crate::backend::{Backend, SubstrateBackend};
 use crate::pool::pool::*;
 use anyhow::Result;
+use async_trait::async_trait;
 use codec::{Decode, Encode};
 use iroh::EndpointAddr;
 use serde::{Deserialize, Serialize};
@@ -11,16 +12,17 @@ use std::sync::{
     Arc,
 };
 use std::time::Duration;
+use subxt::config::polkadot::AccountId32;
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
 pub struct InkContractPool {
     contract_address: String,
-    backend: Arc<dyn Backend>,
+    backend: Arc<SubstrateBackend>,
 }
 
 impl InkContractPool {
-    pub fn new(contract_address: String, backend: Arc<dyn Backend>) -> Self {
+    pub fn new(contract_address: String, backend: Arc<SubstrateBackend>) -> Self {
         Self {
             contract_address,
             backend,
@@ -32,12 +34,19 @@ impl InkContractPool {
 impl RequestPool for InkContractPool {
     /// add a new message
     async fn add(&mut self, req: DecryptionRequest) -> Result<()> {
-        let input = req.encode();
-        let selector = self.backend.selector("add");
-        let contract_addr_bytes = crate::utils::decode_contract_addr(&self.contract_address);
+        let selector = "add";
+        let mut data = req.filename.encode();
+        data.extend(req.witness_hex.encode());
+        data.extend(req.location.encode());
 
+        // todo: this is not a good pattern
+        let contract_addr_bytes = crate::utils::decode_contract_addr(&self.contract_address);
         self.backend
-            .call_contract(contract_addr_bytes, selector, input)
+            .write(
+                &AccountId32(contract_addr_bytes),
+                &selector.to_string(),
+                &req.encode(),
+            )
             .await?;
 
         Ok(())
@@ -45,15 +54,18 @@ impl RequestPool for InkContractPool {
 
     /// read all messages (unordered pool)
     async fn read_all(&self) -> Result<Vec<DecryptionRequest>> {
-        // TODO: we should pass the selector string and contract_addr to the  query/call functions
-        let selector = self.backend.selector("read_all");
+        let selector = "read_all";
         let contract_addr_bytes = crate::utils::decode_contract_addr(&self.contract_address);
         let result = self
             .backend
-            .query_contract(contract_addr_bytes, selector, vec![])
+            .read(
+                &AccountId32(contract_addr_bytes),
+                &selector.to_string(),
+                None,
+            )
             .await?;
 
-        let mut data = result;
+        let mut data = result.unwrap();
         if !data.is_empty() {
             // remove the prefix
             data.remove(0);
@@ -66,14 +78,18 @@ impl RequestPool for InkContractPool {
 
     /// Get the total count of messages
     async fn count(&self) -> Result<usize> {
-        let selector = self.backend.selector("count");
+        let selector = "count";
         let contract_addr_bytes = crate::utils::decode_contract_addr(&self.contract_address);
         let result = self
             .backend
-            .query_contract(contract_addr_bytes, selector, vec![])
+            .read(
+                &&AccountId32(contract_addr_bytes),
+                &selector.to_string(),
+                None,
+            )
             .await?;
 
-        let mut data = result;
+        let mut data = result.unwrap();
         if !data.is_empty() {
             // remove the prefix
             data.remove(0);
@@ -88,11 +104,15 @@ impl RequestPool for InkContractPool {
         let mut data = id.encode();
         data.extend(attestation.encode());
 
-        let selector = self.backend.selector("submit_partial_decryption");
+        let selector = "submit_partial_decryption";
         let contract_addr_bytes = crate::utils::decode_contract_addr(&self.contract_address);
 
         self.backend
-            .call_contract(contract_addr_bytes, selector, data)
+            .write(
+                &AccountId32(contract_addr_bytes),
+                &selector.to_string(),
+                &data,
+            )
             .await?;
 
         Ok(())

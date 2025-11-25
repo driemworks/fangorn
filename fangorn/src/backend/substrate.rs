@@ -11,7 +11,7 @@ pub mod runtime {}
 /// a backend config that supports ink contracts on a substrate based chain
 pub trait ContractBackend: Backend<AccountId32, String, Vec<u8>> {}
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SubstrateBackend {
     client: OnlineClient<PolkadotConfig>,
     signer: Keypair,
@@ -78,8 +78,8 @@ impl Backend<AccountId32, String, Vec<u8>> for SubstrateBackend {
         &self,
         contract_address: &AccountId32,
         method: &String,
-        data: Option<Vec<u8>>,
-    ) -> Result<Option<Vec<u8>>> {
+        data: Option<Vec<u8>>, // does this really need to be an option? probably not
+    ) -> Result<Option<Vec<u8>>> { // same here, doesn't need to return an option
         // call_data = selector || call_data
         let mut call_data = self.selector(method).to_vec();
         if let Some(data) = data {

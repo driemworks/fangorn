@@ -47,6 +47,10 @@ impl<C: Pairing> Node<C> {
     pub fn docs(&self) -> Docs {
         self.docs.clone()
     }
+
+    pub fn endpoint(&self) -> Endpoint {
+        self.router.endpoint().clone()
+    }
 }
 
 impl<C: Pairing> Node<C> {
@@ -82,7 +86,7 @@ impl<C: Pairing> Node<C> {
             .unwrap();
         // setup router
         let router = Router::builder(endpoint.clone())
-            .accept(PD_ALPN, PartialDecryptionHandler)
+            .accept(PD_ALPN, Arc::new(PartialDecryptionHandler))
             .accept(GOSSIP_ALPN, gossip.clone())
             .accept(BLOBS_ALPN, blobs.clone())
             .accept(DOCS_ALPN, docs.clone())
@@ -148,9 +152,13 @@ impl<C: Pairing> Node<C> {
             .connect(peer_addr.clone(), DOCS_ALPN)
             .await
             .unwrap();
-        let _gossip_conn = self.endpoint.connect(peer_addr, GOSSIP_ALPN).await.unwrap();
-
-        // Ok((blobs_conn, docs_conn, gossip_conn))
+        let _gossip_conn = self
+            .endpoint
+            .connect(peer_addr.clone(), GOSSIP_ALPN)
+            .await
+            .unwrap();
+        // should probably be optional or even external?
+        // let _pd_conn = self.endpoint.connect(peer_addr, PD_ALPN).await.unwrap();
     }
 
     /// Get the node public key (if it exists)
@@ -164,23 +172,34 @@ impl<C: Pairing> Node<C> {
     }
 }
 
-const PD_ALPN: &[u8] = b"fangorn/partial-decryption/0";
+pub const PD_ALPN: &[u8] = b"fangorn/partial-decryption/0";
 
 #[derive(Debug, Clone)]
 pub struct PartialDecryptionHandler;
 
 impl ProtocolHandler for PartialDecryptionHandler {
     async fn accept(&self, connection: Connection) -> N0Result<(), AcceptError> {
+        println!("🔵 PartialDecryptionHandler invoked!");
         let endpoint_id = connection.remote_id();
-        println!("accepted connection from {endpoint_id}");
+        println!("Accepted connection from {endpoint_id}");
 
-        let (mut send, mut recv) = connection.accept_bi().await?;
-
-        let bytes_sent = tokio::io::copy(&mut recv, &mut send).await?;
-        println!("Copied over {bytes_sent} byte(s)");
-
-        send.finish()?;
-        connection.closed().await;
+        match connection.accept_uni().await {
+            Ok(mut recv) => {
+                match recv.read_to_end(1024 * 1024).await {
+                    Ok(bytes) => {
+                        println!("✅ Received {} byte(s)", bytes.len());
+                        // TODO: Process the partial decryption here
+                        // let partial_decryption = PartialDecryption::deserialize_compressed(&bytes[..])?;
+                    }
+                    Err(e) => {
+                        eprintln!("❌ Error reading stream: {:?}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("❌ Error accepting stream: {:?}", e);
+            }
+        }
 
         Ok(())
     }

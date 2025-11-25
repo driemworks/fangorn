@@ -110,11 +110,11 @@ Note that decryption exposes the password to verifiers, making this best used as
 --keystore-dir tmp/keystore \
 --intent "Password(test)" \
 --contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR" \
---ticket docaaacbhvy6gjfzbx5uoxybzs2ql5b2fffvwmi5fhzbk5xnqyyv6naccjhaes4exdlcdh5zjwatg7yf6gjg5isxdghdi4jlobnylqnz7ons5esqayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimv3qbqcafmdszl3tkn \
---bootstrap-pubkey 25c25c6b10cfdca6c099bf82f8c937512b8cc71a3895b82dc2e0dcfdcd974928 \
+--ticket docaaaca5fg6mhmpbibu3sgmgayui77j5tejsqhgx7as7zal3xgfh6t4c3aaeppyhcvzrx2deqooewarz3mhteb22kd2nktscp5wzt67rr6lvqc6ayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimb5ubqcafmdszl3tkn \
+--bootstrap-pubkey 1efc1c55cc6fa1920e712c08e76c3cc81d6943d3553909fdb667efc63e5d602f \
 --bootstrap-url 172.28.178.189:9933 \
 --system-keys-dir tmp/sys/key
-```
+``` 
 
 **Decryption**
 
@@ -122,11 +122,13 @@ Note that decryption exposes the password to verifiers, making this best used as
 ./target/debug/quickbeam decrypt \
 --filename test.txt \
 --config-path config.txt \
+--keystore-dir tmp/keystore \
 --witness test \
 --pt-filename test.txt \
 --contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR" \
---ticket docaaacbhvy6gjfzbx5uoxybzs2ql5b2fffvwmi5fhzbk5xnqyyv6naccjhaes4exdlcdh5zjwatg7yf6gjg5isxdghdi4jlobnylqnz7ons5esqayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimv3qbqcafmdszl3tkn \
---bootstrap-pubkey 25c25c6b10cfdca6c099bf82f8c937512b8cc71a3895b82dc2e0dcfdcd974928 \
+--request-pool-contract-addr "5GM8iKpSrQmDS9sRUSfyoJvjzMZFCKZE2Dr9SwZrLpntiitn" \
+--ticket docaaaca5fg6mhmpbibu3sgmgayui77j5tejsqhgx7as7zal3xgfh6t4c3aaeppyhcvzrx2deqooewarz3mhteb22kd2nktscp5wzt67rr6lvqc6ayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimb5ubqcafmdszl3tkn \
+--bootstrap-pubkey 1efc1c55cc6fa1920e712c08e76c3cc81d6943d3553909fdb667efc63e5d602f \
 --bootstrap-url 172.28.178.189:9933 \
 --system-keys-dir tmp/sys/key
 ```
@@ -193,8 +195,6 @@ First produce a valid sr25519 signature on the message (acct_nonce).
 --pt-filename test.txt \
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
 ```
-
-72759386929f53f677968d4fe5e2d2e0787dc40f692bde971595f91a98e3082cf79fcbfbea4b48fe66c4a68693f88952f3727cc2c227a1886dd0215e92f60a8c
 
 ### Entmoot
 

@@ -94,9 +94,14 @@ enum Commands {
         /// the decrypted text to
         #[arg(long)]
         pt_filename: String,
+        #[arg(long)]
+        keystore_dir: String,
         /// the contract address
         #[arg(long)]
         contract_addr: String,
+        /// the request pool contract
+        #[arg(long)]
+        request_pool_contract_addr: String,
         /// the ticket for reading/writing to fangorn's docstream
         #[arg(long)]
         ticket: String,
@@ -195,7 +200,9 @@ async fn main() -> Result<()> {
             filename,
             witness,
             pt_filename,
+            keystore_dir,
             contract_addr,
+            request_pool_contract_addr,
             ticket,
             system_keys_dir,
             bootstrap_url,
@@ -214,14 +221,16 @@ async fn main() -> Result<()> {
             let boot = EndpointAddr::new(pubkey).with_ip_addr(socket);
             node.try_connect_peers(Some(vec![boot])).await?;
             // wait for initial sync
-            thread::sleep(Duration::from_secs(3));
+            thread::sleep(Duration::from_secs(2));
 
             handle_decrypt(
                 config_path,
                 filename,
                 witness,
                 pt_filename,
+                keystore_dir,
                 contract_addr,
+                request_pool_contract_addr,
                 node,
                 ticket,
                 sys_keys,

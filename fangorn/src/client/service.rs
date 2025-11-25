@@ -1,5 +1,6 @@
 use anyhow::Result;
 use ark_ec::pairing::Pairing;
+use ark_serialize::CanonicalDeserialize;
 use ark_serialize::CanonicalSerialize;
 use codec::{Decode, Encode};
 use core::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -13,7 +14,8 @@ use iroh_docs::{
     store::{FlatQuery, QueryBuilder},
     DocTicket,
 };
-use silent_threshold_encryption::aggregate::SystemPublicKeys;
+use n0_error::StdResultExt;
+use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext};
 use std::sync::Arc;
 use std::{fs::OpenOptions, io::Write, thread, time::Duration};
 use subxt::config::polkadot::AccountId32;
@@ -23,10 +25,11 @@ use tonic::transport::Server;
 use crate::backend::{iroh::IrohBackend, SubstrateBackend};
 use crate::client::node::*;
 use crate::gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget};
-use crate::pool::{pool::*, watcher::*};
+use crate::pool::{contract_pool::*, pool::*, watcher::*};
 use crate::rpc::server::{NodeServer, RpcServer};
 use crate::storage::{
     contract_store::ContractIntentStore, iroh_docstore::IrohDocStore, local_store::LocalDocStore,
+    DocStore, IntentStore, SharedStore,
 };
 use crate::types::*;
 
@@ -36,9 +39,11 @@ pub struct ServiceConfig {
     pub rpc_port: u16,
     pub index: usize,
     pub is_bootstrap: bool,
+    // ignored if is_bootstrap
     pub ticket: Option<String>,
     pub bootstrap_peers: Option<Vec<EndpointAddr>>,
-    pub contract_addr: String,
+    pub predicate_registry_contract_addr: String,
+    pub request_pool_contract_addr: String,
 }
 
 impl ServiceConfig {
@@ -62,7 +67,6 @@ impl ServiceConfig {
 pub struct ServiceHandle<C: Pairing> {
     pub node: Node<C>,
     pub ticket: String,
-    // pub doc: Docs,
 }
 
 /// Build and start the full Fangorn node service
@@ -80,7 +84,6 @@ pub async fn build_full_service<C: Pairing>(
     let arc_state_clone = Arc::clone(&arc_state);
 
     let mut node = Node::build(params, rx, arc_state.clone()).await;
-
     node.try_connect_peers(config.bootstrap_peers.clone())
         .await
         .unwrap();
@@ -95,6 +98,28 @@ pub async fn build_full_service<C: Pairing>(
     .await
     .unwrap();
 
+    let iroh_backend = IrohBackend::new(node.clone());
+    let substrate_backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), None).await?);
+
+    // setup gadget registry
+    let mut gadget_registry = GadgetRegistry::new();
+    gadget_registry.register(PasswordGadget {});
+    gadget_registry.register(Psp22Gadget::new(substrate_backend.clone()));
+    gadget_registry.register(Sr25519Gadget::new(substrate_backend.clone()));
+
+    // setup storage
+    let doc_store = IrohDocStore::new(node.clone(), &ticket, Arc::new(iroh_backend)).await;
+    let intent_store = ContractIntentStore::new(
+        config.predicate_registry_contract_addr.to_string(),
+        substrate_backend.clone(),
+    );
+
+    // decryption request pool
+    let pool = Arc::new(RwLock::new(InkContractPool::new(
+        config.request_pool_contract_addr.clone(),
+        substrate_backend,
+    )));
+
     spawn_state_sync_service(
         doc_stream.clone(),
         node.clone(),
@@ -102,7 +127,7 @@ pub async fn build_full_service<C: Pairing>(
         config.bootstrap_peers,
     );
 
-    // wait for initial sync
+    // wait for initial sync (todo: there has to be a better way)
     thread::sleep(Duration::from_secs(3));
 
     // sync: load and distribute config
@@ -126,11 +151,10 @@ pub async fn build_full_service<C: Pairing>(
         .unwrap();
 
     if config.is_bootstrap {
+        // same as todo above: this is bad
         thread::sleep(Duration::from_secs(1));
-
         // Publish initial system keys
         publish_system_keys(&node, &doc_stream.clone(), &arc_state_clone, &tx).await?;
-
         // monitor for new hints and auto-update system keys
         // in the future, this should be driven by consensus or something
         // so this is sort of the 'proof of authority'/bootstrap-does-it-all model
@@ -141,14 +165,23 @@ pub async fn build_full_service<C: Pairing>(
             tx.clone(),
         )
         .await?;
-
         println!("System keys updater started");
     }
 
     // watch the request pool
-    spawn_pool_watcher(node.clone(), ticket.clone(), arc_state_clone.clone())
-        .await
-        .unwrap();
+    spawn_pool_watcher(
+        config.predicate_registry_contract_addr.clone(),
+        config.request_pool_contract_addr.clone(),
+        arc_state_clone.clone(),
+        ticket.clone(),
+        gadget_registry,
+        doc_store,
+        intent_store,
+        pool,
+        node.clone(),
+    )
+    .await
+    .unwrap();
 
     // main service loop
     Ok(ServiceHandle { node, ticket })
@@ -448,7 +481,11 @@ async fn publish_system_keys<C: Pairing>(
 
     let mut bytes = Vec::new();
     system_keys.serialize_compressed(&mut bytes)?;
-    println!("Published updated system keys ({} hints: {:?})", hints.len(), bytes.len());
+    println!(
+        "Published updated system keys ({} hints: {:?})",
+        hints.len(),
+        bytes.len()
+    );
     drop(state_guard);
 
     // this is a bit messy
@@ -478,16 +515,20 @@ async fn publish_system_keys<C: Pairing>(
 }
 
 async fn spawn_pool_watcher<C: Pairing>(
-    node: Node<C>,
-    ticket: String,
+    predicate_registry_contract_addr: String,
+    request_pool_contract_addr: String,
     state: Arc<Mutex<State<C>>>,
+    ticket: String,
+    gadget_registry: GadgetRegistry,
+    doc_store: IrohDocStore<C>,
+    intent_store: ContractIntentStore,
+    pool: Arc<RwLock<InkContractPool>>,
+    node: Node<C>,
 ) -> Result<()> {
-    let iroh_backend = Arc::new(IrohBackend::new(node.clone()));
-    let pool = Arc::new(RwLock::new(IrohPool::new(iroh_backend, &ticket).await?));
     // poll every 100ms
     let watcher = PollingWatcher::new(pool.clone(), Duration::from_millis(100));
-    // up to 100 reqs per 100ms interval (that is too many...)
-    let (tx, mut rx) = mpsc::channel(100);
+    // up to 100 reqs per 100ms interval (that is probably too many...)
+    let (tx, mut rx) = flume::unbounded();
 
     // watcher
     let watcher_handle = n0_future::task::spawn(async move {
@@ -498,91 +539,143 @@ async fn spawn_pool_watcher<C: Pairing>(
 
     // worker
     n0_future::task::spawn(async move {
-        while let Some(req) = rx.recv().await {
+        while let Ok(req) = rx.recv_async().await {
             println!("New request received: {}", req.id());
-            // if let Err(e) = process_decryption_request(req, &node, &state, &pool).await {
-            //     eprintln!("Request processing error: {:?}", e);
-            // }
+            if let Err(e) = process_decryption_request(
+                req,
+                &state,
+                &pool,
+                gadget_registry.clone(),
+                doc_store.clone(),
+                intent_store.clone(),
+                node.clone(),
+            )
+            .await
+            {
+                eprintln!("Request processing error: {:?}", e);
+            }
         }
     });
 
     println!("Request Pool watcher started");
     Ok(())
 }
-/// Spawn the RPC server
-async fn spawn_rpc_service<C: Pairing>(
-    state: Arc<Mutex<State<C>>>,
-    rpc_port: u16,
-    contract_addr: &str,
-    node: Node<C>,
-    ticket: String,
-) -> Result<()> {
-    let addr_str = format!("0.0.0.0:{}", rpc_port);
-    let addr = addr_str.parse().unwrap();
-
-    // initialize substrate backend (todo: add param to config node url instead of hardcoding it)
-    let backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), None).await?);
-    // initialize iroh backend
-    let iroh_backend = Arc::new(IrohBackend::new(node.clone()));
-
-    let doc_store = Arc::new(IrohDocStore::new(node.clone(), &ticket, iroh_backend).await);
-
-    let intent_store = Arc::new(ContractIntentStore::new(
-        contract_addr.to_string(),
-        backend.clone(),
-    ));
-
-    // register gadgets here
-    let mut gadget_registry = GadgetRegistry::new();
-    gadget_registry.register(PasswordGadget {});
-    gadget_registry.register(Psp22Gadget::new(backend.clone()));
-    gadget_registry.register(Sr25519Gadget::new(backend.clone()));
-
-    let gadget_registry = Arc::new(Mutex::new(gadget_registry));
-
-    let server = NodeServer::<C> {
-        doc_store,
-        intent_store,
-        state,
-        gadget_registry,
-    };
-
-    n0_future::task::spawn(async move {
-        if let Err(e) = Server::builder()
-            .add_service(RpcServer::new(server))
-            .serve(addr)
-            .await
-        {
-            eprintln!("RPC server error: {:?}", e);
-        }
-    });
-
-    println!("> RPC listening on {}", addr);
-    Ok(())
-}
-
-// async fn process_decryption_request<C: Pairing>(
-//     req: DecryptionRequest,
-//     state: &Arc<Mutex<State<C>>>,
-//     pool: &Arc<RwLock<IrohPool<C>>>,
+// /// Spawn the RPC server
+// async fn spawn_rpc_service<C: Pairing>(
+//     state: Arc<Mutex<State<C>>>,
+//     rpc_port: u16,
+//     contract_addr: &str,
+//     node: Node<C>,
+//     ticket: String,
 // ) -> Result<()> {
-//     // Just decrypt - no intent verification needed for PoC
-//     let state_guard = state.lock().await;
+//     let addr_str = format!("0.0.0.0:{}", rpc_port);
+//     let addr = addr_str.parse().unwrap();
 
-//     let ciphertext = Ciphertext::<C>::deserialize_compressed(&req.ciphertext[..])?;
-//     let partial = state_guard.sk.partial_decryption(&ciphertext);
-//     drop(state_guard);
+//     // initialize substrate backend (todo: add param to config node url instead of hardcoding it)
+//     let backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), None).await?);
+//     // initialize iroh backend
+//     let iroh_backend = Arc::new(IrohBackend::new(node.clone()));
 
-//     let mut partial_bytes = Vec::new();
-//     partial.serialize_compressed(&mut partial_bytes)?;
+//     let doc_store = Arc::new(IrohDocStore::new(node.clone(), &ticket, iroh_backend).await);
 
-//     // Submit attestation
-//     let pool_guard = pool.read().await;
-//     pool_guard.submit_partial_attestation(&req.id, &partial_bytes).await?;
+//     let intent_store = Arc::new(ContractIntentStore::new(
+//         contract_addr.to_string(),
+//         backend.clone(),
+//     ));
 
-//     println!("Submitted partial decryption");
+//     // register gadgets here
+//     let mut gadget_registry = GadgetRegistry::new();
+//     gadget_registry.register(PasswordGadget {});
+//     gadget_registry.register(Psp22Gadget::new(backend.clone()));
+//     gadget_registry.register(Sr25519Gadget::new(backend.clone()));
+
+//     let gadget_registry = Arc::new(Mutex::new(gadget_registry));
+
+//     let server = NodeServer::<C> {
+//         doc_store,
+//         intent_store,
+//         state,
+//         gadget_registry,
+//     };
+
+//     n0_future::task::spawn(async move {
+//         if let Err(e) = Server::builder()
+//             .add_service(RpcServer::new(server))
+//             .serve(addr)
+//             .await
+//         {
+//             eprintln!("RPC server error: {:?}", e);
+//         }
+//     });
+
+//     println!("> RPC listening on {}", addr);
 //     Ok(())
 // }
+
+async fn process_decryption_request<C: Pairing>(
+    req: DecryptionRequest,
+    state: &Arc<Mutex<State<C>>>,
+    pool: &Arc<RwLock<InkContractPool>>,
+    registry: GadgetRegistry,
+    doc_store: IrohDocStore<C>,
+    intent_store: ContractIntentStore,
+    node: Node<C>,
+) -> Result<()> {let mut bytes = Vec::new();
+
+    let filename = req.filename.clone();
+    let witness = hex::decode(req.witness_hex.clone()).unwrap();
+
+    let (cid, intents) = intent_store
+        .get_intent(&filename)
+        .await
+        .expect("Something went wrong when looking for intent.")
+        .expect("Intent wasn't found");
+
+    match registry.verify_intents(intents, &witness).await {
+        Ok(true) => {
+            println!("Witness verification succeeded!");
+            if let Some(ciphertext_bytes) = doc_store.fetch(&cid).await.unwrap() {
+                let ciphertext =
+                    Ciphertext::<C>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
+
+                println!("got the ciphertext");
+                let state = state.lock().await;
+                let partial_decryption = state.sk.partial_decryption(&ciphertext);
+                partial_decryption.serialize_compressed(&mut bytes).unwrap();
+                println!("produced a partial decryption");
+                drop(state);
+
+                // todo: deliver the pd to the requested 'location'
+                let endpoint = node.endpoint();
+                // try to connect to the recipient
+                let receiver_endpoint_addr: EndpointAddr = req.location.into();
+                println!("CONNECTING TO ENDPOINTADDR {:?}", receiver_endpoint_addr);
+                if let Ok(conn) = endpoint
+                    .connect(receiver_endpoint_addr, crate::client::node::PD_ALPN)
+                    .await
+                {
+                    println!("made a connection: attempting to send bytes");
+                    let mut send = conn.open_uni().await.anyerr().unwrap();
+                    send.write_all(&bytes).await.anyerr().unwrap();
+                    send.finish().anyerr().unwrap();
+                    // conn.close(0u32.into(), b"bye!");
+                    // endpoint.close().await;
+                }
+                // then submit an attestation to the contract
+            } else {
+                println!("data unavailable");
+            }
+        }
+        Ok(false) => {
+            println!("Witness verification failed");
+        }
+        Err(e) => {
+            println!("An Error occurred: {}", e);
+        }
+    }
+
+    Ok(())
+}
 
 /// Generate the initial config (for bootstrap nodes)
 fn generate_config(size: usize) -> Result<Vec<u8>> {

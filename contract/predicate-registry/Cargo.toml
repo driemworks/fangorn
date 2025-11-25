@@ -1,5 +1,5 @@
 [package]
-name = "iris"
+name = "predicate-registry"
 version = "0.1.0"
 authors = ["driemworks <driemworks@idealabs.network>"]
 edition = "2021"

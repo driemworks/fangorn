@@ -10,7 +10,7 @@ use std::sync::{
     Arc,
 };
 use std::time::Duration;
-use tokio::sync::mpsc;
+use flume::Sender;
 use tokio::sync::RwLock;
 
 /// Generic pool watcher
@@ -19,7 +19,7 @@ pub trait PoolWatcher: Send + Sync {
     type Item;
 
     /// Start watching, send new items to channel
-    async fn watch(&self, tx: mpsc::Sender<Self::Item>) -> Result<()>;
+    async fn watch(&self, tx: Sender<Self::Item>) -> Result<()>;
 
     /// Stop watching
     fn stop(&self);
@@ -27,8 +27,11 @@ pub trait PoolWatcher: Send + Sync {
 
 // Polling-based watcher for any RequestPool
 pub struct PollingWatcher<P: RequestPool> {
+    /// THe request pool
     pool: Arc<RwLock<P>>,
+    /// The polling interval (in ms)
     poll_interval: Duration,
+    /// Indicate if the watcher is running or idle
     running: Arc<AtomicBool>,
     // Track seen request IDs
     seen: Arc<RwLock<HashSet<Vec<u8>>>>,
@@ -49,19 +52,18 @@ impl<P: RequestPool + Send + Sync + 'static> PollingWatcher<P> {
 impl<P: RequestPool + Send + Sync + 'static> PoolWatcher for PollingWatcher<P> {
     type Item = DecryptionRequest;
 
-    async fn watch(&self, tx: mpsc::Sender<Self::Item>) -> Result<()> {
+    async fn watch(&self, tx: Sender<Self::Item>) -> Result<()> {
         self.running.store(true, Ordering::SeqCst);
 
         while self.running.load(Ordering::SeqCst) {
             let pool = self.pool.read().await;
             let requests = pool.read_all().await?;
             drop(pool);
-
             let mut seen = self.seen.write().await;
+            // ignore anything we have already seen
             for req in requests {
                 if seen.insert(req.id().as_bytes().to_vec()) {
-                    // new request
-                    tx.send(req).await?;
+                    tx.send(req)?;
                 }
             }
             drop(seen);

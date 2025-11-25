@@ -3,8 +3,11 @@
 # Create a unique signal file
 SIGNAL_FILE="/tmp/fangorn_signal_$$"
 
-# the ink! smart contract address
-CONTRACT_ADDR="5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR"
+# the ink! smart contract address for registering predicates
+PREDICATE_REGISTRY_CONTRACT_ADDR="5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR"
+
+# the ink! contract address to acct as a request + attestation pool
+REQUEST_POOL_CONTRACT_ADDR="5GM8iKpSrQmDS9sRUSfyoJvjzMZFCKZE2Dr9SwZrLpntiitn"
 
 # Cleanup function to be called on exit
 cleanup() {
@@ -130,10 +133,12 @@ if ! wait_for_rpc; then
     exit 1
 fi
 
-# deploy the contract
+# deploy the contract(s)
 # NOTE: If we modify the contract, then we need to manually update the contract address
 # but normally, it will produce a deterministic contract address 
 cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y
+
+cargo contract instantiate ./target/ink/pool/pool.contract --suri //Alice --args ["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"] -x -y
 
 # echo "Starting the UI on port 3000"
 # cd ui
@@ -144,8 +149,8 @@ cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y
 # echo "PID of react app $NPM_PID"
 
 # Start the first instance in the background of current terminal
-echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --contract-addr "$CONTRACT_ADDR""
-./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --contract-addr "$CONTRACT_ADDR" &
+echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR""
+./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" &
 FIRST_PID=$!
 echo "PID of first instance: $FIRST_PID"
 
@@ -167,7 +172,7 @@ echo "Starting second instance in new terminal..."
 
 # Pass the main script's PID and signal file to the second terminal
 MAIN_PID=$$
-gnome-terminal -- bash -c "
+dbus-launch gnome-terminal -- bash -c "
 SECOND_SERVER_PID=\"\"
 
 echo \"Check the PID: \$SECOND_SERVER_PID\"
@@ -187,8 +192,8 @@ cleanup_second() {
 
 trap cleanup_second SIGINT
 
-echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "$CONTRACT_ADDR"'
-./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "$CONTRACT_ADDR" &
+echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR"'
+./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" &
 SECOND_SERVER_PID=\$!
 echo \"Second server PID: \$SECOND_SERVER_PID\"
 echo \"\$SECOND_SERVER_PID\" > \"$SIGNAL_FILE.second_pid\"

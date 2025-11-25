@@ -4798,15 +4798,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "iris"
-version = "0.1.0"
-dependencies = [
- "ink",
- "ink_e2e",
- "parity-scale-codec",
-]
-
-[[package]]
 name = "iroh"
 version = "0.95.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7609,6 +7600,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "85eae3c4ed2f50dcfe72643da4befc30deadb458a9b590d720cde2f2b1e97da9"
 dependencies = [
  "zerocopy",
+]
+
+[[package]]
+name = "predicate-registry"
+version = "0.1.0"
+dependencies = [
+ "ink",
+ "ink_e2e",
+ "parity-scale-codec",
 ]
 
 [[package]]
