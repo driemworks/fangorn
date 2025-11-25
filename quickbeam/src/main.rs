@@ -9,7 +9,7 @@ use fangorn::{backend::substrate::runtime::runtime_apis::core::types::version, c
     }};
 use rust_vault::Vault;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretBox, SecretString, zeroize::Zeroizing};
-use sp_core::crypto::Zeroize;
+use sp_core::{ByteArray, bytes::{from_hex, to_hex}, crypto::{VrfPublic, Zeroize}, ed25519 as ed25519_substrate, hexdisplay::AsBytesRef, sr25519::Signature as SrSignature};
 use ark_std::rand::rngs::OsRng;
 // use sp_core::crypto::{ExposeSecret, SecretString};
 
@@ -57,6 +57,39 @@ enum Commands {
 
         #[arg(value_enum)]
         store_type: StoreType,
+
+    },
+    SignPswd {
+
+        #[arg(long)]
+        keystore_dir: String,
+
+        #[arg(long)]
+        password: SecretString,
+
+        #[arg(value_enum)]
+        store_type: StoreType,
+
+        #[arg(long)]
+        nonce: u32,
+
+    },
+    VerifyPswd {
+
+        #[arg(long)]
+        keystore_dir: String,
+
+        #[arg(long)]
+        password: SecretString,
+
+        #[arg(value_enum)]
+        store_type: StoreType,
+
+        #[arg(long)]
+        signature_hex: String,
+
+        #[arg(long)]
+        nonce: u32,
 
     },
     Inspect {
@@ -177,7 +210,62 @@ async fn main() -> Result<()> {
             deref_pass.expose_secret_mut().zeroize();
             deref_pass.zeroize();
 
-        } 
+        }
+        Some(Commands::SignPswd {keystore_dir, password, store_type, nonce}) => {
+
+            let mut deref_pass = password.to_owned();
+            let vault = Vault::open(keystore_dir, &mut deref_pass, "fangorn").unwrap();
+            match store_type {
+                StoreType::Polkadot => {
+                    let keyvault = Sr25519KeyVault::new(vault);
+                    let message_bytes = nonce.to_le_bytes();
+                    let signature = keyvault.sign(String::from("sr25519"), &message_bytes).unwrap();
+                    let sig_hex = to_hex(&signature.as_bytes_ref(), false);
+                    println!("Produced a signature on the nonce {:?}: {:?}", nonce, sig_hex);
+                }
+                StoreType::Fangorn => {
+                    let vault = Vault::open(keystore_dir, &mut deref_pass, "fangorn").unwrap();
+                    let keyvault = IrohKeyVault::new(vault);
+                    let message_bytes = nonce.to_le_bytes();
+                    let signature = keyvault.sign(String::from("ed25519"), &message_bytes).unwrap();
+                    let sig_hex = to_hex(&signature.to_bytes(), false);
+                    println!("Produced a signature on the nonce {:?}: {:?}", nonce, sig_hex);
+                }
+            }
+
+            deref_pass.expose_secret_mut().zeroize();
+            deref_pass.zeroize();
+
+        }
+        Some(Commands::VerifyPswd {keystore_dir, password, store_type, signature_hex, nonce}) => {
+            let mut deref_pass = password.to_owned();
+            let vault = Vault::open(keystore_dir, &mut deref_pass, "fangorn").unwrap();
+            match store_type {            
+                StoreType::Polkadot => {
+                    let keyvault = Sr25519KeyVault::new(vault);
+                    let public_key = keyvault.get_public_key(String::from("sr25519")).unwrap();
+                    let message_bytes = nonce.to_le_bytes();
+                    let sig_vec = from_hex(&signature_hex).unwrap();
+                    let sig = SrSignature::from_slice(sig_vec.as_slice()).unwrap();
+                    let result = Sr25519KeyVault::verify(&public_key, &message_bytes, &sig);
+
+                    println!("Was sig verified: {:?}", result);
+                }
+                StoreType::Fangorn => {
+                    let keyvault = IrohKeyVault::new(vault);
+                    let public_key = keyvault.get_public_key(String::from("ed25519")).unwrap();
+                    let message_bytes = nonce.to_le_bytes();
+                    let sig_vec = from_hex(&signature_hex).unwrap();
+                    // let sig = SrSignature::from_slice(sig_vec.as_slice()).unwrap();
+                    // let signature = signature.replace("0x", "");
+                    // println!("Signature string: {:?}", signature);
+                    let sig = ed25519::Signature::from_slice(sig_vec.as_slice()).unwrap();
+                    println!("Sig was reproduced?: {:?}", sig);
+                    let result = IrohKeyVault::verify(&public_key, &message_bytes, &sig);
+                    println!("Was sig verified: {:?}", result);           
+                }
+            }
+        }
         Some(Commands::Sign { keystore_dir, nonce }) => {
             let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
             let key = keystore.list_keys()?[0];

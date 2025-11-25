@@ -8071,6 +8071,7 @@ dependencies = [
  "anyhow",
  "ark-std 0.5.0",
  "clap",
+ "ed25519",
  "fangorn",
  "iroh",
  "rust-vault",

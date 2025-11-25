@@ -13,3 +13,4 @@ secrecy.workspace = true
 iroh.workspace = true
 ark-std.workspace = true
 rust-vault.workspace = true
+ed25519 = "2.2.3"
