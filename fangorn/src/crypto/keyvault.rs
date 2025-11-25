@@ -76,6 +76,20 @@ impl Sr25519KeyVault {
         <Sr25519KeyVault as KeyVault>::Public::from_ss58check(address)
             .map_err(|_| KeyVaultError::Keystore("Invalid SS58 address".to_string()))
     }
+
+    pub fn generate_key_print_mnemonic(&self, key_name: String, file_password: &mut SecretString) -> Result<sr25519::Public, KeyVaultError> {
+        let mnemonic = Mnemonic::generate(24).unwrap();
+        println!("mnemonic: {:?}", mnemonic.to_string());
+        let secret_mnemonic = SecretString::new(mnemonic.to_string().into());
+        let (pair, seed) = sr25519::Pair::from_phrase(&secret_mnemonic.expose_secret(), None)
+        .expect("Failed to generate keypair from mnemonic");
+        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
+        // Lock the vault for writing and write the seed bytes
+        self.vault.write()
+            .map_err(|_| KeyVaultError::Keystore("Failed to lock vault".to_string()))?
+            .store_bytes(&key_name, &seed, &mut vault_password, file_password).unwrap();
+        Ok(pair.public())
+    }
 }
 
 impl KeyVault for Sr25519KeyVault {
@@ -84,7 +98,7 @@ impl KeyVault for Sr25519KeyVault {
     type Pair = sr25519::Pair;
 
     fn generate_key(&self, key_name: String, file_password: &mut SecretString) -> Result<Self::Public, KeyVaultError> {
-        // SecretString::new(Mnemonic::ge)
+
         let secret_mnemonic = SecretString::new(Mnemonic::generate(24).unwrap().to_string().into());
 
         let (pair, seed) = Self::Pair::from_phrase(&secret_mnemonic.expose_secret(), None)
@@ -92,7 +106,7 @@ impl KeyVault for Sr25519KeyVault {
 
         let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
 
-        // Lock the vault for writing and write the entire keypair
+        // Lock the vault for writing and write the seed bytes
         self.vault.write()
             .map_err(|_| KeyVaultError::Keystore("Failed to lock vault".to_string()))?
             .store_bytes(&key_name, &seed, &mut vault_password, file_password).unwrap();

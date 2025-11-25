@@ -49,57 +49,69 @@ enum Commands {
     },
     KeygenPswd {
 
+        /// the keystore directory
         #[arg(long)]
         keystore_dir: String,
 
+        /// the password to encrypt the key with
         #[arg(long)]
         password: SecretString,
 
+        /// the associated key type: polkadot(sr25519), fangorn(ed25519)
         #[arg(value_enum)]
         store_type: StoreType,
+
+        /// whether to print the mnemonic to the terminal when generating
+        /// an sr25519 key
+        #[arg(short, long, default_value_t = false)]
+        print_mnemonic: bool
 
     },
     InspectPswd {
 
+        /// the keystore directory
         #[arg(long)]
         keystore_dir: String,
 
+        /// the password to access the associated file
         #[arg(long)]
         password: SecretString,
-
+        /// the associated key type: polkadot(sr25519), fangorn(ed25519)
         #[arg(value_enum)]
         store_type: StoreType,
 
     },
     SignPswd {
 
+        /// the keystore directory
         #[arg(long)]
         keystore_dir: String,
 
         #[arg(long)]
         password: SecretString,
-
+        /// the associated key type: polkadot(sr25519), fangorn(ed25519)
         #[arg(value_enum)]
         store_type: StoreType,
-
+        /// a nonce to sign
         #[arg(long)]
         nonce: u32,
 
     },
     VerifyPswd {
 
+        /// the keystore directory
         #[arg(long)]
         keystore_dir: String,
-
+        /// the password to access the associated file
         #[arg(long)]
         password: SecretString,
-
+        /// the associated key type: polkadot(sr25519), fangorn(ed25519)
         #[arg(value_enum)]
         store_type: StoreType,
-
+        /// the hex printed when using sign-pswd
         #[arg(long)]
         signature_hex: String,
-
+        /// the nonce that was signed when using sign-pswd
         #[arg(long)]
         nonce: u32,
 
@@ -206,16 +218,21 @@ async fn main() -> Result<()> {
                 keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
             );
         }
-        Some(Commands::KeygenPswd { keystore_dir, password , store_type}) => {
+        Some(Commands::KeygenPswd { keystore_dir, password , store_type, print_mnemonic}) => {
             let mut deref_pass = password.to_owned();
             let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
             let vault = Vault::open_or_create(keystore_dir, &mut vault_password).unwrap();
             match store_type {
                 StoreType::Polkadot => {
-                    // create sr25519 identity
                     let keyvault = Sr25519KeyVault::new(vault);
-                    let public_key = keyvault.generate_key(String::from("sr25519"), &mut deref_pass).unwrap();
-                    println!("generated new keypair. PubKey: {:?}", public_key);
+                    // create sr25519 identity
+                    if *print_mnemonic {
+                        let public_key = keyvault.generate_key_print_mnemonic(String::from("sr25519"), &mut deref_pass).unwrap();
+                        println!("Printned mnemonic and generated new keypair. PubKey: {:?}", public_key);
+                    } else {       
+                        let public_key = keyvault.generate_key(String::from("sr25519"), &mut deref_pass).unwrap();
+                        println!("generated new keypair. PubKey: {:?}", public_key);
+                    }
 
                 }
                 StoreType::Fangorn => {
