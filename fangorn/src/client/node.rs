@@ -218,6 +218,7 @@ impl<C: Pairing> ProtocolHandler for PartialDecryptionHandler<C> {
 
         let raw: RawPartialDecryptionMessage<C> = RawPartialDecryptionMessage {
             filename: msg.filename,
+            index: msg.index,
             partial_decryption,
         };
 

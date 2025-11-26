@@ -171,6 +171,7 @@ pub async fn build_full_service<C: Pairing>(
         intent_store,
         pool,
         node.clone(),
+        config.index,
     )
     .await
     .unwrap();
@@ -513,6 +514,7 @@ async fn spawn_pool_watcher<C: Pairing>(
     intent_store: ContractIntentStore,
     pool: Arc<RwLock<InkContractPool>>,
     node: Node<C>,
+    index: usize,
 ) -> Result<()> {
     // poll every 100ms
     let watcher = PollingWatcher::new(pool.clone(), Duration::from_millis(100));
@@ -537,6 +539,7 @@ async fn spawn_pool_watcher<C: Pairing>(
                 doc_store.clone(),
                 intent_store.clone(),
                 node.clone(),
+                index,
             )
             .await
             {
@@ -548,57 +551,6 @@ async fn spawn_pool_watcher<C: Pairing>(
     println!("Request Pool watcher started");
     Ok(())
 }
-// /// Spawn the RPC server
-// async fn spawn_rpc_service<C: Pairing>(
-//     state: Arc<Mutex<State<C>>>,
-//     rpc_port: u16,
-//     contract_addr: &str,
-//     node: Node<C>,
-//     ticket: String,
-// ) -> Result<()> {
-//     let addr_str = format!("0.0.0.0:{}", rpc_port);
-//     let addr = addr_str.parse().unwrap();
-
-//     // initialize substrate backend (todo: add param to config node url instead of hardcoding it)
-//     let backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), None).await?);
-//     // initialize iroh backend
-//     let iroh_backend = Arc::new(IrohBackend::new(node.clone()));
-
-//     let doc_store = Arc::new(IrohDocStore::new(node.clone(), &ticket, iroh_backend).await);
-
-//     let intent_store = Arc::new(ContractIntentStore::new(
-//         contract_addr.to_string(),
-//         backend.clone(),
-//     ));
-
-//     // register gadgets here
-//     let mut gadget_registry = GadgetRegistry::new();
-//     gadget_registry.register(PasswordGadget {});
-//     gadget_registry.register(Psp22Gadget::new(backend.clone()));
-//     gadget_registry.register(Sr25519Gadget::new(backend.clone()));
-
-//     let gadget_registry = Arc::new(Mutex::new(gadget_registry));
-
-//     let server = NodeServer::<C> {
-//         doc_store,
-//         intent_store,
-//         state,
-//         gadget_registry,
-//     };
-
-//     n0_future::task::spawn(async move {
-//         if let Err(e) = Server::builder()
-//             .add_service(RpcServer::new(server))
-//             .serve(addr)
-//             .await
-//         {
-//             eprintln!("RPC server error: {:?}", e);
-//         }
-//     });
-
-//     println!("> RPC listening on {}", addr);
-//     Ok(())
-// }
 
 async fn process_decryption_request<C: Pairing>(
     req: DecryptionRequest,
@@ -607,6 +559,7 @@ async fn process_decryption_request<C: Pairing>(
     doc_store: IrohDocStore<C>,
     intent_store: ContractIntentStore,
     node: Node<C>,
+    index: usize,
 ) -> Result<()> {
     let mut bytes = Vec::new();
 
@@ -633,6 +586,7 @@ async fn process_decryption_request<C: Pairing>(
 
                 let pd_message = PartialDecryptionMessage {
                     filename: req.filename,
+                    index: index.try_into().unwrap(),
                     partial_decryption_bytes: bytes,
                 };
 

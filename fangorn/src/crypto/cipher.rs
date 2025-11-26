@@ -115,13 +115,17 @@ pub async fn handle_decrypt(
         // linting thinks this does not need to be mutable but it does
         #[allow(unused_mut)]
         let mut idx = 0;
+        
+        let pks = ak.lag_pks.clone();
+        
         // TODO: I really don't like this here, but it works for now...
         n0_future::task::spawn(async move {
             while let Ok(raw) = node_clone.pd_rx().recv_async().await {
                 println!("handling partial decryptions in the handler in the node");
+                println!("Pubkeys: {:?}, {:?}", pks[idx].id, pks[idx].position);
                 let filename = raw.filename;
                 let partial_decryption = raw.partial_decryption;
-                partial_decryptions[idx] = partial_decryption;
+                partial_decryptions[pks[idx].position] = partial_decryption;
                 let _ = idx.saturating_add(1);
                 // get cid from filename
                 let (cid, _intents) = app_store_clone

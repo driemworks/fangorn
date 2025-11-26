@@ -110,8 +110,8 @@ Note that decryption exposes the password to verifiers, making this best used as
 --keystore-dir tmp/keystore \
 --intent "Password(test)" \
 --contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR" \
---ticket docaaacaudyw2ctybwj4mqe3w6vgy6u6k4nv3vfu5onq3u5kkssjl7w3fe3agsh7qfum2p4liq42rr75v43ewe43evx2ol3xhy6h2fdngrwlpogoayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimb5ubqcafmdszl3tkn \
---bootstrap-pubkey a47fc0b4669fc5a21cd463fed79b2589cd92b7d397bb9f1e3e8a369a365bdc67 \
+--ticket docaaacafm23wy6mao5oqrpr7norg2wnu5pbqhihzqtmbvhs3r3y6txrvn3ahxorionelubcqa4nn4f2brhdov4spnlu534ogue3ovay4myv4tikayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimzzmbqcafmdszl3tkn \
+--bootstrap-pubkey eee8a1cd22e811401c6b785d06271babc93daba777c71a84dbaa0c7198af2685 \
 --bootstrap-url 172.28.178.189:9933 \
 --system-keys-dir tmp/sys/key
 ``` 
@@ -124,11 +124,10 @@ Note that decryption exposes the password to verifiers, making this best used as
 --config-path config.txt \
 --keystore-dir tmp/keystore \
 --witness test \
---pt-filename test.txt \
 --contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR" \
---request-pool-contract-addr "5GM8iKpSrQmDS9sRUSfyoJvjzMZFCKZE2Dr9SwZrLpntiitn" \
---ticket docaaacaudyw2ctybwj4mqe3w6vgy6u6k4nv3vfu5onq3u5kkssjl7w3fe3agsh7qfum2p4liq42rr75v43ewe43evx2ol3xhy6h2fdngrwlpogoayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimb5ubqcafmdszl3tkn \
---bootstrap-pubkey a47fc0b4669fc5a21cd463fed79b2589cd92b7d397bb9f1e3e8a369a365bdc67 \
+--request-pool-contract-addr "5GFcT62FqC5793JT9RCYUmfMBGnCXBhXhr5Dj7yqiA3PyM5i" \
+--ticket docaaacafm23wy6mao5oqrpr7norg2wnu5pbqhihzqtmbvhs3r3y6txrvn3ahxorionelubcqa4nn4f2brhdov4spnlu534ogue3ovay4myv4tikayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimzzmbqcafmdszl3tkn \
+--bootstrap-pubkey eee8a1cd22e811401c6b785d06271babc93daba777c71a84dbaa0c7198af2685 \
 --bootstrap-url 172.28.178.189:9933 \
 --system-keys-dir tmp/sys/key
 ```

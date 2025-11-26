@@ -7,7 +7,7 @@ SIGNAL_FILE="/tmp/fangorn_signal_$$"
 PREDICATE_REGISTRY_CONTRACT_ADDR="5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR"
 
 # the ink! contract address to acct as a request + attestation pool
-REQUEST_POOL_CONTRACT_ADDR="5GM8iKpSrQmDS9sRUSfyoJvjzMZFCKZE2Dr9SwZrLpntiitn"
+REQUEST_POOL_CONTRACT_ADDR="5GFcT62FqC5793JT9RCYUmfMBGnCXBhXhr5Dj7yqiA3PyM5i"
 
 # Cleanup function to be called on exit
 cleanup() {
@@ -136,9 +136,9 @@ fi
 # deploy the contract(s)
 # NOTE: If we modify the contract, then we need to manually update the contract address
 # but normally, it will produce a deterministic contract address 
-cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y
+cargo contract instantiate ./target/ink/predicate_registry/predicate_registry.contract --suri //Alice -x -y
 
-cargo contract instantiate ./target/ink/pool/pool.contract --suri //Alice --args ["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"] -x -y
+cargo contract instantiate ./target/ink/pool/pool.contract --suri //Alice --args "["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY", "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"]" -x -y
 
 # echo "Starting the UI on port 3000"
 # cd ui

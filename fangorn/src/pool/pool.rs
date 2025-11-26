@@ -11,6 +11,8 @@ use silent_threshold_encryption::setup::PartialDecryption;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct PartialDecryptionMessage {
     pub filename: Vec<u8>,
+    // The index of the node who sent it
+    pub index: u8,
     // todo: should probably encrypt this somehow
     pub partial_decryption_bytes: Vec<u8>
 }
@@ -19,6 +21,9 @@ pub struct PartialDecryptionMessage {
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct RawPartialDecryptionMessage<C: Pairing> {
     pub filename: Vec<u8>,
+    // The index of the node who sent it
+    // note: wrappertypeencode is not implemented for usize
+    pub index: u8,
     // todo: should probably encrypt this somehow
     pub partial_decryption: PartialDecryption<C>
 }
