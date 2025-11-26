@@ -52,16 +52,17 @@ pub enum DecryptionClientError {
     MissingRpcAddress(usize),
 }
 
+// TODO: cleanup
 pub struct DecryptionClient<D: DocStore, I: IntentStore, P: PlaintextStore> {
-    config: Config<E>,
+    pub config: Config<E>,
     // the Fangorn system keys for the given universe
     // at some point we will want to enable 'multiverse' support
     // and will need to revisit this
-    system_keys: SystemPublicKeys<E>,
+    pub system_keys: SystemPublicKeys<E>,
     // the threshold of shares we need to decrypt
-    threshold: u8,
+    pub threshold: u8,
     // the app store
-    app_store: AppStore<D, I, P>,
+    pub app_store: Arc<AppStore<D, I, P>>,
     // the request pool
     pool: Arc<Mutex<dyn RequestPool>>,
     // a node instance
@@ -72,7 +73,7 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
     pub fn new(
         config_path: &str,
         system_keys: SystemPublicKeys<E>,
-        app_store: AppStore<D, I, P>,
+        app_store: Arc<AppStore<D, I, P>>,
         pool: Arc<Mutex<dyn RequestPool>>,
         node: Node<E>,
     ) -> Result<Self, DecryptionClientError> {
@@ -126,44 +127,7 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
         let mut locked_pool = self.pool.lock().await;
         locked_pool.add(decryption_request).await;
 
-        // This isn't great... but it's fine for now I guess
-        // lets just wait until we get all the PDs here? Idk exactly...
 
-
-        // let ciphertext_bytes = self
-        //     .app_store
-        //     .doc_store
-        //     .fetch(&cid)
-        //     .await
-        //     .map_err(|e| DecryptionClientError::DocstoreError(e.to_string()))?
-        //     .ok_or(DecryptionClientError::CiphertextNotFound)?;
-
-        // println!("we got the ciphertext");
-
-        // let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..])
-        //     .map_err(|_| DecryptionClientError::DeserializationError)?;
-
-        // let subset = vec![0, self.threshold as usize];
-        // let (ak, _ek) =
-        //     self.system_keys
-        //         .get_aggregate_key(&subset, &self.config.crs, &self.config.lag_polys);
-
-        // // collect partial decryptions
-        // let partial_decryptions = self
-        //     .collect_partial_decryptions(filename, &witness_hex, &ak)
-        //     .await?;
-
-        // // decrypt
-        // let plaintext = self.aggregate_decrypt(&partial_decryptions, &ciphertext, &ak)?;
-
-        // // write plaintext to store
-        // self.app_store
-        //     .pt_store
-        //     .write_to_pt_store(output_filename, &plaintext)
-        //     .await
-        //     .map_err(|e| DecryptionClientError::PlaintextWriteError(e.to_string()))?;
-
-        // Ok(plaintext)
         Ok(())
     }
 

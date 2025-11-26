@@ -7951,6 +7951,7 @@ dependencies = [
  "fangorn",
  "flume",
  "iroh",
+ "n0-future 0.1.3",
  "rust-vault",
  "secrecy 0.10.3",
  "silent-threshold-encryption",

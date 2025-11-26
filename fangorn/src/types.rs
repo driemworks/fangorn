@@ -12,6 +12,7 @@ use silent_threshold_encryption::{
 
 use codec::{Decode, Encode};
 
+// prefixes for keys for different types of documents
 pub const RPC_KEY_PREFIX: &str = "rpc-addr-";
 pub const CONFIG_KEY: &str = "config-key-";
 pub const SYSTEM_KEYS_KEY: &str = "sys-keys-";
@@ -116,8 +117,6 @@ impl<C: Pairing> State<C> {
                 } else {
                     self.hints = Some(vec![hint]);
                 }
-
-                // if bootstrap => compute new system keys and publish it
             }
             _ => {
                 // do nothing for other tags for now

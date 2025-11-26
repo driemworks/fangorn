@@ -1,9 +1,11 @@
+use crate::crypto::decrypt::DecryptionClientError;
+use crate::pool::pool::RawPartialDecryptionMessage;
 use crate::rpc::{resolver::IrohRpcResolver, server::*};
 use crate::storage::{
     contract_store::ContractIntentStore,
     iroh_docstore::IrohDocStore,
     local_store::{LocalDocStore, LocalPlaintextStore},
-    AppStore,
+    AppStore, IntentStore,
 };
 use crate::types::*;
 use crate::Node;
@@ -12,7 +14,7 @@ use crate::{
     crypto::{decrypt::DecryptionClient, encrypt::EncryptionClient},
     gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget},
     pool::contract_pool::InkContractPool,
-    storage::PlaintextStore,
+    storage::{PlaintextStore, SharedStore},
     utils::load_mnemonic,
 };
 use anyhow::Result;
@@ -24,11 +26,24 @@ use iroh_docs::{
     DocTicket,
 };
 use n0_future::StreamExt;
-use silent_threshold_encryption::aggregate::SystemPublicKeys;
+use silent_threshold_encryption::{
+    aggregate::{AggregateKey, SystemPublicKeys},
+    decryption::agg_dec,
+    setup::PartialDecryption,
+    types::Ciphertext,
+};
 use std::str::FromStr;
 use std::sync::Arc;
 use subxt::config::polkadot::AccountId32;
 use tokio::sync::Mutex;
+
+/// an app store that uses the iroh nodes for storage
+/// against a smart contract deployed on the configured substrate backend
+type TestnetAppStore = AppStore<IrohDocStore<E>, ContractIntentStore, LocalPlaintextStore>;
+
+/// an app store configured for all nodes running on the same machine,
+/// against a smart contract deployed on the configured substrate backend
+type LocalTestnetAppStore = AppStore<LocalDocStore, ContractIntentStore, LocalPlaintextStore>;
 
 /// encrypt the message located at message_path
 pub async fn handle_encrypt(
@@ -74,6 +89,8 @@ pub async fn handle_decrypt(
     let seed = load_mnemonic(keystore_path);
     let (gadget_registry, app_store, backend) =
         iroh_testnet_setup(contract_addr, Some(&seed), node.clone(), ticket.clone()).await;
+    let app_store_clone = app_store.clone();
+
     // Parse witnesses
     let witnesses: Vec<&str> = witness_string.trim().split(',').map(|s| s.trim()).collect();
 
@@ -92,26 +109,90 @@ pub async fn handle_decrypt(
             .unwrap();
 
     println!("> Requested decryption");
-    client
+    if let Ok(()) = client
         .request_decrypt(filename, &witnesses, pt_filename)
         .await
-        .unwrap();
+    {
+        // setup the decryption handler
+        // note: this assumes a threshold of 1
+        let node_clone = node.clone();
+        // kind of hacky for now: a oneshot channel to run until we decrypt something
+        let (done_tx, done_rx) = tokio::sync::oneshot::channel::<()>();
 
-    // now lets wait for partial decryptions to roll in (we only need one for now..)
-    // for now just loop, see if we print the message
-    loop {
+        // get the ak from the node state
+        let state_lock = node.state.lock().await;
+        let sys_keys = state_lock.system_keys.clone().unwrap();
+        let subset = vec![0, client.threshold as usize];
+        let (ak, _ek) = client.system_keys.get_aggregate_key(
+            &subset,
+            &client.config.crs,
+            &client.config.lag_polys,
+        );
 
+        // drop(state_lock)
+        let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
+        let mut idx = 0;
+
+        // TODO: I really don't like this here, but it works for now...
+        n0_future::task::spawn(async move {
+            while let Ok(raw) = node_clone.pd_rx().recv_async().await {
+                println!("handling partial decryptions in the handler in the node");
+                let filename = raw.filename;
+                let partial_decryption = raw.partial_decryption;
+                // let unfilled_idx =
+                let node_id = ak.lag_pks[idx].id;
+                partial_decryptions[node_id] = partial_decryption;
+                // increment the index
+                idx = idx + 1;
+                // get cid from filename
+                let (cid, _intents) = app_store_clone
+                    .intent_store
+                    .get_intent(&filename)
+                    .await
+                    // .map_err(|e| DecryptionClientError::IntentStoreError(e.to_string()))?
+                    .unwrap()
+                    // .ok_or_else(|| DecryptionClientError::IntentNotFound(filename.to_string()))?;
+                    .unwrap();
+                // use the cid to get the data
+                let ciphertext_bytes = app_store_clone
+                    .doc_store
+                    .fetch(&cid)
+                    .await
+                    .unwrap()
+                    .unwrap();
+                // .map_err(|e| DecryptionClientError::DocstoreError(e.to_string()))?
+                // .ok_or(DecryptionClientError::CiphertextNotFound)?;
+
+                let ciphertext =
+                    Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..]).unwrap();
+                // .map_err(|_| DecryptionClientError::DeserializationError)?;
+
+                println!("we got the ciphertext");
+                // decrypt the data with partial decryptions if you have enough (assume threshold = 1 for now)
+                // save to file with pt_store
+
+                let mut selector = vec![false; MAX_COMMITTEE_SIZE];
+                selector[0] = true;
+
+                let plain_bytes = agg_dec(
+                    &partial_decryptions,
+                    &ciphertext,
+                    &selector,
+                    &ak,
+                    &client.config.crs,
+                )
+                .unwrap();
+                // .map_err(|e| DecryptionClientError::DecryptionError(e.to_string()))
+
+                let _ = done_tx.send(());
+                break;
+            }
+        });
+
+        done_rx.await.unwrap();
+        println!("> Decryption complete!");
     }
-
 }
-
-/// an app store that uses the iroh nodes for storage
-/// against a smart contract deployed on the configured substrate backend
-type TestnetAppStore = AppStore<IrohDocStore<E>, ContractIntentStore, LocalPlaintextStore>;
-
-/// an app store configured for all nodes running on the same machine,
-/// against a smart contract deployed on the configured substrate backend
-type LocalTestnetAppStore = AppStore<LocalDocStore, ContractIntentStore, LocalPlaintextStore>;
 
 async fn local_testnet_setup(
     contract_addr: &String,
@@ -143,7 +224,7 @@ async fn iroh_testnet_setup(
     seed: Option<&str>,
     node: Node<E>,
     ticket: String,
-) -> (GadgetRegistry, TestnetAppStore, Arc<SubstrateBackend>) {
+) -> (GadgetRegistry, Arc<TestnetAppStore>, Arc<SubstrateBackend>) {
     // build the backend
     let backend = Arc::new(
         SubstrateBackend::new(crate::WS_URL.to_string(), seed)
@@ -159,46 +240,11 @@ async fn iroh_testnet_setup(
     gadget_registry.register(Psp22Gadget::new(backend.clone()));
     gadget_registry.register(Sr25519Gadget::new(backend.clone()));
 
-    let app_store = AppStore::new(
+    let app_store = Arc::new(AppStore::new(
         IrohDocStore::new(node, &ticket, iroh_backend).await,
         ContractIntentStore::new(contract_addr.to_string(), backend.clone()),
         LocalPlaintextStore::new("tmp/plaintexts/"),
-    );
+    ));
 
     (gadget_registry, app_store, backend)
 }
-
-// async fn load_system_keys_from_doc<C: Pairing>(
-//     node: &Node<C>,
-//     ticket: &str,
-// ) -> Result<SystemPublicKeys<C>> {
-//     let doc_ticket = DocTicket::from_str(ticket)?;
-//     let doc = node.docs().import(doc_ticket).await?;
-
-//     // Query for system keys
-//     let query = QueryBuilder::<FlatQuery>::default()
-//         .key_exact(SYSTEM_KEYS_KEY)
-//         .limit(1);
-
-//     let entries = doc.get_many(query.build()).await?;
-//     let entry_vec = entries.collect::<Vec<_>>().await;
-
-//     println!("GOT ENTRIES {:?}", entry_vec);
-
-//     let entry = entry_vec
-//         .first()
-//         .ok_or_else(|| anyhow::anyhow!("System keys not found in doc"))?
-//         .as_ref()
-//         .map_err(|e| anyhow::anyhow!("Failed to get entry: {:?}", e))?;
-
-//     // Fetch content
-//     let hash = entry.content_hash();
-//     let content = node.blobs().get_bytes(hash).await?;
-//     let announcement = Announcement::decode(&mut &content[..])?;
-
-//     // Deserialize system keys
-//     let sys_keys = SystemPublicKeys::<C>::deserialize_compressed(&announcement.data[..])?;
-
-//     println!("Loaded system keys from network");
-//     Ok(sys_keys)
-// }

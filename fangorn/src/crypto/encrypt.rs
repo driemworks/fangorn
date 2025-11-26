@@ -16,6 +16,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use sha2::{Digest, Sha256};
 use silent_threshold_encryption::{aggregate::SystemPublicKeys, encryption::encrypt};
 use std::fs;
+use std::sync::Arc;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -39,7 +40,7 @@ pub struct EncryptionClient<D: DocStore, I: IntentStore, P: PlaintextStore> {
     // the threshold to use when encrypting
     threshold: u8,
     // The app store
-    app_store: AppStore<D, I, P>,
+    app_store: Arc<AppStore<D, I, P>>,
     // The gadget registry
     registry: GadgetRegistry,
 }
@@ -48,7 +49,7 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> EncryptionClient<D, I, P> {
     pub fn new(
         config_path: &str,
         system_keys: SystemPublicKeys<E>,
-        app_store: AppStore<D, I, P>,
+        app_store: Arc<AppStore<D, I, P>>,
         registry: GadgetRegistry,
     ) -> Self {
         let config_hex = fs::read_to_string(config_path).expect("Failed to read config file");

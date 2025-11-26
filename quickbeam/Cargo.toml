@@ -17,3 +17,4 @@ rust-vault.workspace = true
 ed25519 = "2.2.3"
 flume.workspace = true
 silent-threshold-encryption.workspace = true
+n0-future.workspace = true

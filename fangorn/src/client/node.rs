@@ -12,6 +12,7 @@ use iroh_docs::{protocol::Docs, ALPN as DOCS_ALPN};
 use iroh_gossip::{net::Gossip, ALPN as GOSSIP_ALPN};
 use n0_error::{Result as N0Result, StdResultExt};
 
+use crate::pool::pool::RawPartialDecryptionMessage;
 use crate::{pool::pool::PartialDecryptionMessage, types::*};
 use ark_ec::pairing::Pairing;
 use codec::Decode;
@@ -37,10 +38,10 @@ pub struct Node<C: Pairing> {
     blobs: BlobsProtocol,
     /// docs client
     docs: Docs,
-    /// the node state
-    state: Arc<Mutex<State<C>>>,
+    /// the node state TODO (can we make this non-public?)
+    pub state: Arc<Mutex<State<C>>>,
     /// partial decryption receiver
-    pd_rx: flume::Receiver<PartialDecryption<C>>,
+    pd_rx: flume::Receiver<RawPartialDecryptionMessage<C>>,
 }
 
 impl<C: Pairing> Node<C> {
@@ -54,6 +55,10 @@ impl<C: Pairing> Node<C> {
 
     pub fn endpoint(&self) -> Endpoint {
         self.router.endpoint().clone()
+    }
+
+    pub fn pd_rx(&self) -> flume::Receiver<RawPartialDecryptionMessage<C>> {
+        self.pd_rx.clone()
     }
 }
 
@@ -89,7 +94,7 @@ impl<C: Pairing> Node<C> {
             .unwrap();
 
         let (pd_tx, pd_rx) = flume::unbounded();
-        let pd_handler = PartialDecryptionHandler { tx: pd_tx };
+        let pd_handler: PartialDecryptionHandler<C> = PartialDecryptionHandler { tx: pd_tx };
 
         // setup router
         let router = Router::builder(endpoint.clone())
@@ -112,12 +117,24 @@ impl<C: Pairing> Node<C> {
         writeln!(&mut file, "{}", pubkey).expect("Unable to write pubkey to file.");
         let arc_state_clone = Arc::clone(&state);
 
+        // receive and apply state updates
         n0_future::task::spawn(async move {
             while let Ok(announcement) = rx.recv_async().await {
                 let mut state = arc_state_clone.lock().await;
                 state.update(announcement);
             }
         });
+
+        // n0_future::task::spawn(async move {
+        //     while let Ok(partial_decryption_message) = pd_rx.recv_async().await {
+        //         println!("handling partial decryptions in the handler in the node");
+        //         // get filename
+        //         // use it to get the cid
+        //         // use the cid to get the data
+        //         // decrypt the data with partial decryptions if you have enough (assume threshold = 1 for now)
+        //         // save to file with pt_store
+        //     }
+        // });
 
         Node {
             endpoint,
@@ -165,8 +182,6 @@ impl<C: Pairing> Node<C> {
             .connect(peer_addr.clone(), GOSSIP_ALPN)
             .await
             .unwrap();
-        // should probably be optional or even external?
-        // let _pd_conn = self.endpoint.connect(peer_addr, PD_ALPN).await.unwrap();
     }
 
     /// Get the node public key (if it exists)
@@ -184,7 +199,7 @@ pub const PD_ALPN: &[u8] = b"fangorn/partial-decryption/0";
 
 #[derive(Clone, Debug)]
 pub struct PartialDecryptionHandler<C: Pairing> {
-    tx: flume::Sender<PartialDecryption<C>>,
+    tx: flume::Sender<RawPartialDecryptionMessage<C>>,
 }
 
 impl<C: Pairing> ProtocolHandler for PartialDecryptionHandler<C> {
@@ -203,8 +218,15 @@ impl<C: Pairing> ProtocolHandler for PartialDecryptionHandler<C> {
             PartialDecryption::<C>::deserialize_compressed(&msg.partial_decryption_bytes[..])
                 .unwrap();
 
-        let _ = self.tx.send_async(partial_decryption.clone()).await;
+        let raw: RawPartialDecryptionMessage<C> = RawPartialDecryptionMessage {
+            filename: msg.filename,
+            partial_decryption,
+        };
+
+        let _ = self.tx.send_async(raw.clone()).await;
         // TODO: if the partial decryption is invalid, then do not echo back
+        // I think it could be interesting to do something where the decryption requests contains some hidden material
+        // and here, we provide a piece of it to anyone who provides a verified partial decryption
         send.write_all(&bytes).await.unwrap();
         send.finish()?;
         connection.closed().await;

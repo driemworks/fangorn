@@ -14,6 +14,7 @@ use iroh_docs::DocTicket;
 use n0_future::StreamExt;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use silent_threshold_encryption::setup::PartialDecryption;
 use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::{
@@ -28,7 +29,16 @@ use tokio::sync::RwLock;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Encode, Decode)]
 pub struct PartialDecryptionMessage {
     pub filename: Vec<u8>,
+    // todo: should probably encrypt this somehow
     pub partial_decryption_bytes: Vec<u8>
+}
+
+/// A struct for messaging partial decryption across nodes 
+#[derive(Debug, Clone, Encode, Decode)]
+pub struct RawPartialDecryptionMessage<C: Pairing> {
+    pub filename: Vec<u8>,
+    // todo: should probably encrypt this somehow
+    pub partial_decryption: PartialDecryption<C>
 }
 
 /// A message added to the bulletin board
