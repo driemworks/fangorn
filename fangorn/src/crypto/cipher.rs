@@ -120,8 +120,8 @@ pub async fn handle_decrypt(
         let (done_tx, done_rx) = tokio::sync::oneshot::channel::<()>();
 
         // get the ak from the node state
-        let state_lock = node.state.lock().await;
-        let sys_keys = state_lock.system_keys.clone().unwrap();
+        // let state_lock = node.state.lock().await;
+        // let sys_keys = state_lock.system_keys.clone().unwrap();
         let subset = vec![0, client.threshold as usize];
         let (ak, _ek) = client.system_keys.get_aggregate_key(
             &subset,
@@ -141,7 +141,7 @@ pub async fn handle_decrypt(
                 let partial_decryption = raw.partial_decryption;
                 // let unfilled_idx =
                 let node_id = ak.lag_pks[idx].id;
-                partial_decryptions[node_id] = partial_decryption;
+                partial_decryptions[idx] = partial_decryption;
                 // increment the index
                 idx = idx + 1;
                 // get cid from filename

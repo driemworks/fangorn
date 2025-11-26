@@ -54,11 +54,8 @@ enum Commands {
         keystore_dir: String,
     },
     KeygenPswd {
-<<<<<<< HEAD
-=======
 
         /// the keystore directory
->>>>>>> 0437affd41ac0be21d4357134dfc6652b99cfa9e
         #[arg(long)]
         keystore_dir: String,
 
@@ -69,10 +66,6 @@ enum Commands {
         /// the associated key type: polkadot(sr25519), fangorn(ed25519)
         #[arg(value_enum)]
         store_type: StoreType,
-<<<<<<< HEAD
-    },
-    InspectPswd {
-=======
 
         /// whether to print the mnemonic to the terminal when generating
         /// an sr25519 key
@@ -83,7 +76,6 @@ enum Commands {
     InspectPswd {
 
         /// the keystore directory
->>>>>>> 0437affd41ac0be21d4357134dfc6652b99cfa9e
         #[arg(long)]
         keystore_dir: String,
 
@@ -95,11 +87,8 @@ enum Commands {
         store_type: StoreType,
     },
     SignPswd {
-<<<<<<< HEAD
-=======
 
         /// the keystore directory
->>>>>>> 0437affd41ac0be21d4357134dfc6652b99cfa9e
         #[arg(long)]
         keystore_dir: String,
 
@@ -113,11 +102,8 @@ enum Commands {
         nonce: u32,
     },
     VerifyPswd {
-<<<<<<< HEAD
-=======
 
         /// the keystore directory
->>>>>>> 0437affd41ac0be21d4357134dfc6652b99cfa9e
         #[arg(long)]
         keystore_dir: String,
         /// the password to access the associated file
