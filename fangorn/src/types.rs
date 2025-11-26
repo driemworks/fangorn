@@ -59,20 +59,26 @@ impl<C: Pairing> Config<C> {
         }
     }
 }
+
+#[derive(Clone)]
 pub struct VaultConfig {
     pub vault_dir: String,
+    pub substrate_name: String,
     pub vault_pswd: Option<SecretString>,
     pub iroh_key_pswd: Option<SecretString>,
     pub ste_key_pswd: Option<SecretString>,
+    pub substrate_pswd: Option<SecretString>,
 }
 
 impl Default for VaultConfig {
     fn default() -> Self {
         Self {
             vault_dir: String::from("tmp/keystore"),
+            substrate_name: String::from("sr25519"),
             vault_pswd: None,
             iroh_key_pswd: None,
             ste_key_pswd: None,
+            substrate_pswd: None,
         }
     }
 }

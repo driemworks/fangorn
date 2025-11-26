@@ -1,14 +1,40 @@
 //! Substrate-specific blockchain backend
-use crate::crypto::keyvault::Sr25519KeyVault;
+use crate::{crypto::keyvault::{KeyVault, Sr25519KeyVault}, types::VaultConfig};
 
 use super::Backend;
 use anyhow::Result;
 use async_trait::async_trait;
-use subxt::{config::polkadot::AccountId32, utils::MultiAddress, OnlineClient, PolkadotConfig};
-use subxt_signer::sr25519::{dev, Keypair};
+use rust_vault::Vault;
+use secrecy::SecretString;
+use sp_core::sr25519;
+use subxt::{OnlineClient, PolkadotConfig, config::polkadot::AccountId32, tx::Signer, utils::{MultiAddress, MultiSignature}};
 
 #[subxt::subxt(runtime_metadata_path = "../fangorn/src/storage/metadata.scale")]
 pub mod runtime {}
+
+#[derive(Clone, Debug)]
+pub struct PolkadotSigner {
+    account_id: AccountId32,
+    sr25519_vault: Sr25519KeyVault,
+}
+
+impl PolkadotSigner {
+    pub fn new(sr25519_vault: Sr25519KeyVault) -> Self {
+        let account_id = AccountId32(sr25519_vault.get_public_key(String::from(""), &mut SecretString::new(String::from("").into_boxed_str())).unwrap().into());
+        Self {sr25519_vault, account_id}
+    }
+}
+
+impl Signer<PolkadotConfig> for PolkadotSigner {
+    fn account_id(&self) -> AccountId32 {
+        self.account_id.clone()
+    }
+
+    fn sign(&self, signer_payload: &[u8]) -> MultiSignature {
+        let signature = self.sr25519_vault.sign(String::new(), signer_payload, &mut SecretString::new(String::new().into_boxed_str())).unwrap();
+        MultiSignature::Sr25519(signature.into())
+    }
+}
 
 /// a backend config that supports ink contracts on a substrate based chain
 pub trait ContractBackend: Backend<AccountId32, String, Vec<u8>> {}
@@ -16,31 +42,22 @@ pub trait ContractBackend: Backend<AccountId32, String, Vec<u8>> {}
 #[derive(Clone, Debug)]
 pub struct SubstrateBackend {
     client: OnlineClient<PolkadotConfig>,
-    signer: Keypair,
-    // sr25519_vault: Sr25519KeyVault,
+    signer: PolkadotSigner,
 }
 
 impl SubstrateBackend {
-    // todo: this should use the keystore instead
-    pub async fn new(rpc_url: String, seed: Option<&str>) -> Result<Self> {
+    pub async fn new(rpc_url: String, vault_config: VaultConfig) -> Result<Self> {
         let client = OnlineClient::<PolkadotConfig>::from_url(&rpc_url).await?;
-        // let sr25519_vault = Sr25519KeyVault::new();
-        // sr_vault.get("Node0_sr25519_key")
 
-        let signer = if let Some(raw) = seed {
-            let mnemonic = bip39::Mnemonic::parse(raw)?;
-            Keypair::from_phrase(&mnemonic, None)?
-        } else {
-            // default to alice for now
-            // should probably use a feature for this
-            dev::alice()
-        };
-
-        Ok(Self { client, signer })
-    }
-
-    pub fn update_signer(&mut self, signer: Keypair) {
-        self.signer = signer;
+        let vault = Vault::open_or_create(vault_config.vault_dir, &mut vault_config.vault_pswd.clone().unwrap()).unwrap();
+        let sr25519_vault = Sr25519KeyVault::new_store_info(
+            vault, 
+            vault_config.vault_pswd.clone().unwrap(), 
+            vault_config.substrate_name.clone(), 
+            vault_config.substrate_pswd.clone().unwrap()
+        );
+        let signer = PolkadotSigner::new(sr25519_vault);
+        Ok(Self { client, signer})
     }
 }
 
@@ -93,7 +110,7 @@ impl Backend<AccountId32, String, Vec<u8>> for SubstrateBackend {
 
         // queries are gasless
         let call_request = runtime::apis().contracts_api().call(
-            self.signer.public_key().into(),
+            self.signer.account_id.clone(),
             contract_address.clone(),
             0u128,
             None,

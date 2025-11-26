@@ -16,6 +16,11 @@ This library is built with subxt and requires that you generate the proper metad
 3. Install the substrate contracts node: `cargo install contracts-node`. It can be run locally by running `substrate-contracts-node`, starting the contracts node on port 9944 by default.
 4. Then, from the project root, generate metadata with `subxt metadata --url ws://localhost:9944 > metadata.scale`
 5. Tear down the contracts node, then build the binaries. From the root, run: `cargo build`.
+6. For Fangorn nodes to work, it currently expects for an sr25519 entry to already exist in tmp/keystore. When running your own node, you can control the name of the entry, the password for the entry, and the password for the vault. However, if using the start instances script the nodes expect very specific configurations. To properly generate them run
+`./target/debug/quickbeam keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_0 --password substrate_password_0 -p polkadot`
+and
+`./target/debug/quickbeam keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_1 --password substrate_password_1 -p polkadot`
+Be sure to copy the mnemonic that is printed to the terminal in order to reproduce the keypairs later if needed.
 
 ### Build a Network
 

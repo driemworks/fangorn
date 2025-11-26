@@ -45,6 +45,8 @@ pub struct Node<C: Pairing> {
     pub iroh_vault: IrohKeyVault,
     /// key vault for STE keys
     pub ste_vault: SteKeyVault<C>,
+    /// the config for vault access
+    pub vault_config: VaultConfig
     
 }
 
@@ -76,7 +78,7 @@ impl<C: Pairing> Node<C> {
         vault_config: VaultConfig
     ) -> Self {
         println!("Building the node...");
-        let (iroh_vault, ste_vault) = create_vaults::<C>(vault_config, index).unwrap();
+        let (iroh_vault, ste_vault) = create_vaults::<C>(vault_config.clone(), index).unwrap();
 
         // TODO: currently key_name is not used and is managed by the vault instance itself. However, this may change in the future.
         let key_name = String::from("");
@@ -160,6 +162,7 @@ impl<C: Pairing> Node<C> {
             pd_rx,
             ste_vault,
             iroh_vault,
+            vault_config,
         }
     }
 

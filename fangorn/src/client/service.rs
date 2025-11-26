@@ -77,7 +77,7 @@ pub async fn build_full_service<C: Pairing>(
     let arc_state = Arc::new(Mutex::new(state));
     let arc_state_clone = Arc::clone(&arc_state);
 
-    let mut node = Node::build(config.bind_port, config.index, rx, arc_state.clone(), vault_config).await;
+    let mut node = Node::build(config.bind_port, config.index, rx, arc_state.clone(), vault_config.clone()).await;
     node.try_connect_peers(config.bootstrap_peers.clone())
         .await
         .unwrap();
@@ -93,7 +93,7 @@ pub async fn build_full_service<C: Pairing>(
     .unwrap();
 
     let iroh_backend = IrohBackend::new(node.clone());
-    let substrate_backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), None).await?);
+    let substrate_backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), vault_config).await?);
 
     // setup gadget registry
     let mut gadget_registry = GadgetRegistry::new();

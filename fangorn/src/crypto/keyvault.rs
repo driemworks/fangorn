@@ -64,12 +64,23 @@ pub trait KeyVault {
 #[derive(Clone, Debug)]
 pub struct Sr25519KeyVault {
     vault: Arc<RwLock<Vault>>,
+    key_name: Option<String>,
+    key_password: Option<String>,
+    vault_password: Option<String>,
+    storing_passwords: bool
 }
 
 impl Sr25519KeyVault {
 
     pub fn new(vault: Vault) -> Self {
-        Self {vault: Arc::new(RwLock::new(vault))}
+        Self {vault: Arc::new(RwLock::new(vault)), key_name: None, key_password: None, vault_password: None, storing_passwords: false}
+    }
+
+    pub fn new_store_info(vault: Vault, vault_password: SecretString, key_name: String, key_password: SecretString) -> Self {
+        println!("creating Iroh vault and storing info");
+        let key_password_string = String::from(key_password.expose_secret());
+        let vault_password_string = String::from(vault_password.expose_secret());
+        Self {vault: Arc::new(RwLock::new(vault)), key_name: Some(key_name), key_password: Some(key_password_string), vault_password: Some(vault_password_string), storing_passwords: true}
     }
 
     /// Convert public key to SS58 address format
@@ -83,6 +94,7 @@ impl Sr25519KeyVault {
             .map_err(|_| KeyVaultError::Keystore("Invalid SS58 address".to_string()))
     }
 
+    /// This should be used in tandem with Sr25519::new(vault)
     pub fn generate_key_print_mnemonic(&self, key_name: String, file_password: &mut SecretString) -> Result<sr25519::Public, KeyVaultError> {
         let mnemonic = Mnemonic::generate(24).unwrap();
         println!("mnemonic: {:?}", mnemonic.to_string());
@@ -103,6 +115,7 @@ impl KeyVault for Sr25519KeyVault {
     type Signature = sr25519::Signature;
     type Pair = sr25519::Pair;
 
+    /// Generate sr25519 key. Mnemonic will never be revealed to you.
     fn generate_key(&self, key_name: String, file_password: &mut SecretString) -> Result<Self::Public, KeyVaultError> {
 
         let secret_mnemonic = SecretString::new(Mnemonic::generate(24).unwrap().to_string().into());
@@ -130,11 +143,19 @@ impl KeyVault for Sr25519KeyVault {
     }
 
     fn get_public_key(&self, key_name: String, file_password: &mut SecretString) -> Result<Self::Public, KeyVaultError> {
-        // lock vault for writing since the vault state is modified on read
-        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
-        let seed_bytes = self.vault.write().unwrap().get(&key_name, &mut vault_password, file_password).unwrap();
-        let pair = Self::Pair::from_seed_slice(seed_bytes.expose_secret()).unwrap();
-        Ok(pair.public())
+        if self.storing_passwords {
+            // lock vault for writing since the vault state is modified on read
+            let seed_bytes = self.vault.write().unwrap().get(self.key_name.clone().unwrap().as_str(), &mut SecretString::new(self.vault_password.clone().unwrap().into_boxed_str()), &mut SecretString::new(self.key_password.clone().unwrap().into_boxed_str())).unwrap();
+            let pair = Self::Pair::from_seed_slice(seed_bytes.expose_secret()).unwrap();
+            Ok(pair.public())
+        } else {
+            // lock vault for writing since the vault state is modified on read
+            let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
+            let seed_bytes = self.vault.write().unwrap().get(&key_name, &mut vault_password, file_password).unwrap();
+            let pair = Self::Pair::from_seed_slice(seed_bytes.expose_secret()).unwrap();
+            Ok(pair.public())
+        }
+
     }
 
     fn sign(
@@ -144,10 +165,16 @@ impl KeyVault for Sr25519KeyVault {
         file_password: &mut SecretString,
     ) -> Result<Self::Signature, KeyVaultError> {
         // lock vault for writing since the vault state is modified on read
-        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
-        let seed_bytes = self.vault.write().unwrap().get(&key_name, &mut vault_password, file_password).unwrap();
-        let pair = Self::Pair::from_seed_slice(seed_bytes.expose_secret()).unwrap();
-        Ok(pair.sign(message))
+        if self.storing_passwords {
+            let seed_bytes = self.vault.write().unwrap().get(self.key_name.clone().unwrap().as_str(), &mut SecretString::new(self.vault_password.clone().unwrap().into_boxed_str()), &mut SecretString::new(self.key_password.clone().unwrap().into_boxed_str())).unwrap();
+            let pair = Self::Pair::from_seed_slice(seed_bytes.expose_secret()).unwrap();
+            Ok(pair.sign(message))
+        } else {
+            let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
+            let seed_bytes = self.vault.write().unwrap().get(&key_name, &mut vault_password, file_password).unwrap();
+            let pair = Self::Pair::from_seed_slice(seed_bytes.expose_secret()).unwrap();
+            Ok(pair.sign(message))
+        }
     }
 
     fn verify(public: &Self::Public, message: &[u8], signature: &Self::Signature) -> bool {

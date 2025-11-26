@@ -57,6 +57,9 @@ enum Commands {
         #[arg(long)]
         keystore_dir: String,
 
+        #[arg(long)]
+        key_name: Option<String>,
+
         /// the password to encrypt the key with
         #[arg(long)]
         password: SecretString,
@@ -229,7 +232,7 @@ async fn main() -> Result<()> {
                 keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
             );
         }
-        Some(Commands::KeygenPswd { keystore_dir, password , store_type, index, print_mnemonic}) => {
+        Some(Commands::KeygenPswd { keystore_dir, key_name, password , store_type, index, print_mnemonic}) => {
             let mut deref_pass = password.to_owned();
             let mut vault_password =
                 SecretString::new(String::from("vault_password").into_boxed_str());
@@ -239,10 +242,10 @@ async fn main() -> Result<()> {
                     let keyvault = Sr25519KeyVault::new(vault);
                     // create sr25519 identity
                     if *print_mnemonic {
-                        let public_key = keyvault.generate_key_print_mnemonic(String::from("sr25519"), &mut deref_pass).unwrap();
+                        let public_key = keyvault.generate_key_print_mnemonic(key_name.clone().unwrap(), &mut deref_pass).unwrap();
                         println!("Printned mnemonic and generated new keypair. PubKey: {:?}", public_key);
                     } else {       
-                        let public_key = keyvault.generate_key(String::from("sr25519"), &mut deref_pass).unwrap();
+                        let public_key = keyvault.generate_key(key_name.clone().unwrap(), &mut deref_pass).unwrap();
                         println!("generated new keypair. PubKey: {:?}", public_key);
                     }
 
@@ -418,7 +421,6 @@ async fn main() -> Result<()> {
                 message_path,
                 filename,
                 config_path,
-                keystore_dir,
                 intent,
                 contract_addr,
                 node,
@@ -459,7 +461,6 @@ async fn main() -> Result<()> {
                 config_path,
                 filename,
                 witness,
-                keystore_dir,
                 contract_addr,
                 request_pool_contract_addr,
                 node,
