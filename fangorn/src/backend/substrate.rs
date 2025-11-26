@@ -1,4 +1,6 @@
 //! Substrate-specific blockchain backend
+use crate::crypto::keyvault::Sr25519KeyVault;
+
 use super::Backend;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -15,12 +17,15 @@ pub trait ContractBackend: Backend<AccountId32, String, Vec<u8>> {}
 pub struct SubstrateBackend {
     client: OnlineClient<PolkadotConfig>,
     signer: Keypair,
+    // sr25519_vault: Sr25519KeyVault,
 }
 
 impl SubstrateBackend {
     // todo: this should use the keystore instead
     pub async fn new(rpc_url: String, seed: Option<&str>) -> Result<Self> {
         let client = OnlineClient::<PolkadotConfig>::from_url(&rpc_url).await?;
+        // let sr25519_vault = Sr25519KeyVault::new();
+        // sr_vault.get("Node0_sr25519_key")
 
         let signer = if let Some(raw) = seed {
             let mnemonic = bip39::Mnemonic::parse(raw)?;

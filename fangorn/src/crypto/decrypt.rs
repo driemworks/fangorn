@@ -3,10 +3,6 @@ use anyhow::Result;
 use ark_serialize::CanonicalDeserialize;
 use codec::Encode;
 use silent_threshold_encryption::aggregate::SystemPublicKeys;
-//     aggregate::{AggregateKey, SystemPublicKeys},
-//     decryption::agg_dec,
-//     setup::PartialDecryption,
-//     types::Ciphertext,
 use std::fs;
 use std::sync::Arc;
 use thiserror::Error;

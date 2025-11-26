@@ -68,17 +68,16 @@ pub struct ServiceHandle<C: Pairing> {
 pub async fn build_full_service<C: Pairing>(
     config: ServiceConfig,
     max_committee_size: usize,
+    vault_config: VaultConfig
 ) -> Result<ServiceHandle<C>> {
     // setup channels for state synchronization
     let (tx, rx) = flume::unbounded();
     // initialize node parameters and state
-    // TODO: should use a secure keystore
-    let params = StartNodeParams::<C>::rand(config.bind_port, config.index);
-    let state = State::<C>::empty(params.secret_key.clone());
+    let state = State::<C>::empty();
     let arc_state = Arc::new(Mutex::new(state));
     let arc_state_clone = Arc::clone(&arc_state);
 
-    let mut node = Node::build(params, rx, arc_state.clone()).await;
+    let mut node = Node::build(config.bind_port, config.index, rx, arc_state.clone(), vault_config).await;
     node.try_connect_peers(config.bootstrap_peers.clone())
         .await
         .unwrap();
@@ -581,7 +580,7 @@ async fn process_decryption_request<C: Pairing>(
 
                 println!("got the ciphertext");
                 let state = state.lock().await;
-                let partial_decryption = state.sk.partial_decryption(&ciphertext);
+                let partial_decryption = node.ste_vault.partial_decryption(&ciphertext).unwrap();
                 partial_decryption.serialize_compressed(&mut bytes).unwrap();
 
                 let pd_message = PartialDecryptionMessage {

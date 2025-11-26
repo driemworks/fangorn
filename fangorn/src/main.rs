@@ -27,6 +27,10 @@ async fn main() -> Result<()> {
             ticket,
             predicate_registry_contract_addr,
             request_pool_contract_addr,
+            vault_dir,
+            vault_pswd,
+            iroh_key_pswd,
+            ste_key_pswd,
         }) => {
             let config = ServiceConfig {
                 bind_port: *bind_port,
@@ -45,8 +49,10 @@ async fn main() -> Result<()> {
                 predicate_registry_contract_addr: predicate_registry_contract_addr.to_string(),
                 request_pool_contract_addr: request_pool_contract_addr.to_string(),
             };
+            // TODO: right now the vault config is passed in via command line, however if this is not the case, we should instead assume that sensitive information will be avaialble via other means
+            let vault_config = VaultConfig{vault_dir: vault_dir.clone().unwrap_or(String::from("tmp/keystore")), vault_pswd: vault_pswd.clone(), iroh_key_pswd: iroh_key_pswd.clone(), ste_key_pswd: ste_key_pswd.clone()};
             // start the service
-            build_full_service::<E>(config, MAX_COMMITTEE_SIZE).await?;
+            build_full_service::<E>(config, MAX_COMMITTEE_SIZE, vault_config).await?;
             tokio::signal::ctrl_c().await?;
         }
         None => {

@@ -1,13 +1,13 @@
 use anyhow::Result;
-use iroh::SecretKey as IrohSecretKey;
 
 use ark_ec::pairing::Pairing;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::rngs::OsRng;
+use secrecy::SecretString;
 use silent_threshold_encryption::aggregate::SystemPublicKeys;
 use silent_threshold_encryption::{
     crs::CRS,
-    setup::{LagPolys, PublicKey, SecretKey},
+    setup::{LagPolys, PublicKey},
 };
 
 use codec::{Decode, Encode};
@@ -41,26 +41,6 @@ pub struct Announcement {
     pub data: Vec<u8>,
 }
 
-pub struct StartNodeParams<C: Pairing> {
-    pub iroh_secret_key: IrohSecretKey,
-    pub secret_key: SecretKey<C>,
-    pub bind_port: u16,
-}
-
-/// params to start a new node
-impl<C: Pairing> StartNodeParams<C> {
-    pub fn rand(bind_port: u16, index: usize) -> Self {
-        // build new
-        // let path = format!("tmp/keystore/{}/")
-        Self {
-            // sr25519_secret_key:
-            iroh_secret_key: IrohSecretKey::generate(&mut rand::rng()),
-            secret_key: SecretKey::<C>::new(&mut OsRng, index),
-            bind_port,
-        }
-    }
-}
-
 #[derive(Clone, CanonicalDeserialize, CanonicalSerialize)]
 pub struct Config<C: Pairing> {
     pub crs: CRS<C>,
@@ -79,23 +59,37 @@ impl<C: Pairing> Config<C> {
         }
     }
 }
+pub struct VaultConfig {
+    pub vault_dir: String,
+    pub vault_pswd: Option<SecretString>,
+    pub iroh_key_pswd: Option<SecretString>,
+    pub ste_key_pswd: Option<SecretString>,
+}
+
+impl Default for VaultConfig {
+    fn default() -> Self {
+        Self {
+            vault_dir: String::from("tmp/keystore"),
+            vault_pswd: None,
+            iroh_key_pswd: None,
+            ste_key_pswd: None,
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct State<C: Pairing> {
     pub config: Option<Config<C>>,
     pub hints: Option<Vec<PublicKey<C>>>,
-    // TODO: secure vault for key mgmt
-    pub sk: SecretKey<C>,
     pub system_keys: Option<SystemPublicKeys<C>>,
 }
 
 impl<C: Pairing> State<C> {
-    pub fn empty(sk: SecretKey<C>) -> Self {
+    pub fn empty() -> Self {
         Self {
             config: None,
             hints: None,
             system_keys: None,
-            sk,
         }
     }
 

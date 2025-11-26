@@ -8313,7 +8313,7 @@ checksum = "fc874b127765f014d792f16763a81245ab80500e2ad921ed4ee9e82481ee08fe"
 [[package]]
 name = "rust-vault"
 version = "0.1.0"
-source = "git+https://github.com/colemanirby/rust-vault.git?branch=main#e021b366debbfeed8ad17ac0cad3db55ce61efb7"
+source = "git+https://github.com/colemanirby/rust-vault.git?branch=main#e83718f99ce4f81e29e9a2a39c255217925b43b7"
 dependencies = [
  "anyhow",
  "argon2",

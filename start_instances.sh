@@ -149,8 +149,8 @@ cargo contract instantiate ./target/ink/pool/pool.contract --suri //Alice --args
 # echo "PID of react app $NPM_PID"
 
 # Start the first instance in the background of current terminal
-echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR""
-./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" &
+echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" --vault-dir tmp/keystore --vault-pswd vault_password --iroh-key-pswd iroh_password_1 --ste-key-pswd ste_password_1"
+./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" --vault-dir tmp/keystore --vault-pswd vault_password --iroh-key-pswd iroh_password_1 --ste-key-pswd ste_password_1 &
 FIRST_PID=$!
 echo "PID of first instance: $FIRST_PID"
 
@@ -172,7 +172,7 @@ echo "Starting second instance in new terminal..."
 
 # Pass the main script's PID and signal file to the second terminal
 MAIN_PID=$$
-dbus-launch gnome-terminal -- bash -c "
+gnome-terminal -- bash -c "
 SECOND_SERVER_PID=\"\"
 
 echo \"Check the PID: \$SECOND_SERVER_PID\"
@@ -192,8 +192,8 @@ cleanup_second() {
 
 trap cleanup_second SIGINT
 
-echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR"'
-./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" &
+echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" --vault-dir tmp/keystore --vault-pswd vault_password --iroh-key-pswd iroh_password_2 --ste-key-pswd ste_password_2'
+./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" --vault-dir tmp/keystore --vault-pswd vault_password --iroh-key-pswd iroh_password_2 --ste-key-pswd ste_password_2 &
 SECOND_SERVER_PID=\$!
 echo \"Second server PID: \$SECOND_SERVER_PID\"
 echo \"\$SECOND_SERVER_PID\" > \"$SIGNAL_FILE.second_pid\"

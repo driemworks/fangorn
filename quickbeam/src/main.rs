@@ -65,6 +65,10 @@ enum Commands {
         #[arg(value_enum)]
         store_type: StoreType,
 
+        /// Index used for key naming in STE and Fangorn vaults
+        #[arg(long, default_value=None)]
+        index: Option<usize>,
+
         /// whether to print the mnemonic to the terminal when generating
         /// an sr25519 key
         #[arg(short, long, default_value_t = false)]
@@ -83,6 +87,9 @@ enum Commands {
         /// the associated key type: polkadot(sr25519), fangorn(ed25519)
         #[arg(value_enum)]
         store_type: StoreType,
+        /// Index used for key naming in STE and Fangorn vaults
+        #[arg(long, default_value=None)]
+        index: Option<usize>,
     },
     SignPswd {
 
@@ -98,6 +105,9 @@ enum Commands {
         /// a nonce to sign
         #[arg(long)]
         nonce: u32,
+        /// Index used for key naming in STE and Fangorn vaults
+        #[arg(long, default_value=None)]
+        index: Option<usize>,
     },
     VerifyPswd {
 
@@ -116,6 +126,9 @@ enum Commands {
         /// the nonce that was signed when using sign-pswd
         #[arg(long)]
         nonce: u32,
+        /// Index used for key naming in STE and Fangorn vaults
+        #[arg(long, default_value=None)]
+        index: Option<usize>,
     },
     Inspect {
         // the keystore directory
@@ -216,7 +229,7 @@ async fn main() -> Result<()> {
                 keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
             );
         }
-        Some(Commands::KeygenPswd { keystore_dir, password , store_type, print_mnemonic}) => {
+        Some(Commands::KeygenPswd { keystore_dir, password , store_type, index, print_mnemonic}) => {
             let mut deref_pass = password.to_owned();
             let mut vault_password =
                 SecretString::new(String::from("vault_password").into_boxed_str());
@@ -236,7 +249,7 @@ async fn main() -> Result<()> {
                 }
                 StoreType::Fangorn => {
                     // create ed25519 identity
-                    let keyvault = IrohKeyVault::new(vault);
+                    let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
                     let public_key = keyvault
                         .generate_key(String::from("ed25519"), &mut deref_pass)
                         .unwrap();
@@ -250,6 +263,7 @@ async fn main() -> Result<()> {
             keystore_dir,
             password,
             store_type,
+            index,
         }) => {
             let mut deref_pass = password.to_owned();
             let mut vault_password =
@@ -264,7 +278,7 @@ async fn main() -> Result<()> {
                     println!("read keypair. Pubkey: {:?}", public_key)
                 }
                 StoreType::Fangorn => {
-                    let keyvault = IrohKeyVault::new(vault);
+                    let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
                     let public_key = keyvault
                         .get_public_key(String::from("ed25519"), &mut deref_pass)
                         .unwrap();
@@ -278,6 +292,7 @@ async fn main() -> Result<()> {
             keystore_dir,
             password,
             store_type,
+            index,
             nonce,
         }) => {
             let mut deref_pass = password.to_owned();
@@ -298,7 +313,7 @@ async fn main() -> Result<()> {
                     );
                 }
                 StoreType::Fangorn => {
-                    let keyvault = IrohKeyVault::new(vault);
+                    let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
                     let message_bytes = nonce.to_le_bytes();
                     let signature = keyvault
                         .sign(String::from("ed25519"), &message_bytes, &mut deref_pass)
@@ -318,6 +333,7 @@ async fn main() -> Result<()> {
             password,
             store_type,
             signature_hex,
+            index,
             nonce,
         }) => {
             let mut deref_pass = password.to_owned();
@@ -337,7 +353,7 @@ async fn main() -> Result<()> {
                     println!("Was sig verified: {:?}", result);
                 }
                 StoreType::Fangorn => {
-                    let keyvault = IrohKeyVault::new(vault);
+                    let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
                     let public_key = keyvault
                         .get_public_key(String::from("ed25519"), &mut deref_pass)
                         .unwrap();
@@ -466,9 +482,13 @@ async fn build_node() -> Node<E> {
     // initialize node parameters and state
     // start on port 4000
     // todo: can we remove the index field? sk unused here
-    let params = StartNodeParams::<E>::rand(4000, 0);
-    let state = State::<E>::empty(params.secret_key.clone());
+    // let params = StartNodeParams::<E>::rand(4000, 0);
+    let bind_port = 4000;
+    let index = 0;
+    let state = State::<E>::empty();
     let arc_state = Arc::new(Mutex::new(state));
 
-    Node::build(params, rx, arc_state).await
+    let vault_config = VaultConfig::default();
+
+    Node::build(bind_port, index, rx, arc_state, vault_config).await
 }
