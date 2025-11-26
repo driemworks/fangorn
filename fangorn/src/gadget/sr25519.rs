@@ -1,7 +1,4 @@
-use crate::{
-    backend::{substrate::SubstrateBackend, Backend},
-    gadget::*,
-};
+use crate::{backend::substrate::SubstrateBackend, gadget::*};
 use async_trait::async_trait;
 use sp_core::{sr25519, Pair};
 use std::fmt::Debug;

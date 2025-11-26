@@ -8,7 +8,6 @@ use sp_core::{
 };
 use bip39::Mnemonic;
 use thiserror::Error;
-use ark_std::rand::rngs::OsRng;
 
 #[derive(Error, Debug)]
 pub enum KeyVaultError {

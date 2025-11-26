@@ -1,10 +1,8 @@
-use crate::crypto::decrypt::DecryptionClientError;
-use crate::pool::pool::RawPartialDecryptionMessage;
-use crate::rpc::{resolver::IrohRpcResolver, server::*};
+// use crate::pool::pool::RawPartialDecryptionMessage;
 use crate::storage::{
     contract_store::ContractIntentStore,
     iroh_docstore::IrohDocStore,
-    local_store::{LocalDocStore, LocalPlaintextStore},
+    local_store::LocalPlaintextStore,
     AppStore, IntentStore,
 };
 use crate::types::*;
@@ -17,33 +15,20 @@ use crate::{
     storage::{PlaintextStore, SharedStore},
     utils::load_mnemonic,
 };
-use anyhow::Result;
-use ark_ec::pairing::Pairing;
 use ark_serialize::CanonicalDeserialize;
-use codec::Decode;
-use iroh_docs::{
-    store::{FlatQuery, QueryBuilder},
-    DocTicket,
-};
-use n0_future::StreamExt;
 use silent_threshold_encryption::{
-    aggregate::{AggregateKey, SystemPublicKeys},
-    decryption::agg_dec,
-    setup::PartialDecryption,
-    types::Ciphertext,
+    aggregate::SystemPublicKeys, decryption::agg_dec, setup::PartialDecryption, types::Ciphertext,
 };
-use std::str::FromStr;
 use std::sync::Arc;
-use subxt::config::polkadot::AccountId32;
 use tokio::sync::Mutex;
 
 /// an app store that uses the iroh nodes for storage
 /// against a smart contract deployed on the configured substrate backend
 type TestnetAppStore = AppStore<IrohDocStore<E>, ContractIntentStore, LocalPlaintextStore>;
 
-/// an app store configured for all nodes running on the same machine,
-/// against a smart contract deployed on the configured substrate backend
-type LocalTestnetAppStore = AppStore<LocalDocStore, ContractIntentStore, LocalPlaintextStore>;
+// /// an app store configured for all nodes running on the same machine,
+// /// against a smart contract deployed on the configured substrate backend
+// type LocalTestnetAppStore = AppStore<LocalDocStore, ContractIntentStore, LocalPlaintextStore>;
 
 /// encrypt the message located at message_path
 pub async fn handle_encrypt(
@@ -78,7 +63,6 @@ pub async fn handle_decrypt(
     config_path: &String,
     filename: &String,
     witness_string: &String,
-    pt_filename: &String,
     keystore_path: &String,
     contract_addr: &String,
     request_pool_contract_addr: &String,
@@ -87,17 +71,16 @@ pub async fn handle_decrypt(
     sys_keys: SystemPublicKeys<E>,
 ) {
     let seed = load_mnemonic(keystore_path);
-    let (gadget_registry, app_store, backend) =
+    let (_gadget_registry, app_store, backend) =
         iroh_testnet_setup(contract_addr, Some(&seed), node.clone(), ticket.clone()).await;
     let app_store_clone = app_store.clone();
 
     // Parse witnesses
     let witnesses: Vec<&str> = witness_string.trim().split(',').map(|s| s.trim()).collect();
 
-    let doc_ticket = DocTicket::from_str(&ticket).unwrap();
-    let doc_stream = node.docs().import(doc_ticket).await.unwrap();
+    // let doc_ticket = DocTicket::from_str(&ticket).unwrap();
+    // let doc_stream = node.docs().import(doc_ticket).await.unwrap();
 
-    // TODO: this should be injected from the client itself
     let request_pool = Arc::new(Mutex::new(InkContractPool::new(
         request_pool_contract_addr.to_string(),
         backend,
@@ -109,10 +92,7 @@ pub async fn handle_decrypt(
             .unwrap();
 
     println!("> Requested decryption");
-    if let Ok(()) = client
-        .request_decrypt(filename, &witnesses, pt_filename)
-        .await
-    {
+    if let Ok(()) = client.request_decrypt(filename, &witnesses).await {
         // setup the decryption handler
         // note: this assumes a threshold of 1
         let node_clone = node.clone();
@@ -129,21 +109,20 @@ pub async fn handle_decrypt(
             &client.config.lag_polys,
         );
 
-        // drop(state_lock)
+        // drop(state_lock)?
         let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
-        let mut idx = 0;
 
+        // linting thinks this does not need to be mutable but it does
+        #[allow(unused_mut)]
+        let mut idx = 0;
         // TODO: I really don't like this here, but it works for now...
         n0_future::task::spawn(async move {
             while let Ok(raw) = node_clone.pd_rx().recv_async().await {
                 println!("handling partial decryptions in the handler in the node");
                 let filename = raw.filename;
                 let partial_decryption = raw.partial_decryption;
-                // let unfilled_idx =
-                let node_id = ak.lag_pks[idx].id;
                 partial_decryptions[idx] = partial_decryption;
-                // increment the index
-                idx = idx + 1;
+                let _ = idx.saturating_add(1);
                 // get cid from filename
                 let (cid, _intents) = app_store_clone
                     .intent_store
@@ -184,6 +163,14 @@ pub async fn handle_decrypt(
                 .unwrap();
                 // .map_err(|e| DecryptionClientError::DecryptionError(e.to_string()))
 
+                // save to store
+                let filename = String::from_utf8(filename).unwrap();
+                let _ = app_store_clone
+                    .pt_store
+                    .write_plaintext(&filename, &plain_bytes)
+                    .await
+                    .unwrap();
+
                 let _ = done_tx.send(());
                 break;
             }
@@ -194,30 +181,30 @@ pub async fn handle_decrypt(
     }
 }
 
-async fn local_testnet_setup(
-    contract_addr: &String,
-    seed: Option<&str>,
-) -> (GadgetRegistry, LocalTestnetAppStore, Arc<SubstrateBackend>) {
-    // build the backend
-    let backend = Arc::new(
-        SubstrateBackend::new(crate::WS_URL.to_string(), seed)
-            .await
-            .unwrap(),
-    );
-    // configure the registry
-    let mut gadget_registry = GadgetRegistry::new();
-    gadget_registry.register(PasswordGadget {});
-    gadget_registry.register(Psp22Gadget::new(backend.clone()));
-    gadget_registry.register(Sr25519Gadget::new(backend.clone()));
+// async fn local_testnet_setup(
+//     contract_addr: &String,
+//     seed: Option<&str>,
+// ) -> (GadgetRegistry, LocalTestnetAppStore, Arc<SubstrateBackend>) {
+//     // build the backend
+//     let backend = Arc::new(
+//         SubstrateBackend::new(crate::WS_URL.to_string(), seed)
+//             .await
+//             .unwrap(),
+//     );
+//     // configure the registry
+//     let mut gadget_registry = GadgetRegistry::new();
+//     gadget_registry.register(PasswordGadget {});
+//     gadget_registry.register(Psp22Gadget::new(backend.clone()));
+//     gadget_registry.register(Sr25519Gadget::new(backend.clone()));
 
-    let app_store = AppStore::new(
-        LocalDocStore::new("tmp/docs/"),
-        ContractIntentStore::new(contract_addr.to_string(), backend.clone()),
-        LocalPlaintextStore::new("tmp/plaintexts/"),
-    );
+//     let app_store = AppStore::new(
+//         LocalDocStore::new("tmp/docs/"),
+//         ContractIntentStore::new(contract_addr.to_string(), backend.clone()),
+//         LocalPlaintextStore::new("tmp/plaintexts/"),
+//     );
 
-    (gadget_registry, app_store, backend)
-}
+//     (gadget_registry, app_store, backend)
+// }
 
 async fn iroh_testnet_setup(
     contract_addr: &String,

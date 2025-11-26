@@ -1,8 +1,7 @@
-use crate::{backend::Backend, client::Node, types::*};
+use crate::{backend::Backend, client::Node};
 use anyhow::Result;
 use ark_ec::pairing::Pairing;
 use async_trait::async_trait;
-use cid::Cid;
 use iroh_docs::{
     api::Doc,
     store::{FlatQuery, QueryBuilder},
@@ -30,7 +29,7 @@ impl<C: Pairing> Backend<Doc, String, Vec<u8>> for IrohBackend<C> {
         &self,
         doc: &Doc,
         key: &String,
-        extras: Option<Vec<u8>>,
+        _extras: Option<Vec<u8>>,
     ) -> Result<Option<Vec<u8>>> {
         let entry = doc
             .get_one(QueryBuilder::<FlatQuery>::default().key_exact(key).build())

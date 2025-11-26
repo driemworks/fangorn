@@ -3,14 +3,13 @@ use ark_ec::pairing::Pairing;
 use ark_serialize::CanonicalDeserialize;
 use ark_serialize::CanonicalSerialize;
 use codec::{Decode, Encode};
-use core::net::{IpAddr, Ipv4Addr, SocketAddr};
+use core::net::SocketAddr;
 use core::str::FromStr;
 use futures::prelude::*;
 use iroh::{EndpointAddr, PublicKey as IrohPublicKey};
 use iroh_docs::{
     api::{protocol::ShareMode, Doc},
     engine::LiveEvent,
-    protocol::Docs,
     store::{FlatQuery, QueryBuilder},
     DocTicket,
 };
@@ -18,18 +17,14 @@ use n0_error::StdResultExt;
 use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext};
 use std::sync::Arc;
 use std::{fs::OpenOptions, io::Write, thread, time::Duration};
-use subxt::config::polkadot::AccountId32;
-use tokio::sync::{mpsc, Mutex, RwLock};
-use tonic::transport::Server;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::backend::{iroh::IrohBackend, SubstrateBackend};
 use crate::client::node::*;
 use crate::gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget};
 use crate::pool::{contract_pool::*, pool::*, watcher::*};
-use crate::rpc::server::{NodeServer, RpcServer};
 use crate::storage::{
-    contract_store::ContractIntentStore, iroh_docstore::IrohDocStore, local_store::LocalDocStore,
-    DocStore, IntentStore, SharedStore,
+    contract_store::ContractIntentStore, iroh_docstore::IrohDocStore, IntentStore, SharedStore,
 };
 use crate::types::*;
 
@@ -170,10 +165,7 @@ pub async fn build_full_service<C: Pairing>(
 
     // watch the request pool
     spawn_pool_watcher(
-        config.predicate_registry_contract_addr.clone(),
-        config.request_pool_contract_addr.clone(),
         arc_state_clone.clone(),
-        ticket.clone(),
         gadget_registry,
         doc_store,
         intent_store,
@@ -515,10 +507,7 @@ async fn publish_system_keys<C: Pairing>(
 }
 
 async fn spawn_pool_watcher<C: Pairing>(
-    predicate_registry_contract_addr: String,
-    request_pool_contract_addr: String,
     state: Arc<Mutex<State<C>>>,
-    ticket: String,
     gadget_registry: GadgetRegistry,
     doc_store: IrohDocStore<C>,
     intent_store: ContractIntentStore,
@@ -528,10 +517,10 @@ async fn spawn_pool_watcher<C: Pairing>(
     // poll every 100ms
     let watcher = PollingWatcher::new(pool.clone(), Duration::from_millis(100));
     // up to 100 reqs per 100ms interval (that is probably too many...)
-    let (tx, mut rx) = flume::unbounded();
+    let (tx, rx) = flume::unbounded();
 
     // watcher
-    let watcher_handle = n0_future::task::spawn(async move {
+    let _watcher_handle = n0_future::task::spawn(async move {
         if let Err(e) = watcher.watch(tx).await {
             eprintln!("Pool watcher error: {:?}", e);
         }
@@ -544,7 +533,6 @@ async fn spawn_pool_watcher<C: Pairing>(
             if let Err(e) = process_decryption_request(
                 req,
                 &state,
-                &pool,
                 gadget_registry.clone(),
                 doc_store.clone(),
                 intent_store.clone(),
@@ -615,12 +603,12 @@ async fn spawn_pool_watcher<C: Pairing>(
 async fn process_decryption_request<C: Pairing>(
     req: DecryptionRequest,
     state: &Arc<Mutex<State<C>>>,
-    pool: &Arc<RwLock<InkContractPool>>,
     registry: GadgetRegistry,
     doc_store: IrohDocStore<C>,
     intent_store: ContractIntentStore,
     node: Node<C>,
-) -> Result<()> {let mut bytes = Vec::new();
+) -> Result<()> {
+    let mut bytes = Vec::new();
 
     let filename = req.filename.clone();
     let witness = hex::decode(req.witness_hex.clone()).unwrap();
@@ -667,7 +655,6 @@ async fn process_decryption_request<C: Pairing>(
                     let response = recv.read_to_end(1000).await.anyerr()?;
                     if response == msg_bytes {
                         // send attestation
-                        
                     }
 
                     // Explicitly close the whole connection.

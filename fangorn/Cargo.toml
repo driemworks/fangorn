@@ -62,9 +62,3 @@ cid.workspace = true
 multihash-codetable.workspace = true
 public-ip.workspace = true
 local-ip-address.workspace = true
-
-[build-dependencies]
-tonic-build = "0.13.0"
-
-[features]
-local = []

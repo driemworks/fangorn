@@ -1,9 +1,7 @@
-use std::{io::Read, time::SystemTime};
-
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
 use fangorn::{
-    backend::substrate::runtime::{runtime_apis::core::types::version, sudo::storage::types::key},
+    // backend::substrate::runtime::{runtime_apis::core::types::version, sudo::storage::types::key},
     crypto::{
         cipher::{handle_decrypt, handle_encrypt},
         keystore::{Keystore, Sr25519Keystore},
@@ -30,7 +28,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
-use tokio::{sync::Mutex, task};
+use tokio::sync::Mutex;
 
 #[derive(Parser, Debug)]
 #[command(name = "quickbeam", version = "1.0")]
@@ -175,10 +173,7 @@ enum Commands {
         /// A witness that satisfies the intent associated with the CID
         #[arg(long)]
         witness: String,
-        /// The name of the file to which you would like to write
-        /// the decrypted text to
-        #[arg(long)]
-        pt_filename: String,
+        /// The keystore dir
         #[arg(long)]
         keystore_dir: String,
         /// the contract address
@@ -420,7 +415,6 @@ async fn main() -> Result<()> {
             config_path,
             filename,
             witness,
-            pt_filename,
             keystore_dir,
             contract_addr,
             request_pool_contract_addr,
@@ -443,26 +437,12 @@ async fn main() -> Result<()> {
             node.try_connect_peers(Some(vec![boot])).await?;
             // wait for the node to be online
             node.endpoint().online().await;
-            println!("🟢 RECEIVER is ONLINE");
-
-            // // setup the decryption handler
-            // let node_clone = node.clone();
-            // n0_future::task::spawn(async move {
-            //     while let Ok(partial_decryption_message) = node_clone.pd_rx().recv_async().await {
-            //         println!("handling partial decryptions in the handler in the node");
-            //         // get filename
-            //         // use it to get the cid
-            //         // use the cid to get the data
-            //         // decrypt the data with partial decryptions if you have enough (assume threshold = 1 for now)
-            //         // save to file with pt_store
-            //     }
-            // });
+            println!("🟢 Node is online");
 
             handle_decrypt(
                 config_path,
                 filename,
                 witness,
-                pt_filename,
                 keystore_dir,
                 contract_addr,
                 request_pool_contract_addr,

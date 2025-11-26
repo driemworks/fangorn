@@ -1,7 +1,7 @@
 use anyhow::Result;
 use ark_serialize::CanonicalDeserialize;
 use iroh::{
-    discovery::{mdns::MdnsDiscovery, Discovery},
+    discovery::mdns::MdnsDiscovery,
     endpoint::Connection,
     protocol::{AcceptError, ProtocolHandler, Router},
     Endpoint, EndpointAddr,
@@ -10,7 +10,6 @@ use iroh::{
 use iroh_blobs::{store::mem::MemStore, BlobsProtocol, ALPN as BLOBS_ALPN};
 use iroh_docs::{protocol::Docs, ALPN as DOCS_ALPN};
 use iroh_gossip::{net::Gossip, ALPN as GOSSIP_ALPN};
-use n0_error::{Result as N0Result, StdResultExt};
 
 use crate::pool::pool::RawPartialDecryptionMessage;
 use crate::{pool::pool::PartialDecryptionMessage, types::*};
@@ -23,7 +22,6 @@ use std::{
 };
 use tokio::sync::Mutex;
 
-use quic_rpc::transport::flume::FlumeConnector;
 use silent_threshold_encryption::setup::PartialDecryption;
 use std::{fs::OpenOptions, io::Write};
 

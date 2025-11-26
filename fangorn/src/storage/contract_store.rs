@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    backend::{substrate::ContractBackend, Backend},
+    backend::substrate::ContractBackend,
     gadget::Intent,
 };
 use async_trait::async_trait;

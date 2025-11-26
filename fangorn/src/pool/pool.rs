@@ -1,29 +1,11 @@
-use crate::{
-    backend::{iroh::IrohBackend, Backend},
-    client::node::Node,
-    types::*,
-};
 use anyhow::Result;
 use ark_ec::pairing::Pairing;
 use async_trait::async_trait;
 use codec::{Decode, Encode};
 use iroh::EndpointAddr;
-use iroh_docs::api::Doc;
-use iroh_docs::store::{FlatQuery, QueryBuilder};
-use iroh_docs::DocTicket;
-use n0_future::StreamExt;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use silent_threshold_encryption::setup::PartialDecryption;
-use std::collections::HashSet;
-use std::str::FromStr;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
-use std::time::Duration;
-use tokio::sync::mpsc;
-use tokio::sync::RwLock;
 
 /// A struct for messaging partial decryption across nodes 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Encode, Decode)]
@@ -97,113 +79,113 @@ pub trait RequestPool {
     /// submit evidence that a worker has processed a work item
     async fn submit_partial_attestation(&self, id: &[u8], attestation: &[u8]) -> Result<()>;
 }
-pub struct IrohPool<C: Pairing> {
-    backend: Arc<IrohBackend<C>>,
-    // TODO: this shouldn't need the node, it shoudl just use the backend
-    // but I don't feel like figuring that out right now
-    node: Node<C>,
-    doc: Doc,
-}
+// pub struct IrohPool<C: Pairing> {
+//     backend: Arc<IrohBackend<C>>,
+//     // TODO: this shouldn't need the node, it shoudl just use the backend
+//     // but I don't feel like figuring that out right now
+//     node: Node<C>,
+//     doc: Doc,
+// }
 
-impl<C: Pairing> IrohPool<C> {
-    pub async fn new(backend: Arc<IrohBackend<C>>, node: Node<C>, ticket: &str) -> Result<Self> {
-        let doc_ticket = DocTicket::from_str(ticket)?;
-        let doc = backend.node.docs().import(doc_ticket).await?;
+// impl<C: Pairing> IrohPool<C> {
+//     pub async fn new(backend: Arc<IrohBackend<C>>, node: Node<C>, ticket: &str) -> Result<Self> {
+//         let doc_ticket = DocTicket::from_str(ticket)?;
+//         let doc = backend.node.docs().import(doc_ticket).await?;
 
-        Ok(Self { backend, node, doc })
-    }
-}
+//         Ok(Self { backend, node, doc })
+//     }
+// }
 
 pub const REQUEST_POOL_KEY: &str = "request-pool-";
 
-#[async_trait]
-impl<C: Pairing> RequestPool for IrohPool<C> {
-    async fn add(&mut self, req: DecryptionRequest) -> Result<()> {
-        println!("*************************** ADDING TO POOL");
+// #[async_trait]
+// impl<C: Pairing> RequestPool for IrohPool<C> {
+//     async fn add(&mut self, req: DecryptionRequest) -> Result<()> {
+//         println!("*************************** ADDING TO POOL");
 
-        let id = format!("{}{}", REQUEST_POOL_KEY, req.id());
+//         let id = format!("{}{}", REQUEST_POOL_KEY, req.id());
 
-        let announcement = Announcement {
-            tag: Tag::DecryptionRequest,
-            data: req.encode(),
-        };
+//         let announcement = Announcement {
+//             tag: Tag::DecryptionRequest,
+//             data: req.encode(),
+//         };
 
-        self.backend.write(&self.doc, &id, &announcement.encode()).await?;
-        Ok(())
-    }
+//         self.backend.write(&self.doc, &id, &announcement.encode()).await?;
+//         Ok(())
+//     }
 
-    async fn read_all(&self) -> Result<Vec<DecryptionRequest>> {
-        // get all entries with request pool prefix
-        let query = QueryBuilder::<FlatQuery>::default().key_prefix(REQUEST_POOL_KEY);
-        let entries = self.doc.get_many(query.build()).await?;
-        let entries = entries.collect::<Vec<_>>().await;
+//     async fn read_all(&self) -> Result<Vec<DecryptionRequest>> {
+//         // get all entries with request pool prefix
+//         let query = QueryBuilder::<FlatQuery>::default().key_prefix(REQUEST_POOL_KEY);
+//         let entries = self.doc.get_many(query.build()).await?;
+//         let entries = entries.collect::<Vec<_>>().await;
 
-        let mut requests = Vec::new();
-        for entry in entries {
-            let data = entry.unwrap();
-            let hash = data.content_hash();
-            let content = self.node.blobs().get_bytes(hash).await?;
-            println!("***************** got the content!");
-        }
+//         let mut requests = Vec::new();
+//         for entry in entries {
+//             let data = entry.unwrap();
+//             let hash = data.content_hash();
+//             let content = self.node.blobs().get_bytes(hash).await?;
+//             println!("***************** got the content!");
+//         }
 
-        Ok(requests)
-    }
+//         Ok(requests)
+//     }
 
-    async fn count(&self) -> Result<usize> {
-        let query = QueryBuilder::<FlatQuery>::default();
-        let entries = self.doc.get_many(query.build()).await?;
-        let entries = entries.collect::<Vec<_>>().await;
+//     async fn count(&self) -> Result<usize> {
+//         let query = QueryBuilder::<FlatQuery>::default();
+//         let entries = self.doc.get_many(query.build()).await?;
+//         let entries = entries.collect::<Vec<_>>().await;
 
-        // // Count only request entries (not attestations)
-        // let count = entries
-        //     .into_iter()
-        //     .filter(|e| {
-        //         let data = e.as_ref().unwrap();
-        //         let key = String::from_utf8_lossy(data.key());
-        //         !key.starts_with("attestation:")
-        //     })
-        //     .count();
+//         // // Count only request entries (not attestations)
+//         // let count = entries
+//         //     .into_iter()
+//         //     .filter(|e| {
+//         //         let data = e.as_ref().unwrap();
+//         //         let key = String::from_utf8_lossy(data.key());
+//         //         !key.starts_with("attestation:")
+//         //     })
+//         //     .count();
 
-        Ok(0)
-    }
+//         Ok(0)
+//     }
 
-    async fn submit_partial_attestation(&self, id: &[u8], attestation: &[u8]) -> Result<()> {
-        // Key format: "attestation:{request_id}:{worker_id}"
-        let request_id = hex::encode(id);
-        let worker_id = self.backend.node.router.endpoint().addr().id.to_string();
-        let key = format!("attestation:{}:{}", request_id, worker_id);
+//     async fn submit_partial_attestation(&self, id: &[u8], attestation: &[u8]) -> Result<()> {
+//         // Key format: "attestation:{request_id}:{worker_id}"
+//         let request_id = hex::encode(id);
+//         let worker_id = self.backend.node.router.endpoint().addr().id.to_string();
+//         let key = format!("attestation:{}:{}", request_id, worker_id);
 
-        self.backend
-            .write(&self.doc, &key, &attestation.to_vec())
-            .await?;
-        Ok(())
-    }
-}
+//         self.backend
+//             .write(&self.doc, &key, &attestation.to_vec())
+//             .await?;
+//         Ok(())
+//     }
+// }
 
-// Extension: Get all attestations for a request
-impl<C: Pairing> IrohPool<C> {
-    pub async fn get_attestations(&self, request_id: &[u8]) -> Result<Vec<Vec<u8>>> {
-        let prefix = format!("attestation:{}:", hex::encode(request_id));
-        let query = QueryBuilder::<FlatQuery>::default();
-        let entries = self.doc.get_many(query.build()).await?;
-        let entries = entries.collect::<Vec<_>>().await;
+// // Extension: Get all attestations for a request
+// impl<C: Pairing> IrohPool<C> {
+//     pub async fn get_attestations(&self, request_id: &[u8]) -> Result<Vec<Vec<u8>>> {
+//         let prefix = format!("attestation:{}:", hex::encode(request_id));
+//         let query = QueryBuilder::<FlatQuery>::default();
+//         let entries = self.doc.get_many(query.build()).await?;
+//         let entries = entries.collect::<Vec<_>>().await;
 
-        let mut attestations = Vec::new();
-        for entry in entries {
-            let data = entry.unwrap();
-            let key = String::from_utf8_lossy(data.key());
-            // if key.starts_with(&prefix) {
-            //     if let Some(bytes) = self.backend.read(&self.doc, &key.to_string(), None).await? {
-            //         attestations.push(bytes);
-            //     }
-            // }
-        }
+//         let mut attestations = Vec::new();
+//         for entry in entries {
+//             let data = entry.unwrap();
+//             let key = String::from_utf8_lossy(data.key());
+//             // if key.starts_with(&prefix) {
+//             //     if let Some(bytes) = self.backend.read(&self.doc, &key.to_string(), None).await? {
+//             //         attestations.push(bytes);
+//             //     }
+//             // }
+//         }
 
-        Ok(attestations)
-    }
+//         Ok(attestations)
+//     }
 
-    pub async fn attestation_count(&self, request_id: &[u8]) -> Result<usize> {
-        let attestations = self.get_attestations(request_id).await?;
-        Ok(attestations.len())
-    }
-}
+//     pub async fn attestation_count(&self, request_id: &[u8]) -> Result<usize> {
+//         let attestations = self.get_attestations(request_id).await?;
+//         Ok(attestations.len())
+//     }
+// }

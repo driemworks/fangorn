@@ -1,22 +1,12 @@
-use crate::{
-    client::node::Node,
-    pool::pool::*,
-    rpc::{
-        // resolver::{IrohRpcResolver, RpcAddressResolver},
-        server::{PartDecRequest, RpcClient},
-    },
-    storage::*,
-    types::*,
-};
+use crate::{client::node::Node, pool::pool::*, storage::*, types::*};
 use anyhow::Result;
 use ark_serialize::CanonicalDeserialize;
 use codec::Encode;
-use silent_threshold_encryption::{
-    aggregate::{AggregateKey, SystemPublicKeys},
-    decryption::agg_dec,
-    setup::PartialDecryption,
-    types::Ciphertext,
-};
+use silent_threshold_encryption::aggregate::SystemPublicKeys;
+//     aggregate::{AggregateKey, SystemPublicKeys},
+//     decryption::agg_dec,
+//     setup::PartialDecryption,
+//     types::Ciphertext,
 use std::fs;
 use std::sync::Arc;
 use thiserror::Error;
@@ -100,17 +90,16 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
         &self,
         filename: &str,
         witnesses: &[&str],
-        output_filename: &String,
     ) -> Result<(), DecryptionClientError> {
         // fetch ciphertext
         // todo: use intents for verification?
-        let (cid, _intents) = self
-            .app_store
-            .intent_store
-            .get_intent(filename.as_bytes())
-            .await
-            .map_err(|e| DecryptionClientError::IntentStoreError(e.to_string()))?
-            .ok_or_else(|| DecryptionClientError::IntentNotFound(filename.to_string()))?;
+        // let (cid, _intents) = self
+        //     .app_store
+        //     .intent_store
+        //     .get_intent(filename.as_bytes())
+        //     .await
+        //     .map_err(|e| DecryptionClientError::IntentStoreError(e.to_string()))?
+        //     .ok_or_else(|| DecryptionClientError::IntentNotFound(filename.to_string()))?;
 
         // prepare witnesses
         let witness_hex = self.encode_witnesses(witnesses)?;
@@ -125,71 +114,13 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
 
         // add decryption requests to the pool
         let mut locked_pool = self.pool.lock().await;
-        locked_pool.add(decryption_request).await;
-
+        let _ = locked_pool.add(decryption_request).await;
 
         Ok(())
     }
 
     fn encode_witnesses(&self, witnesses: &[&str]) -> Result<String, DecryptionClientError> {
         let witness_bytes: Vec<Vec<u8>> = witnesses.iter().map(|w| w.as_bytes().to_vec()).collect();
-
         Ok(hex::encode(witness_bytes.encode()))
-    }
-
-    async fn collect_partial_decryptions(
-        &self,
-        filename: &str,
-        witness_hex: &str,
-        ak: &AggregateKey<E>,
-    ) -> Result<Vec<PartialDecryption<E>>, DecryptionClientError> {
-        let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
-        for i in 0..self.threshold as usize {
-            let node_id = ak.lag_pks[i].id;
-
-            // let rpc_addr_url = self.resolver.resolve_rpc_address(node_id).await?;
-
-            // let mut client = RpcClient::connect(rpc_addr_url)
-            //     .await
-            //     .map_err(|e| DecryptionClientError::RpcError(e.to_string()))?;
-
-            // let request = tonic::Request::new(PartDecRequest {
-            //     filename: filename.to_string(),
-            //     witness_hex: witness_hex.to_string(),
-            // });
-
-            // let response = client
-            //     .partdec(request)
-            //     .await
-            //     .map_err(|e| DecryptionClientError::RpcError(e.to_string()))?;
-
-            // let part_dec_hex = response.into_inner().hex_serialized_decryption;
-            // let part_dec_bytes = hex::decode(&part_dec_hex)
-            //     .map_err(|e| DecryptionClientError::DecodingError(e.to_string()))?;
-
-            // partial_decryptions[i] = PartialDecryption::deserialize_compressed(&part_dec_bytes[..])
-            //     .map_err(|_| DecryptionClientError::DeserializationError)?;
-        }
-
-        Ok(partial_decryptions)
-    }
-
-    fn aggregate_decrypt(
-        &self,
-        partial_decryptions: &[PartialDecryption<E>],
-        ciphertext: &Ciphertext<E>,
-        ak: &AggregateKey<E>,
-    ) -> Result<Vec<u8>, DecryptionClientError> {
-        let mut selector = vec![false; MAX_COMMITTEE_SIZE];
-        selector[0] = true;
-
-        agg_dec(
-            partial_decryptions,
-            ciphertext,
-            &selector,
-            ak,
-            &self.config.crs,
-        )
-        .map_err(|e| DecryptionClientError::DecryptionError(e.to_string()))
     }
 }

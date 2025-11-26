@@ -5,24 +5,16 @@ use async_trait::async_trait;
 use cid::Cid;
 use codec::{Decode, Encode};
 use multihash_codetable::{Code, MultihashDigest};
-use std::fs::OpenOptions;
-use std::io::prelude::*;
-use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
-use tokio::fs;
 
 use crate::backend::iroh::SharedIrohBackend;
 use crate::client::Node;
 use crate::types::*;
-use iroh::PublicKey as IrohPublicKey;
 use iroh_docs::{
     api::Doc,
-    engine::LiveEvent,
-    store::{FlatQuery, QueryBuilder},
     DocTicket,
 };
-use quic_rpc::transport::flume::FlumeConnector;
 
 // The codec for generating CIDs
 const RAW: u64 = 0x55;

@@ -45,7 +45,7 @@ pub trait IntentStore: Send + Sync {
 #[async_trait]
 pub trait PlaintextStore {
     async fn read_plaintext(&self, message_path: &String) -> Result<Vec<u8>>;
-    async fn write_to_pt_store(&self, filename: &String, data: &Vec<u8>) -> Result<()>;
+    async fn write_plaintext(&self, filename: &String, data: &Vec<u8>) -> Result<()>;
 }
 
 // TODO: we need a more elaborate way to handle multistorage

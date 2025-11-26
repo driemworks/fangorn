@@ -1,4 +1,4 @@
-use crate::backend::{substrate::ContractBackend, Backend};
+use crate::backend::substrate::ContractBackend;
 use crate::gadget::*;
 use async_trait::async_trait;
 use std::sync::Arc;
