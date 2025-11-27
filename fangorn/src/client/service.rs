@@ -68,7 +68,7 @@ pub struct ServiceHandle<C: Pairing> {
 pub async fn build_full_service<C: Pairing>(
     config: ServiceConfig,
     max_committee_size: usize,
-    vault_config: VaultConfig
+    vault_config: VaultConfig,
 ) -> Result<ServiceHandle<C>> {
     // setup channels for state synchronization
     let (tx, rx) = flume::unbounded();
@@ -77,7 +77,14 @@ pub async fn build_full_service<C: Pairing>(
     let arc_state = Arc::new(Mutex::new(state));
     let arc_state_clone = Arc::clone(&arc_state);
 
-    let mut node = Node::build(config.bind_port, config.index, rx, arc_state.clone(), vault_config).await;
+    let mut node = Node::build(
+        config.bind_port,
+        config.index,
+        rx,
+        arc_state.clone(),
+        vault_config,
+    )
+    .await;
     node.try_connect_peers(config.bootstrap_peers.clone())
         .await
         .unwrap();
@@ -530,7 +537,7 @@ async fn spawn_pool_watcher<C: Pairing>(
     // worker
     n0_future::task::spawn(async move {
         while let Ok(req) = rx.recv_async().await {
-            println!("New request received: {}", req.id());
+            // println!("New request received: {}", req.id());
             if let Err(e) = process_decryption_request(
                 req,
                 &state,
@@ -538,6 +545,7 @@ async fn spawn_pool_watcher<C: Pairing>(
                 doc_store.clone(),
                 intent_store.clone(),
                 node.clone(),
+                pool.clone(),
                 index,
             )
             .await
@@ -558,6 +566,7 @@ async fn process_decryption_request<C: Pairing>(
     doc_store: IrohDocStore<C>,
     intent_store: ContractIntentStore,
     node: Node<C>,
+    pool: Arc<RwLock<InkContractPool>>,
     index: usize,
 ) -> Result<()> {
     let mut bytes = Vec::new();
@@ -584,7 +593,7 @@ async fn process_decryption_request<C: Pairing>(
                 partial_decryption.serialize_compressed(&mut bytes).unwrap();
 
                 let pd_message = PartialDecryptionMessage {
-                    filename: req.filename,
+                    filename: req.filename.clone(),
                     index: index.try_into().unwrap(),
                     partial_decryption_bytes: bytes,
                 };
@@ -597,7 +606,7 @@ async fn process_decryption_request<C: Pairing>(
                 // todo: deliver the pd to the requested 'location'
                 let endpoint = node.endpoint();
                 // try to connect to the recipient
-                let receiver_endpoint_addr: EndpointAddr = req.location.into();
+                let receiver_endpoint_addr: EndpointAddr = req.location.clone().into();
                 if let Ok(conn) = endpoint
                     .connect(receiver_endpoint_addr, crate::client::node::PD_ALPN)
                     .await
@@ -608,11 +617,19 @@ async fn process_decryption_request<C: Pairing>(
                     let response = recv.read_to_end(1000).await.anyerr()?;
                     if response == msg_bytes {
                         // send attestation
+                        // TODO: murmur for attestations?
+                        // let mut locked_pool = pool.read().unwrap;
+                        let mut pool_write_guard = pool.write().await;
+                        pool_write_guard
+                            .submit_partial_attestation(&req.id().clone(), b"")
+                            .await
+                            .unwrap();
                     }
 
                     // Explicitly close the whole connection.
                     conn.close(0u32.into(), b"Success - Goodbye!");
                 }
+
                 // then submit an attestation to the contract
             } else {
                 println!("data unavailable");

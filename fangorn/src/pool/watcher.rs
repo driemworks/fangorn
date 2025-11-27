@@ -58,7 +58,7 @@ impl<P: RequestPool + Send + Sync + 'static> PoolWatcher for PollingWatcher<P> {
             let mut seen = self.seen.write().await;
             // ignore anything we have already seen
             for req in requests {
-                if seen.insert(req.id().as_bytes().to_vec()) {
+                if seen.insert(req.id()) {
                     tx.send(req)?;
                 }
             }
