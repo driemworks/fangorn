@@ -218,21 +218,25 @@ impl<C: Pairing> Node<C> {
 /// Create vaults. If arguments have not been passed in via the comand line, we will still create the vaults, but they will not have
 /// password information stored in them.
 pub fn create_vaults<C: Pairing>(vault_config: VaultConfig, index: usize) -> Result<(IrohKeyVault, SteKeyVault<C>), KeyVaultError> {
-    let (iroh_vault, ste_vault) = if let (Some(vault_password), Some(iroh_password), Some(ste_password)) = (vault_config.vault_pswd, vault_config.iroh_key_pswd, vault_config.ste_key_pswd) {
-        let deref_vault_pass = vault_password.to_owned();
+    let store_passwords = vault_config.vault_pswd.is_some();
+
+    // Assume that if the vault password is passed in through the vault_config that the other passwords are also populated
+    // If the vault password is not supplied, we need to grab passwords from somewhere else.
+    if store_passwords {
+        let deref_vault_pass = vault_config.vault_pswd.to_owned().unwrap();
         let vault = Vault::open_or_create(vault_config.vault_dir, &mut deref_vault_pass.clone()).unwrap();
+        let iroh_password = vault_config.iroh_key_pswd.unwrap();
         let iroh_vault = IrohKeyVault::new_store_info(vault.clone(),deref_vault_pass.clone(), iroh_password, index);
+        let ste_password = vault_config.ste_key_pswd.unwrap();
         let ste_vault = SteKeyVault::<C>::new_store_info(vault,deref_vault_pass, ste_password, index);
-        // let sr25519_vault = Sr25519KeyVault::new(vault);
-        (iroh_vault, ste_vault)
+        Ok((iroh_vault, ste_vault))
     } else {
         let mut master_password = SecretString::new(String::from("vault_password").into_boxed_str());
         let vault = Vault::open_or_create("tmp/keystore", &mut master_password).unwrap();
         let iroh_vault = IrohKeyVault::new(vault.clone(), index);
         let ste_vault = SteKeyVault::<C>::new(vault, index);
-        (iroh_vault, ste_vault)
-    };
-    Ok((iroh_vault, ste_vault))
+        Ok((iroh_vault, ste_vault))
+    }
 }
 
 pub const PD_ALPN: &[u8] = b"fangorn/partial-decryption/0";

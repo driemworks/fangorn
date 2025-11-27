@@ -4,7 +4,6 @@ use fangorn::{
     // backend::substrate::runtime::{runtime_apis::core::types::version, sudo::storage::types::key},
     crypto::{
         cipher::{handle_decrypt, handle_encrypt},
-        keystore::{Keystore, Sr25519Keystore},
         keyvault::{IrohKeyVault, KeyVault, Sr25519KeyVault},
         FANGORN,
     },
@@ -47,22 +46,19 @@ enum StoreType {
 #[derive(Subcommand, Debug)]
 enum Commands {
     Keygen {
-        // the keystore directory
-        #[arg(long)]
-        keystore_dir: String,
-    },
-    KeygenPswd {
-
         /// the keystore directory
         #[arg(long)]
         keystore_dir: String,
 
         #[arg(long)]
-        key_name: Option<String>,
+        key_name: String,
+
+        #[arg(long, default_value="vault_password")]
+        vault_pswd: String,
 
         /// the password to encrypt the key with
         #[arg(long)]
-        password: SecretString,
+        key_password: SecretString,
 
         /// the associated key type: polkadot(sr25519), fangorn(ed25519)
         #[arg(value_enum)]
@@ -78,15 +74,21 @@ enum Commands {
         print_mnemonic: bool
 
     },
-    InspectPswd {
+    Inspect {
 
         /// the keystore directory
         #[arg(long)]
         keystore_dir: String,
 
+        #[arg(long, default_value="vault_password")]
+        vault_pswd: String,
+
+        #[arg(long)]
+        key_name: String,
+
         /// the password to access the associated file
         #[arg(long)]
-        password: SecretString,
+        key_password: SecretString,
         /// the associated key type: polkadot(sr25519), fangorn(ed25519)
         #[arg(value_enum)]
         store_type: StoreType,
@@ -94,14 +96,20 @@ enum Commands {
         #[arg(long, default_value=None)]
         index: Option<usize>,
     },
-    SignPswd {
+    Sign {
 
         /// the keystore directory
         #[arg(long)]
         keystore_dir: String,
 
+        #[arg(long, default_value="vault_password")]
+        vault_pswd: String,
+
         #[arg(long)]
-        password: SecretString,
+        key_name: String,
+
+        #[arg(long)]
+        key_password: SecretString,
         /// the associated key type: polkadot(sr25519), fangorn(ed25519)
         #[arg(value_enum)]
         store_type: StoreType,
@@ -112,14 +120,20 @@ enum Commands {
         #[arg(long, default_value=None)]
         index: Option<usize>,
     },
-    VerifyPswd {
+    Verify {
 
         /// the keystore directory
         #[arg(long)]
         keystore_dir: String,
+        #[arg(long, default_value="vault_password")]
+        vault_pswd: String,
+
+        #[arg(long)]
+        key_name: String,
+
         /// the password to access the associated file
         #[arg(long)]
-        password: SecretString,
+        key_password: SecretString,
         /// the associated key type: polkadot(sr25519), fangorn(ed25519)
         #[arg(value_enum)]
         store_type: StoreType,
@@ -133,17 +147,6 @@ enum Commands {
         #[arg(long, default_value=None)]
         index: Option<usize>,
     },
-    Inspect {
-        // the keystore directory
-        #[arg(long)]
-        keystore_dir: String,
-    },
-    Sign {
-        #[arg(long)]
-        keystore_dir: String,
-        #[arg(long)]
-        nonce: u32,
-    },
     /// encrypt a message under a 'policy' and then 'register' it
     Encrypt {
         /// the path to the plaintext
@@ -155,9 +158,6 @@ enum Commands {
         /// the path to the file containing the kzg params (fangorn config)
         #[arg(long)]
         config_path: String,
-        /// the keystore directory
-        #[arg(long)]
-        keystore_dir: String,
         /// the intent for encrypting the message
         #[arg(long)]
         intent: String,
@@ -175,6 +175,18 @@ enum Commands {
         bootstrap_url: String,
         #[arg(long)]
         bootstrap_pubkey: String,
+        #[arg(long,  default_value="tmp/keystore")]
+        vault_dir: String,
+        #[arg(long,  default_value=None)]
+        vault_pswd: Option<SecretString>,
+        #[arg(long,  default_value=None)]
+        iroh_key_pswd: Option<SecretString>,
+        #[arg(long,  default_value=None)]
+        ste_key_pswd: Option<SecretString>,
+        #[arg(long,  default_value="sr25519")]
+        substrate_name: String,
+        #[arg(long, default_value=None)]
+        substrate_pswd: Option<SecretString>
     },
     /// request to decrypt a message
     /// prepare a witness + send to t-of-n node RPCs
@@ -189,9 +201,6 @@ enum Commands {
         /// A witness that satisfies the intent associated with the CID
         #[arg(long)]
         witness: String,
-        /// The keystore dir
-        #[arg(long)]
-        keystore_dir: String,
         /// the contract address
         #[arg(long)]
         contract_addr: String,
@@ -207,6 +216,18 @@ enum Commands {
         bootstrap_url: String,
         #[arg(long)]
         bootstrap_pubkey: String,
+        #[arg(long,  default_value="tmp/keystore")]
+        vault_dir: String,
+        #[arg(long,  default_value=None)]
+        vault_pswd: Option<SecretString>,
+        #[arg(long,  default_value=None)]
+        iroh_key_pswd: Option<SecretString>,
+        #[arg(long,  default_value=None)]
+        ste_key_pswd: Option<SecretString>,
+        #[arg(long,  default_value="sr25519")]
+        substrate_name: String,
+        #[arg(long, default_value=None)]
+        substrate_pswd: Option<SecretString>
     },
 }
 
@@ -215,26 +236,9 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
 
     match &args.command {
-        Some(Commands::Keygen { keystore_dir }) => {
-            let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
-            keystore.generate_key().unwrap();
-            let keys = keystore.list_keys()?;
-            println!(
-                "Keys in keystore: {:?}",
-                keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
-            );
-        }
-        Some(Commands::Inspect { keystore_dir }) => {
-            let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
-            let keys = keystore.list_keys()?;
-            println!(
-                "Keys in keystore: {:?}",
-                keys.iter().map(|k| keystore.to_ss58(k)).collect::<Vec<_>>()
-            );
-        }
-        Some(Commands::KeygenPswd { keystore_dir, key_name, password , store_type, index, print_mnemonic}) => {
-            let mut deref_pass = password.to_owned();
-            let mut vault_password =
+        Some(Commands::Keygen { keystore_dir, key_name, vault_pswd, key_password , store_type, index, print_mnemonic}) => {
+            let mut deref_key_password = key_password.to_owned();
+            let mut vault_password = SecretString::new(vault_pswd.to_owned().into_boxed_str());
                 SecretString::new(String::from("vault_password").into_boxed_str());
             let vault = Vault::open_or_create(keystore_dir, &mut vault_password).unwrap();
             match store_type {
@@ -242,10 +246,10 @@ async fn main() -> Result<()> {
                     let keyvault = Sr25519KeyVault::new(vault);
                     // create sr25519 identity
                     if *print_mnemonic {
-                        let public_key = keyvault.generate_key_print_mnemonic(key_name.clone().unwrap(), &mut deref_pass).unwrap();
+                        let public_key = keyvault.generate_key_print_mnemonic(key_name.clone(), &mut deref_key_password).unwrap();
                         println!("Printned mnemonic and generated new keypair. PubKey: {:?}", public_key);
                     } else {       
-                        let public_key = keyvault.generate_key(key_name.clone().unwrap(), &mut deref_pass).unwrap();
+                        let public_key = keyvault.generate_key(key_name.clone(), &mut deref_key_password).unwrap();
                         println!("generated new keypair. PubKey: {:?}", public_key);
                     }
 
@@ -254,60 +258,58 @@ async fn main() -> Result<()> {
                     // create ed25519 identity
                     let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
                     let public_key = keyvault
-                        .generate_key(String::from("ed25519"), &mut deref_pass)
+                        .generate_key(key_name.clone(), &mut deref_key_password)
                         .unwrap();
                     println!("generated new keypair. Pubkey: {:?}", public_key)
                 }
             }
-            deref_pass.expose_secret_mut().zeroize();
-            deref_pass.zeroize();
         }
-        Some(Commands::InspectPswd {
+        Some(Commands::Inspect {
             keystore_dir,
-            password,
+            vault_pswd,
+            key_name,
+            key_password,
             store_type,
             index,
         }) => {
-            let mut deref_pass = password.to_owned();
-            let mut vault_password =
-                SecretString::new(String::from("vault_password").into_boxed_str());
+            let mut deref_key_password = key_password.to_owned();
+            let mut vault_password = SecretString::new(vault_pswd.to_owned().into_boxed_str());
             let vault = Vault::open(keystore_dir, &mut vault_password).unwrap();
             match store_type {
                 StoreType::Polkadot => {
                     let keyvault = Sr25519KeyVault::new(vault);
                     let public_key = keyvault
-                        .get_public_key(String::from("sr25519"), &mut deref_pass)
+                        .get_public_key(key_name.clone(), &mut deref_key_password)
                         .unwrap();
                     println!("read keypair. Pubkey: {:?}", public_key)
                 }
                 StoreType::Fangorn => {
                     let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
                     let public_key = keyvault
-                        .get_public_key(String::from("ed25519"), &mut deref_pass)
+                        .get_public_key(key_name.clone(), &mut deref_key_password)
                         .unwrap();
                     println!("read keypair. Pubkey: {:?}", public_key)
                 }
             }
-            deref_pass.expose_secret_mut().zeroize();
-            deref_pass.zeroize();
         }
-        Some(Commands::SignPswd {
+        Some(Commands::Sign {
             keystore_dir,
-            password,
+            vault_pswd,
+            key_name,
+            key_password,
             store_type,
             index,
             nonce,
         }) => {
-            let mut deref_pass = password.to_owned();
-            let mut vault_password =
-                SecretString::new(String::from("vault_password").into_boxed_str());
+            let mut deref_key_password = key_password.to_owned();
+            let mut vault_password = SecretString::new(vault_pswd.to_owned().into_boxed_str());
             let vault = Vault::open(keystore_dir, &mut vault_password).unwrap();
             match store_type {
                 StoreType::Polkadot => {
                     let keyvault = Sr25519KeyVault::new(vault);
                     let message_bytes = nonce.to_le_bytes();
                     let signature = keyvault
-                        .sign(String::from("sr25519"), &message_bytes, &mut deref_pass)
+                        .sign(key_name.clone(), &message_bytes, &mut deref_key_password)
                         .unwrap();
                     let sig_hex = to_hex(&signature.as_bytes_ref(), false);
                     println!(
@@ -319,7 +321,7 @@ async fn main() -> Result<()> {
                     let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
                     let message_bytes = nonce.to_le_bytes();
                     let signature = keyvault
-                        .sign(String::from("ed25519"), &message_bytes, &mut deref_pass)
+                        .sign(key_name.clone(), &message_bytes, &mut deref_key_password)
                         .unwrap();
                     let sig_hex = to_hex(&signature.to_bytes(), false);
                     println!(
@@ -328,26 +330,25 @@ async fn main() -> Result<()> {
                     );
                 }
             }
-            deref_pass.expose_secret_mut().zeroize();
-            deref_pass.zeroize();
         }
-        Some(Commands::VerifyPswd {
+        Some(Commands::Verify {
             keystore_dir,
-            password,
+            vault_pswd,
+            key_name,
+            key_password,
             store_type,
             signature_hex,
             index,
             nonce,
         }) => {
-            let mut deref_pass = password.to_owned();
-            let mut vault_password =
-                SecretString::new(String::from("vault_password").into_boxed_str());
+            let mut deref_key_password = key_password.to_owned();
+            let mut vault_password = SecretString::new(vault_pswd.to_owned().into_boxed_str());
             let vault = Vault::open(keystore_dir, &mut vault_password).unwrap();
             match store_type {
                 StoreType::Polkadot => {
                     let keyvault = Sr25519KeyVault::new(vault);
                     let public_key = keyvault
-                        .get_public_key(String::from("sr25519"), &mut deref_pass)
+                        .get_public_key(key_name.clone(), &mut deref_key_password)
                         .unwrap();
                     let message_bytes = nonce.to_le_bytes();
                     let sig_vec = from_hex(&signature_hex).unwrap();
@@ -358,7 +359,7 @@ async fn main() -> Result<()> {
                 StoreType::Fangorn => {
                     let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
                     let public_key = keyvault
-                        .get_public_key(String::from("ed25519"), &mut deref_pass)
+                        .get_public_key(key_name.clone(), &mut deref_key_password)
                         .unwrap();
                     let message_bytes = nonce.to_le_bytes();
                     let sig_vec = from_hex(&signature_hex).unwrap();
@@ -368,33 +369,23 @@ async fn main() -> Result<()> {
                     println!("Was sig verified: {:?}", result);
                 }
             }
-            deref_pass.expose_secret_mut().zeroize();
-            deref_pass.zeroize();
-        }
-        Some(Commands::Sign {
-            keystore_dir,
-            nonce,
-        }) => {
-            let keystore = Sr25519Keystore::new(keystore_dir.into(), FANGORN).unwrap();
-            let key = keystore.list_keys()?[0];
-            let message_bytes = nonce.to_le_bytes();
-            let signature = keystore.sign(&key, &message_bytes);
-            println!(
-                "Produced a signature on the nonce {:?}: {:?}",
-                nonce, signature
-            );
         }
         Some(Commands::Encrypt {
             message_path,
             filename,
             config_path,
-            keystore_dir,
             intent,
             contract_addr,
             ticket,
             system_keys_dir,
             bootstrap_url,
             bootstrap_pubkey,
+            vault_dir,
+            vault_pswd,
+            iroh_key_pswd,
+            ste_key_pswd,
+            substrate_name,
+            substrate_pswd,
         }) => {
             // todo: should probably read the config file in this context
             // read the system keys
@@ -404,9 +395,17 @@ async fn main() -> Result<()> {
                 std::fs::read(system_keys_dir).expect("Failed to read syskeys file");
             let sys_keys =
                 SystemPublicKeys::<E>::deserialize_compressed(&sys_keys_bytes[..]).unwrap();
+            let vault_config = VaultConfig{vault_dir: vault_dir.clone(), 
+                substrate_name: substrate_name.clone(), 
+                vault_pswd: vault_pswd.clone(), 
+                iroh_key_pswd: iroh_key_pswd.clone(), 
+                ste_key_pswd: ste_key_pswd.clone(), 
+                substrate_pswd: substrate_pswd.clone()
+            };
+            
 
             // setup node
-            let mut node = build_node().await;
+            let mut node = build_node(vault_config, 2).await;
             // connect to bootstrap
             let pubkey = IrohPublicKey::from_str(&bootstrap_pubkey).ok().unwrap();
             let socket: SocketAddr = bootstrap_url.parse().ok().unwrap();
@@ -433,21 +432,33 @@ async fn main() -> Result<()> {
             config_path,
             filename,
             witness,
-            keystore_dir,
             contract_addr,
             request_pool_contract_addr,
             ticket,
             system_keys_dir,
             bootstrap_url,
             bootstrap_pubkey,
+            vault_dir,
+            vault_pswd,
+            iroh_key_pswd,
+            ste_key_pswd,
+            substrate_name,
+            substrate_pswd,
         }) => {
             let sys_keys_bytes =
                 std::fs::read(system_keys_dir).expect("Failed to read syskeys file");
             let sys_keys =
                 SystemPublicKeys::<E>::deserialize_compressed(&sys_keys_bytes[..]).unwrap();
+            let vault_config = VaultConfig{vault_dir: vault_dir.clone(), 
+                substrate_name: substrate_name.clone(), 
+                vault_pswd: vault_pswd.clone(), 
+                iroh_key_pswd: iroh_key_pswd.clone(), 
+                ste_key_pswd: ste_key_pswd.clone(), 
+                substrate_pswd: substrate_pswd.clone()
+            };
 
             // setup node
-            let mut node = build_node().await;
+            let mut node = build_node(vault_config, 3).await;
             // connect to bootstrap
             let pubkey = IrohPublicKey::from_str(&bootstrap_pubkey).ok().unwrap();
             let socket: SocketAddr = bootstrap_url.parse().ok().unwrap();
@@ -477,7 +488,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn build_node() -> Node<E> {
+async fn build_node(vault_config: VaultConfig, index: usize) -> Node<E> {
     // setup channels for state synchronization
     let (_tx, rx) = flume::unbounded();
     // initialize node parameters and state
@@ -485,11 +496,8 @@ async fn build_node() -> Node<E> {
     // todo: can we remove the index field? sk unused here
     // let params = StartNodeParams::<E>::rand(4000, 0);
     let bind_port = 4000;
-    let index = 0;
     let state = State::<E>::empty();
     let arc_state = Arc::new(Mutex::new(state));
-
-    let vault_config = VaultConfig::default();
 
     Node::build(bind_port, index, rx, arc_state, vault_config).await
 }
