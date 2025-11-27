@@ -1,30 +1,33 @@
 use anyhow::Result;
 use ark_serialize::CanonicalDeserialize;
 use iroh::{
+    Endpoint, EndpointAddr,
     discovery::mdns::MdnsDiscovery,
     endpoint::Connection,
     protocol::{AcceptError, ProtocolHandler, Router},
-    Endpoint, EndpointAddr,
 };
 // use iroh_blobs::{net_protocol::Blobs, ALPN as BLOBS_ALPN};
-use iroh_blobs::{store::mem::MemStore, BlobsProtocol, ALPN as BLOBS_ALPN};
-use iroh_docs::{protocol::Docs, ALPN as DOCS_ALPN};
-use iroh_gossip::{net::Gossip, ALPN as GOSSIP_ALPN};
+use iroh_blobs::{ALPN as BLOBS_ALPN, BlobsProtocol, store::mem::MemStore};
+use iroh_docs::{ALPN as DOCS_ALPN, protocol::Docs};
+use iroh_gossip::{ALPN as GOSSIP_ALPN, net::Gossip};
 use rust_vault::Vault;
 use secrecy::SecretString;
 
-use crate::{crypto::keyvault::{IrohKeyVault, KeyVault, KeyVaultError, Sr25519KeyVault, SteKeyVault}, pool::pool::RawPartialDecryptionMessage};
+use crate::{
+    crypto::keyvault::{IrohKeyVault, KeyVault, KeyVaultError, Sr25519KeyVault, SteKeyVault},
+    pool::pool::RawPartialDecryptionMessage,
+};
 use crate::{pool::pool::PartialDecryptionMessage, types::*};
 use ark_ec::pairing::Pairing;
 use codec::Decode;
+use silent_threshold_encryption::setup::PartialDecryption;
 use silent_threshold_encryption::setup::PublicKey;
+use std::{fs::OpenOptions, io::Write};
 use std::{
     net::{Ipv4Addr, SocketAddrV4},
     sync::Arc,
 };
 use tokio::sync::Mutex;
-use silent_threshold_encryption::setup::PartialDecryption;
-use std::{fs::OpenOptions, io::Write};
 
 /// A node...
 #[derive(Clone)]
@@ -45,7 +48,8 @@ pub struct Node<C: Pairing> {
     pub iroh_vault: IrohKeyVault,
     /// key vault for STE keys
     pub ste_vault: SteKeyVault<C>,
-    
+    /// the config for vault access
+    pub vault_config: VaultConfig,
 }
 
 impl<C: Pairing> Node<C> {
@@ -73,10 +77,10 @@ impl<C: Pairing> Node<C> {
         index: usize,
         rx: flume::Receiver<Announcement>,
         state: Arc<Mutex<State<C>>>,
-        vault_config: VaultConfig
+        vault_config: VaultConfig,
     ) -> Self {
         println!("Building the node...");
-        let (iroh_vault, ste_vault) = create_vaults::<C>(vault_config, index).unwrap();
+        let (iroh_vault, ste_vault) = create_vaults::<C>(vault_config.clone(), index).unwrap();
 
         // TODO: currently key_name is not used and is managed by the vault instance itself. However, this may change in the future.
         let key_name = String::from("");
@@ -84,13 +88,23 @@ impl<C: Pairing> Node<C> {
         // therefore this field is not actually used. See IrohKeyVault::generate_key or SteKeyVault::generate_key
         let mut file_password = SecretString::new(String::from("").into_boxed_str());
 
-        iroh_vault.generate_key(key_name.clone(), &mut file_password).unwrap();
+        iroh_vault
+            .generate_key(key_name.clone(), &mut file_password)
+            .unwrap();
         ste_vault.generate_key(index).unwrap();
         let endpoint = Endpoint::builder()
-            .secret_key(iroh_vault.get_secret_key(key_name.clone(), &mut file_password).unwrap())
+            .secret_key(
+                iroh_vault
+                    .get_secret_key(key_name.clone(), &mut file_password)
+                    .unwrap(),
+            )
             .discovery(
                 MdnsDiscovery::builder()
-                    .build(iroh_vault.get_public_key(key_name, &mut file_password).unwrap())
+                    .build(
+                        iroh_vault
+                            .get_public_key(key_name, &mut file_password)
+                            .unwrap(),
+                    )
                     .unwrap(),
             )
             .bind_addr_v4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, bind_port))
@@ -160,6 +174,7 @@ impl<C: Pairing> Node<C> {
             pd_rx,
             ste_vault,
             iroh_vault,
+            vault_config,
         }
     }
 
@@ -214,22 +229,37 @@ impl<C: Pairing> Node<C> {
 
 /// Create vaults. If arguments have not been passed in via the comand line, we will still create the vaults, but they will not have
 /// password information stored in them.
-pub fn create_vaults<C: Pairing>(vault_config: VaultConfig, index: usize) -> Result<(IrohKeyVault, SteKeyVault<C>), KeyVaultError> {
-    let (iroh_vault, ste_vault) = if let (Some(vault_password), Some(iroh_password), Some(ste_password)) = (vault_config.vault_pswd, vault_config.iroh_key_pswd, vault_config.ste_key_pswd) {
-        let deref_vault_pass = vault_password.to_owned();
-        let vault = Vault::open_or_create(vault_config.vault_dir, &mut deref_vault_pass.clone()).unwrap();
-        let iroh_vault = IrohKeyVault::new_store_info(vault.clone(),deref_vault_pass.clone(), iroh_password, index);
-        let ste_vault = SteKeyVault::<C>::new_store_info(vault,deref_vault_pass, ste_password, index);
-        // let sr25519_vault = Sr25519KeyVault::new(vault);
-        (iroh_vault, ste_vault)
+pub fn create_vaults<C: Pairing>(
+    vault_config: VaultConfig,
+    index: usize,
+) -> Result<(IrohKeyVault, SteKeyVault<C>), KeyVaultError> {
+    let store_passwords = vault_config.vault_pswd.is_some();
+
+    // Assume that if the vault password is passed in through the vault_config that the other passwords are also populated
+    // If the vault password is not supplied, we need to grab passwords from somewhere else.
+    if store_passwords {
+        let deref_vault_pass = vault_config.vault_pswd.to_owned().unwrap();
+        let vault =
+            Vault::open_or_create(vault_config.vault_dir, &mut deref_vault_pass.clone()).unwrap();
+        let iroh_password = vault_config.iroh_key_pswd.unwrap();
+        let iroh_vault = IrohKeyVault::new_store_info(
+            vault.clone(),
+            deref_vault_pass.clone(),
+            iroh_password,
+            index,
+        );
+        let ste_password = vault_config.ste_key_pswd.unwrap();
+        let ste_vault =
+            SteKeyVault::<C>::new_store_info(vault, deref_vault_pass, ste_password, index);
+        Ok((iroh_vault, ste_vault))
     } else {
-        let mut master_password = SecretString::new(String::from("vault_password").into_boxed_str());
+        let mut master_password =
+            SecretString::new(String::from("vault_password").into_boxed_str());
         let vault = Vault::open_or_create("tmp/keystore", &mut master_password).unwrap();
         let iroh_vault = IrohKeyVault::new(vault.clone(), index);
         let ste_vault = SteKeyVault::<C>::new(vault, index);
-        (iroh_vault, ste_vault)
-    };
-    Ok((iroh_vault, ste_vault))
+        Ok((iroh_vault, ste_vault))
+    }
 }
 
 pub const PD_ALPN: &[u8] = b"fangorn/partial-decryption/0";

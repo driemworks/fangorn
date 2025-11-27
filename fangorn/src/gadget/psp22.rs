@@ -59,7 +59,11 @@ impl Gadget for Psp22Gadget {
 
         let result = self
             .backend
-            .read(&AccountId32(token_contract), &selector.to_string(), Some(call_data))
+            .read(
+                &AccountId32(token_contract),
+                &selector.to_string(),
+                Some(call_data),
+            )
             .await
             .map_err(|e| IntentError::VerificationError(format!("Contract query failed: {}", e)))?;
         // todo

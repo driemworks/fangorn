@@ -1,14 +1,12 @@
 // use crate::pool::pool::RawPartialDecryptionMessage;
+use crate::Node;
 use crate::storage::{
-    contract_store::ContractIntentStore,
-    iroh_docstore::IrohDocStore,
+    AppStore, IntentStore, contract_store::ContractIntentStore, iroh_docstore::IrohDocStore,
     local_store::LocalPlaintextStore,
-    AppStore, IntentStore,
 };
 use crate::types::*;
-use crate::Node;
 use crate::{
-    backend::{iroh::IrohBackend, SubstrateBackend},
+    backend::{SubstrateBackend, iroh::IrohBackend},
     crypto::{decrypt::DecryptionClient, encrypt::EncryptionClient},
     gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget},
     pool::contract_pool::InkContractPool,
@@ -16,6 +14,7 @@ use crate::{
     utils::load_mnemonic,
 };
 use ark_serialize::CanonicalDeserialize;
+use secrecy::SecretString;
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, setup::PartialDecryption, types::Ciphertext,
 };
@@ -35,16 +34,14 @@ pub async fn handle_encrypt(
     message_path: &String,
     filename: &String,
     config_path: &String,
-    keystore_path: &String,
     intent_str: &String,
     contract_addr: &String,
     node: Node<E>,
     ticket: &String,
     sys_keys: SystemPublicKeys<E>,
 ) {
-    let seed = load_mnemonic(keystore_path);
     let (gadget_registry, app_store, _) =
-        iroh_testnet_setup(contract_addr, Some(&seed), node.clone(), ticket.clone()).await;
+        iroh_testnet_setup(contract_addr, node.clone(), ticket.clone()).await;
 
     let message = app_store
         .pt_store
@@ -63,16 +60,14 @@ pub async fn handle_decrypt(
     config_path: &String,
     filename: &String,
     witness_string: &String,
-    keystore_path: &String,
     contract_addr: &String,
     request_pool_contract_addr: &String,
     node: Node<E>,
     ticket: &String,
     sys_keys: SystemPublicKeys<E>,
 ) {
-    let seed = load_mnemonic(keystore_path);
     let (_gadget_registry, app_store, backend) =
-        iroh_testnet_setup(contract_addr, Some(&seed), node.clone(), ticket.clone()).await;
+        iroh_testnet_setup(contract_addr, node.clone(), ticket.clone()).await;
     let app_store_clone = app_store.clone();
 
     // Parse witnesses
@@ -115,9 +110,9 @@ pub async fn handle_decrypt(
         // linting thinks this does not need to be mutable but it does
         #[allow(unused_mut)]
         let mut idx = 0;
-        
+
         let pks = ak.lag_pks.clone();
-        
+
         // TODO: I really don't like this here, but it works for now...
         n0_future::task::spawn(async move {
             while let Ok(raw) = node_clone.pd_rx().recv_async().await {
@@ -212,13 +207,12 @@ pub async fn handle_decrypt(
 
 async fn iroh_testnet_setup(
     contract_addr: &String,
-    seed: Option<&str>,
     node: Node<E>,
     ticket: String,
 ) -> (GadgetRegistry, Arc<TestnetAppStore>, Arc<SubstrateBackend>) {
     // build the backend
     let backend = Arc::new(
-        SubstrateBackend::new(crate::WS_URL.to_string(), seed)
+        SubstrateBackend::new(crate::WS_URL.to_string(), node.vault_config.clone())
             .await
             .unwrap(),
     );

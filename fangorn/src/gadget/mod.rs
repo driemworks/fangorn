@@ -1,7 +1,7 @@
 //! Extensible intent framework for fangorn
 
 use async_trait::async_trait;
-use codec::{Encode, Decode};
+use codec::{Decode, Encode};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 
@@ -19,7 +19,7 @@ pub trait Gadget: Send + Sync {
     fn intent_type_id(&self) -> &'static str;
 
     /// Verify a witness against a statement
-    async fn verify_witness(&self, witness: &[u8], statement: &[u8]) -> Result<bool, IntentError >;
+    async fn verify_witness(&self, witness: &[u8], statement: &[u8]) -> Result<bool, IntentError>;
 
     /// Parse intent-specific data from string (todo: define parsing logic)
     fn parse_intent_data(&self, data: &str) -> Result<Vec<u8>, IntentError>;
@@ -46,7 +46,6 @@ impl std::fmt::Display for IntentError {
 }
 
 impl std::error::Error for IntentError {}
-
 
 /// Registry for gadgets to allow for extensible gadgets to be used
 #[derive(Clone)]
@@ -78,7 +77,7 @@ impl GadgetRegistry {
             parse_intent_string(input).map_err(|e| IntentError::ParseError(format!("{:?}", e)))?;
 
         let mut intents = Vec::new();
-        
+
         for (intent_type_str, data) in parsed_intents {
             let gadget = self
                 .get_gadget(intent_type_str)
@@ -92,7 +91,6 @@ impl GadgetRegistry {
             };
 
             intents.push(intent)
-
         }
 
         Ok(intents)
@@ -102,10 +100,14 @@ impl GadgetRegistry {
         &self,
         intents: Vec<Intent>,
         mut witness: &[u8],
-    ) -> Result<bool, IntentError> { // TODO: this coudl return Result<(), IntentError> instead
+    ) -> Result<bool, IntentError> {
+        // TODO: this coudl return Result<(), IntentError> instead
         // first we need to recover the witnesses
         let decoded_witnesses = Vec::<Vec<u8>>::decode(&mut witness).unwrap();
-        assert!(decoded_witnesses.len() == intents.len(), "Mismatched intents and witnesses");
+        assert!(
+            decoded_witnesses.len() == intents.len(),
+            "Mismatched intents and witnesses"
+        );
         // TODO: this is a little dangerous: witnesses MUST be ordered
         // in the same order that gadgets were described when encrypting the message
         // if any single one fails, they all fail
@@ -117,15 +119,10 @@ impl GadgetRegistry {
         }
 
         Ok(true)
-
     }
 
     /// Verify a witness against an intent
-    async fn verify_intent(
-        &self,
-        intent: &Intent,
-        witness: &[u8],
-    ) -> Result<bool, IntentError> {
+    async fn verify_intent(&self, intent: &Intent, witness: &[u8]) -> Result<bool, IntentError> {
         let gadget = match &intent.gadget {
             Some(m) => m.clone(),
             None => self
@@ -213,7 +210,11 @@ pub mod test {
     #[test]
     fn parse_multiple_intent_works() {
         let intent = "Intent1(data1) && Intent2(data2--$$#()) && Intent3()";
-        let expected_output = vec![("Intent1", "data1"), ("Intent2", "data2--$$#()"), ("Intent3", "")];
+        let expected_output = vec![
+            ("Intent1", "data1"),
+            ("Intent2", "data2--$$#()"),
+            ("Intent3", ""),
+        ];
         let actual_output = parse_intent_string(&intent).unwrap();
         assert!(expected_output == actual_output);
     }

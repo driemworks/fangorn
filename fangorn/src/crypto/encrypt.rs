@@ -1,15 +1,8 @@
-use crate::{
-    gadget::GadgetRegistry,
-    storage::*,
-    types::*,
-};
+use crate::{gadget::GadgetRegistry, storage::*, types::*};
 use anyhow::Result;
-use ark_bls12_381::{g2::Config as G2Config, G2Projective};
+use ark_bls12_381::{G2Projective, g2::Config as G2Config};
 use ark_ec::hashing::curve_maps::wb::WBMap;
-use ark_ec::hashing::{
-    map_to_curve_hasher::{MapToCurveBasedHasher},
-    HashToCurve,
-};
+use ark_ec::hashing::{HashToCurve, map_to_curve_hasher::MapToCurveBasedHasher};
 
 use ark_ff::field_hashers::DefaultFieldHasher;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};

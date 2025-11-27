@@ -1,8 +1,5 @@
 use super::*;
-use crate::{
-    backend::substrate::ContractBackend,
-    gadget::Intent,
-};
+use crate::{backend::substrate::ContractBackend, gadget::Intent};
 use async_trait::async_trait;
 use cid::Cid;
 use std::sync::Arc;

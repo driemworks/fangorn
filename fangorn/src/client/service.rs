@@ -8,10 +8,10 @@ use core::str::FromStr;
 use futures::prelude::*;
 use iroh::{EndpointAddr, PublicKey as IrohPublicKey};
 use iroh_docs::{
-    api::{protocol::ShareMode, Doc},
+    DocTicket,
+    api::{Doc, protocol::ShareMode},
     engine::LiveEvent,
     store::{FlatQuery, QueryBuilder},
-    DocTicket,
 };
 use n0_error::StdResultExt;
 use silent_threshold_encryption::{aggregate::SystemPublicKeys, types::Ciphertext};
@@ -19,12 +19,12 @@ use std::sync::Arc;
 use std::{fs::OpenOptions, io::Write, thread, time::Duration};
 use tokio::sync::{Mutex, RwLock};
 
-use crate::backend::{iroh::IrohBackend, SubstrateBackend};
+use crate::backend::{SubstrateBackend, iroh::IrohBackend};
 use crate::client::node::*;
 use crate::gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget};
 use crate::pool::{contract_pool::*, pool::*, watcher::*};
 use crate::storage::{
-    contract_store::ContractIntentStore, iroh_docstore::IrohDocStore, IntentStore, SharedStore,
+    IntentStore, SharedStore, contract_store::ContractIntentStore, iroh_docstore::IrohDocStore,
 };
 use crate::types::*;
 
@@ -82,7 +82,7 @@ pub async fn build_full_service<C: Pairing>(
         config.index,
         rx,
         arc_state.clone(),
-        vault_config,
+        vault_config.clone(),
     )
     .await;
     node.try_connect_peers(config.bootstrap_peers.clone())
@@ -100,7 +100,8 @@ pub async fn build_full_service<C: Pairing>(
     .unwrap();
 
     let iroh_backend = IrohBackend::new(node.clone());
-    let substrate_backend = Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), None).await?);
+    let substrate_backend =
+        Arc::new(SubstrateBackend::new(crate::WS_URL.to_string(), vault_config).await?);
 
     // setup gadget registry
     let mut gadget_registry = GadgetRegistry::new();

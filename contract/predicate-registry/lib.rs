@@ -61,7 +61,7 @@ pub mod predicate_registry {
 
         /// Register a predicate + file
         ///
-        /// * `filename`: the globally unique filename 
+        /// * `filename`: the globally unique filename
         /// * `cid`: the content identifier
         /// * `predicate`: a generic blob of SCALE encoded data
         #[ink(message)]

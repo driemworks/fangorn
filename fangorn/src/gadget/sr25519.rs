@@ -1,6 +1,6 @@
 use crate::{backend::substrate::SubstrateBackend, gadget::*};
 use async_trait::async_trait;
-use sp_core::{sr25519, Pair};
+use sp_core::{Pair, sr25519};
 use std::fmt::Debug;
 
 /// Verifies sr25519 signatures

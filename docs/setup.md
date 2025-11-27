@@ -16,6 +16,15 @@ This library is built with subxt and requires that you generate the proper metad
 3. Install the substrate contracts node: `cargo install contracts-node`. It can be run locally by running `substrate-contracts-node`, starting the contracts node on port 9944 by default.
 4. Then, from the project root, generate metadata with `subxt metadata --url ws://localhost:9944 > metadata.scale`
 5. Tear down the contracts node, then build the binaries. From the root, run: `cargo build`.
+6. For Fangorn nodes to work, they currently expect for an sr25519 entry to already exist in tmp/keystore. When running your own node, you can control the name of the entry, the password for the entry, and the password for the vault. However, if using the start instances script the nodes expect very specific configurations.
+`./target/debug/quickbeam keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_0 --password substrate_password_0 -p polkadot`
+and
+`./target/debug/quickbeam keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_1 --password substrate_password_1 -p polkadot`.
+This will set up the keys for the two listening nodes that will verify witnesses and provide partial decryptions. Be sure to create keys
+for the nodes that requesting for encryption and decryption
+`./target/debug/quickbeam keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_2 --password substrate_password_2 -p polkadot`
+`./target/debug/quickbeam keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_3 --password substrate_password_3 -p polkadot`
+Be sure to copy the mnemonic that is printed to the terminal in order to reproduce the keypairs later if needed.
 
 ### Build a Network
 
@@ -32,12 +41,18 @@ You must run a minimum of 2 Fangorn nodes.
 3. start a bootstrap node
 
 ``` sh
-    ./target/debug/fangorn run \
-    --bind-port 9933 \
-    --rpc-port 30332 \
-    --is-bootstrap \
-    --index 0  \
-    --contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD"
+./target/debug/fangorn run \
+--bind-port 9933 \
+--rpc-port 30332 \
+--is-bootstrap \
+--index 0  \
+--contract-addr "5CCe2pCQdwrmLis67y15xhmX2ifKnD8JuVFtaENuMhwJXDUD" \
+--vault-dir tmp/keystore \
+--vault-pswd vault_password \
+--iroh-key-pswd iroh_password_0 \
+--ste-key-pswd ste_password_0  \
+--substrate-name sr25519_idx_0 \
+--substrate-pswd substrate_password_0
 ```
 
 > This will save the randomly generated config to config.txt
@@ -53,7 +68,12 @@ You must run a minimum of 2 Fangorn nodes.
 --bootstrap-ip 172.31.149.62:9933 \
 --ticket docaaacaxzwhvoasmzkscqxaeciht74plakvljgysk4opsq7cmyfqzbmm5aafq5yjk3ci3y2ra4kt5lhpu7hafvrzhlcu5ss2yw6ahcaf43wc47aajdnb2hi4dthixs65ltmuys2mjoojswyylzfzuxe33ifzxgk5dxn5zgwlrpaiagd55ruhz54ayavqolfponju \
 --index 2 \
---contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7" \
+--vault-pswd vault_password \
+--iroh-key-pswd iroh_password_1 \
+--ste-key-pswd ste_password_1 \
+--substrate-name sr25519_idx_1 \
+--substrate-pswd substrate_password_1
 ```
 
 #### Option B: All-in-One convenience script
@@ -69,24 +89,31 @@ This will startup two fangorn node, a ui, the substrate contracts node, and depl
  
 ### Using Quickbeam
 
-Quickbeam is a basic CLI for generating keys, signing messages, and encryption/decryption. 
+Quickbeam is a basic CLI for generating keys, signing messages, and encryption/decryption. Currently, quickbeam supports the generation
+of sr25519, ed25519. (Support can be added for bls12-381 as well.)
 
 ##### Generate a new keypair
-
 ``` sh
-./target/debug/quickbeam keygen --keystore-dir tmp/keystore
+./target/debug/quickbeam keygen --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD> --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --index <INDEX> --print-mnemonic
 ```
+Note: Index is only required when generating Fangorn keys and print-mnemonic is only used for sr25519 keys. Fangorn keys will be overwritten if pointing to the same vault and if they use the same naming scheme used by Fangorn on startup.
 
 #### Inspect keys
 
 ``` sh
-./target/debug/quickbeam inspect --keystore-dir tmp/keystore
+./target/debug/quickbeam inspect --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD>  --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --index <INDEX>
 ```
 
 #### Sign a Message (nonce)
 
 ``` sh
-./target/debug/quickbeam sign --keystore-dir tmp/keystore --nonce 0
+./target/debug/quickbeam sign --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD>  --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --index <INDEX> --nonce <NONCE>
+```
+
+#### Verify a Signature (nonce)
+
+``` sh
+./target/debug/quickbeam sign --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD>  --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --signature-hex <SIGNATURE_HEX> --index <INDEX> --nonce <NONCE>
 ```
 
 ### Intent-Bound Data with Quickbeam
@@ -107,13 +134,18 @@ Note that decryption exposes the password to verifiers, making this best used as
 --message-path test.txt \
 --filename test.txt \
 --config-path config.txt \
---keystore-dir tmp/keystore \
 --intent "Password(test)" \
 --contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR" \
---ticket docaaacafm23wy6mao5oqrpr7norg2wnu5pbqhihzqtmbvhs3r3y6txrvn3ahxorionelubcqa4nn4f2brhdov4spnlu534ogue3ovay4myv4tikayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimzzmbqcafmdszl3tkn \
---bootstrap-pubkey eee8a1cd22e811401c6b785d06271babc93daba777c71a84dbaa0c7198af2685 \
+--ticket docaaacargo6g2yuq35q5ib4e4k32cta4fjgyh7ej5s3swuoohnawkfqxs5afuy2oadgvfkgqkvn5whbjfgbpnsgihm6ocuanpnmme6fn6jrzwvoaybacwbcaabzvgqcafmdqaadtknaeambkbinhgu2 \
+--bootstrap-pubkey cae238148a3800f87d41d76ab2899c39857e3c60a3d928147ea5861067dd9eb1 \
 --bootstrap-url 172.28.178.189:9933 \
---system-keys-dir tmp/sys/key
+--system-keys-dir tmp/sys/key \
+--vault-dir tmp/keystore \
+--vault-pswd vault_password \
+--iroh-key-pswd iroh_password_2 \
+--ste-key-pswd ste_password_2 \
+--substrate-name sr25519_idx_2 \
+--substrate-pswd substrate_password_2
 ``` 
 
 **Decryption**
@@ -122,14 +154,19 @@ Note that decryption exposes the password to verifiers, making this best used as
 ./target/debug/quickbeam decrypt \
 --filename test.txt \
 --config-path config.txt \
---keystore-dir tmp/keystore \
 --witness test \
 --contract-addr "5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR" \
 --request-pool-contract-addr "5GFcT62FqC5793JT9RCYUmfMBGnCXBhXhr5Dj7yqiA3PyM5i" \
---ticket docaaacafm23wy6mao5oqrpr7norg2wnu5pbqhihzqtmbvhs3r3y6txrvn3ahxorionelubcqa4nn4f2brhdov4spnlu534ogue3ovay4myv4tikayaf5uhi5dqom5c6l3vonstcljrfzzgk3dbpexg4mbonfzg62bnmnqw4ylspexgs4tpnaxgy2lonmxc6aiamh33dimzzmbqcafmdszl3tkn \
---bootstrap-pubkey eee8a1cd22e811401c6b785d06271babc93daba777c71a84dbaa0c7198af2685 \
+--ticket docaaacargo6g2yuq35q5ib4e4k32cta4fjgyh7ej5s3swuoohnawkfqxs5afuy2oadgvfkgqkvn5whbjfgbpnsgihm6ocuanpnmme6fn6jrzwvoaybacwbcaabzvgqcafmdqaadtknaeambkbinhgu2 \
+--bootstrap-pubkey cae238148a3800f87d41d76ab2899c39857e3c60a3d928147ea5861067dd9eb1 \
 --bootstrap-url 172.28.178.189:9933 \
---system-keys-dir tmp/sys/key
+--system-keys-dir tmp/sys/key \
+--vault-dir tmp/keystore \
+--vault-pswd vault_password \
+--iroh-key-pswd iroh_password_3 \
+--ste-key-pswd ste_password_3 \
+--substrate-name sr25519_idx_3 \
+--substrate-pswd substrate_password_3
 ```
 
 #### PSP22 Based Encryption
@@ -150,7 +187,13 @@ The PSP22 gadget allows the file owner to associate access with a given psp22 co
 --config-path config.txt \
 --keystore-dir tmp/keystore \
 --intent "Psp22(5DAhorztkEqQwhkAH4dDJVdmLGYN1STwdaWd6St3kShLegGD, 1)" \
---contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7" \
+--vault-dir tmp/keystore \
+--vault_pswd vault_password \
+--iroh_key_pswd iroh_password_2 \
+--ste_key_pswd ste_password_2 \
+--substrate_name sr25519_idx_2 \
+--substrate_pswd substrate_password_2
 ```
 
 **Decryption**
@@ -166,6 +209,12 @@ This allows to use knowledge of ANY public key who owns at least the minimum bal
 --witness 5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY \
 --pt-filename test.pdf \
 --contract-addr 5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7
+--vault-dir tmp/keystore \
+--vault_pswd vault_password \
+--iroh_key_pswd iroh_password_3 \
+--ste_key_pswd ste_password_3 \
+--substrate_name sr25519_idx_3 \
+--substrate_pswd substrate_password_3
 ```
 
 #### Intent Composition
@@ -180,6 +229,13 @@ We can encrypt for multiple intents by concatenating them! As mentioned above, t
 --keystore-dir tmp/keystore \
 --intent "Psp22(5DAhorztkEqQwhkAH4dDJVdmLGYN1STwdaWd6St3kShLegGD, 1) && Sr25519()" \
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+--contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7" \
+--vault-dir tmp/keystore \
+--vault_pswd vault_password \
+--iroh_key_pswd iroh_password_2 \
+--ste_key_pswd ste_password_2 \
+--substrate_name sr25519_idx_2 \
+--substrate_pswd substrate_password_2
 ```
 
 **Decrypt**
@@ -193,6 +249,12 @@ First produce a valid sr25519 signature on the message (acct_nonce).
 --witness "5Dvu9PudjrdKTFDCARLbSs2PaCqwGuEDzZ6XYiGL2ZQU8wK38e819e577a476bd3bb9cd2c5e5521a499cd4a0e0a896f8ecb091c6579278923d52c3f579c854d5f0ba76b6e0266eb8851d7bbfb7c59c70cb036678714146c48d" \
 --pt-filename test.txt \
 --contract-addr "5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+--vault-dir tmp/keystore \
+--vault_pswd vault_password \
+--iroh_key_pswd iroh_password_3 \
+--ste_key_pswd ste_password_3 \
+--substrate_name sr25519_idx_3 \
+--substrate_pswd substrate_password_3
 ```
 
 ### Entmoot

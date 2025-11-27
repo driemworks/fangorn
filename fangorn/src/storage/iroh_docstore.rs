@@ -11,10 +11,7 @@ use std::sync::Arc;
 use crate::backend::iroh::SharedIrohBackend;
 use crate::client::Node;
 use crate::types::*;
-use iroh_docs::{
-    api::Doc,
-    DocTicket,
-};
+use iroh_docs::{DocTicket, api::Doc};
 
 // The codec for generating CIDs
 const RAW: u64 = 0x55;

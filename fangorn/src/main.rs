@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use fangorn::client::cli::{FangornNodeCli as Cli, FangornNodeCommands as Commands};
-use fangorn::client::service::{build_full_service, ServiceConfig};
+use fangorn::client::service::{ServiceConfig, build_full_service};
 use fangorn::types::*;
 
 // https://hackmd.io/3968Gr5hSSmef-nptg2GRw
@@ -31,6 +31,8 @@ async fn main() -> Result<()> {
             vault_pswd,
             iroh_key_pswd,
             ste_key_pswd,
+            substrate_name,
+            substrate_pswd,
         }) => {
             let config = ServiceConfig {
                 bind_port: *bind_port,
@@ -50,7 +52,14 @@ async fn main() -> Result<()> {
                 request_pool_contract_addr: request_pool_contract_addr.to_string(),
             };
             // TODO: right now the vault config is passed in via command line, however if this is not the case, we should instead assume that sensitive information will be avaialble via other means
-            let vault_config = VaultConfig{vault_dir: vault_dir.clone().unwrap_or(String::from("tmp/keystore")), vault_pswd: vault_pswd.clone(), iroh_key_pswd: iroh_key_pswd.clone(), ste_key_pswd: ste_key_pswd.clone()};
+            let vault_config = VaultConfig {
+                vault_dir: vault_dir.clone(),
+                substrate_name: substrate_name.clone(),
+                vault_pswd: vault_pswd.clone(),
+                iroh_key_pswd: iroh_key_pswd.clone(),
+                ste_key_pswd: ste_key_pswd.clone(),
+                substrate_pswd: substrate_pswd.clone(),
+            };
             // start the service
             build_full_service::<E>(config, MAX_COMMITTEE_SIZE, vault_config).await?;
             tokio::signal::ctrl_c().await?;

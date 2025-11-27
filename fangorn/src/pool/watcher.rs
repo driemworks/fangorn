@@ -1,12 +1,12 @@
 use crate::pool::pool::*;
 use anyhow::Result;
+use flume::Sender;
 use std::collections::HashSet;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 use std::time::Duration;
-use flume::Sender;
 use tokio::sync::RwLock;
 
 /// Generic pool watcher
