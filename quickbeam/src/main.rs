@@ -248,7 +248,7 @@ async fn main() -> Result<()> {
                     // create sr25519 identity
                     if *print_mnemonic {
                         let public_key = keyvault
-                            .generate_key_print_mnemonic(key_name.clone(), &mut deref_key_password)
+                            .generate_key_print_mnemonic()
                             .unwrap();
                         println!(
                             "Printned mnemonic and generated new keypair. PubKey: {:?}",
@@ -256,7 +256,7 @@ async fn main() -> Result<()> {
                         );
                     } else {
                         let public_key = keyvault
-                            .generate_key(key_name.clone(), &mut deref_key_password)
+                            .generate_key()
                             .unwrap();
                         println!("generated new keypair. PubKey: {:?}", public_key);
                     }
@@ -265,7 +265,7 @@ async fn main() -> Result<()> {
                     // create ed25519 identity
                     let keyvault = IrohKeyVault::new_store_info(vault, vault_password, key_password.clone(), index.unwrap_or(0));
                     let public_key = keyvault
-                        .generate_key(key_name.clone(), &mut deref_key_password)
+                        .generate_key()
                         .unwrap();
                     println!("generated new keypair. Pubkey: {:?}", public_key)
                 }

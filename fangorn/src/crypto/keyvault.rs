@@ -50,8 +50,6 @@ pub trait KeyVault {
     /// Generate a new keypair and return the public key
     fn generate_key(
         &self,
-        key_name: String,
-        file_password: &mut SecretString,
     ) -> Result<Self::Public, KeyVaultError>;
 
     /// List all public keys in the keystore
@@ -128,22 +126,46 @@ impl Sr25519KeyVault {
     /// This should be used in tandem with Sr25519::new(vault)
     pub fn generate_key_print_mnemonic(
         &self,
-        key_name: String,
-        file_password: &mut SecretString,
     ) -> Result<sr25519::Public, KeyVaultError> {
-        let mnemonic = Mnemonic::generate(24).unwrap();
-        println!("mnemonic: {:?}", mnemonic.to_string());
-        let secret_mnemonic = SecretString::new(mnemonic.to_string().into());
-        let (pair, seed) = sr25519::Pair::from_phrase(&secret_mnemonic.expose_secret(), None)
-            .expect("Failed to generate keypair from mnemonic");
-        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
-        // Lock the vault for writing and write the seed bytes
-        self.vault
-            .write()
-            .map_err(|_| KeyVaultError::Keystore("Failed to lock vault".to_string()))?
-            .store_bytes(&key_name, &seed, &mut vault_password, file_password)
-            .unwrap();
-        Ok(pair.public())
+        if self.storing_passwords {
+            let mnemonic = Mnemonic::generate(24).unwrap();
+            println!("mnemonic: {:?}", mnemonic.to_string());
+            let secret_mnemonic = SecretString::new(mnemonic.to_string().into());
+            let (pair, seed) = sr25519::Pair::from_phrase(&secret_mnemonic.expose_secret(), None)
+                .expect("Failed to generate keypair from mnemonic");
+            // Lock the vault for writing and write the seed bytes
+            self.vault
+                .write()
+                .map_err(|_| KeyVaultError::Keystore("Failed to lock vault".to_string()))?
+                .store_bytes(self.key_name.as_str(), 
+                &seed, 
+                &mut SecretString::new(
+                    self.vault_password.clone().unwrap().into_boxed_str()
+                ), 
+                &mut SecretString::new(
+                    self.key_password.clone().unwrap().into_boxed_str()
+                )
+                )
+                .unwrap();
+            Ok(pair.public())
+
+        } else {
+            let mut vault_password = self.get_secure_password(String::from("vault_password")).unwrap();
+            let mut file_password = self.get_secure_password(String::from("file_password")).unwrap();
+            let mnemonic = Mnemonic::generate(24).unwrap();
+            println!("mnemonic: {:?}", mnemonic.to_string());
+            let secret_mnemonic = SecretString::new(mnemonic.to_string().into());
+            let (pair, seed) = sr25519::Pair::from_phrase(&secret_mnemonic.expose_secret(), None)
+                .expect("Failed to generate keypair from mnemonic");
+            // Lock the vault for writing and write the seed bytes
+            self.vault
+                .write()
+                .map_err(|_| KeyVaultError::Keystore("Failed to lock vault".to_string()))?
+                .store_bytes(self.key_name.as_str(), &seed, &mut vault_password, &mut file_password)
+                .unwrap();
+            Ok(pair.public())
+        }
+
     }
 }
 
@@ -155,21 +177,20 @@ impl KeyVault for Sr25519KeyVault {
     /// Generate sr25519 key. Mnemonic will never be revealed to you.
     fn generate_key(
         &self,
-        key_name: String,
-        file_password: &mut SecretString,
     ) -> Result<Self::Public, KeyVaultError> {
         let secret_mnemonic = SecretString::new(Mnemonic::generate(24).unwrap().to_string().into());
 
         let (pair, seed) = Self::Pair::from_phrase(&secret_mnemonic.expose_secret(), None)
             .expect("Failed to generate keypair from mnemonic");
 
-        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
+        let mut vault_password = self.get_secure_password(String::from("vault_password")).unwrap();
+        let mut file_password = self.get_secure_password(String::from("file_password")).unwrap();
 
         // Lock the vault for writing and write the seed bytes
         self.vault
             .write()
             .map_err(|_| KeyVaultError::Keystore("Failed to lock vault".to_string()))?
-            .store_bytes(&key_name, &seed, &mut vault_password, file_password)
+            .store_bytes(self.key_name.as_str(), &seed, &mut vault_password, &mut file_password)
             .unwrap();
 
         Ok(pair.public())
@@ -355,8 +376,6 @@ impl KeyVault for IrohKeyVault {
 
     fn generate_key(
         &self,
-        _key_name: String,
-        file_password: &mut SecretString,
     ) -> Result<Self::Public, KeyVaultError> {
         let iroh_sk = IrohSecretKey::generate(&mut rand::rng());
         if self.storing_passwords {
@@ -377,8 +396,8 @@ impl KeyVault for IrohKeyVault {
                 .unwrap();
             Ok(iroh_sk.public())
         } else {
-            let mut vault_password =
-                SecretString::new(String::from("vault_password").into_boxed_str());
+            let mut vault_password = self.get_secure_password(String::from("vault_password")).unwrap();
+            let mut file_password = self.get_secure_password(String::from("file_password")).unwrap();
             self.vault
                 .write()
                 .unwrap()
@@ -386,7 +405,7 @@ impl KeyVault for IrohKeyVault {
                     self.key_name.clone().as_str(),
                     &iroh_sk.to_bytes(),
                     &mut vault_password,
-                    file_password,
+                    &mut file_password,
                 )
                 .unwrap();
             Ok(iroh_sk.public())

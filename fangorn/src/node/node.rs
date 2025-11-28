@@ -91,7 +91,7 @@ impl<C: Pairing> Node<C> {
         let mut file_password = SecretString::new(String::from("").into_boxed_str());
 
         iroh_vault
-            .generate_key(key_name.clone(), &mut file_password)
+            .generate_key()
             .unwrap();
         ste_vault.generate_key(index).unwrap();
         let endpoint = Endpoint::builder()
