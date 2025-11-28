@@ -17,25 +17,15 @@ use iroh::{
 use iroh_blobs::{store::mem::MemStore, BlobsProtocol, ALPN as BLOBS_ALPN};
 use iroh_docs::{protocol::Docs, ALPN as DOCS_ALPN};
 use iroh_gossip::{net::Gossip, ALPN as GOSSIP_ALPN};
-use rust_vault::Vault;
-use secrecy::SecretString;
 
 use crate::{
-    crypto::keyvault::{
-        IrohKeyVault, 
-        KeyVault, 
-        KeyVaultError, 
-        Sr25519KeyVault, 
-        SteKeyVault
-    },
     pool::pool::RawPartialDecryptionMessage,
 };
 use crate::{pool::pool::PartialDecryptionMessage, types::*};
 use ark_ec::pairing::Pairing;
 use codec::Decode;
 use silent_threshold_encryption::setup::PartialDecryption;
-use silent_threshold_encryption::setup::PublicKey;
-use std::{fs::OpenOptions, io::Write};
+
 use std::{
     net::{Ipv4Addr, SocketAddrV4},
     sync::Arc,
