@@ -11,10 +11,8 @@ use crate::{
     gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget},
     pool::contract_pool::InkContractPool,
     storage::{PlaintextStore, SharedStore},
-    utils::load_mnemonic,
 };
 use ark_serialize::CanonicalDeserialize;
-use secrecy::SecretString;
 use silent_threshold_encryption::{
     aggregate::SystemPublicKeys, decryption::agg_dec, setup::PartialDecryption, types::Ciphertext,
 };

@@ -1,4 +1,3 @@
-use ark_bls12_381::Bls12_381;
 use ark_ec::pairing::Pairing;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use bip39::Mnemonic;
@@ -73,9 +72,6 @@ pub trait KeyVault {
 
     /// Verify a signature (can be static since verification only needs the public key)
     fn verify(public: &Self::Public, message: &[u8], signature: &Self::Signature) -> bool;
-
-    // /// Get the underlying Substrate keystore pointer
-    // fn keystore_ptr(&self) -> KeystorePtr;
 }
 
 #[derive(Clone, Debug)]

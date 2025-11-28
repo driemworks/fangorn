@@ -9,7 +9,6 @@ use anyhow::Result;
 use async_trait::async_trait;
 use rust_vault::Vault;
 use secrecy::SecretString;
-use sp_core::sr25519;
 use subxt::{
     OnlineClient, PolkadotConfig,
     config::polkadot::AccountId32,

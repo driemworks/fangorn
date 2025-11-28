@@ -1,19 +1,16 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
 use fangorn::{
-    // backend::substrate::runtime::{runtime_apis::core::types::version, sudo::storage::types::key},
     crypto::{
-        FANGORN,
         cipher::{handle_decrypt, handle_encrypt},
         keyvault::{IrohKeyVault, KeyVault, Sr25519KeyVault},
     },
 };
 use rust_vault::Vault;
-use secrecy::{ExposeSecretMut, SecretString};
+use secrecy::SecretString;
 use sp_core::{
     ByteArray,
     bytes::{from_hex, to_hex},
-    crypto::Zeroize,
     hexdisplay::AsBytesRef,
     sr25519::Signature as SrSignature,
 };

@@ -620,7 +620,7 @@ async fn process_decryption_request<C: Pairing>(
                         // send attestation
                         // TODO: murmur for attestations?
                         // let mut locked_pool = pool.read().unwrap;
-                        let mut pool_write_guard = pool.write().await;
+                        let pool_write_guard = pool.write().await;
                         pool_write_guard
                             .submit_partial_attestation(&req.id().clone(), b"")
                             .await

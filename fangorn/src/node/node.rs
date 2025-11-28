@@ -1,9 +1,7 @@
 use anyhow::Result;
-use ark_serialize::CanonicalDeserialize;
 use iroh::{
     discovery::mdns::MdnsDiscovery,
-    endpoint::Connection,
-    protocol::{AcceptError, ProtocolHandler, Router},
+    protocol::Router,
     Endpoint, EndpointAddr,
 };
 use iroh_blobs::{store::mem::MemStore, BlobsProtocol, ALPN as BLOBS_ALPN};
@@ -16,16 +14,13 @@ use crate::{
     crypto::keyvault::{
         IrohKeyVault, 
         KeyVault, 
-        KeyVaultError, 
-        Sr25519KeyVault, 
+        KeyVaultError,
         SteKeyVault
     },
     pool::pool::RawPartialDecryptionMessage,
 };
-use crate::{pool::pool::PartialDecryptionMessage, types::*};
+use crate::types::*;
 use ark_ec::pairing::Pairing;
-use codec::Decode;
-use silent_threshold_encryption::setup::PartialDecryption;
 use silent_threshold_encryption::setup::PublicKey;
 use std::{fs::OpenOptions, io::Write};
 use std::{
@@ -33,6 +28,8 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::Mutex;
+
+pub const PD_ALPN: &[u8] = b"fangorn/partial-decryption/0";
 
 /// A node...
 #[derive(Clone)]
@@ -127,8 +124,7 @@ impl<C: Pairing> Node<C> {
             .await
             .unwrap();
 
-        let (pd_tx, pd_rx) = flume::unbounded();
-        let pd_handler: PartialDecryptionHandler<C> = PartialDecryptionHandler { tx: pd_tx };
+        let (_pd_tx, pd_rx) = flume::unbounded();
 
         // setup router
         let router = Router::builder(endpoint.clone())
