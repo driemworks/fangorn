@@ -58,7 +58,7 @@ pub trait KeyVault {
     /// Check if a specific key exists
     fn has_key(&self, key_name: String) -> bool;
 
-    /// Sign a message with the specified public key
+    /// Sign a message
     fn sign(
         &self,
         message: &[u8],
@@ -114,17 +114,13 @@ impl Sr25519KeyVault {
     }
 
     /// Parse SS58 address to public key
-    pub fn from_ss58(
-        address: &str,
-    ) -> Result<<Sr25519KeyVault as KeyVault>::Public, KeyVaultError> {
+    pub fn from_ss58(address: &str,) -> Result<<Sr25519KeyVault as KeyVault>::Public, KeyVaultError> {
         <Sr25519KeyVault as KeyVault>::Public::from_ss58check(address)
             .map_err(|_| KeyVaultError::Keystore("Invalid SS58 address".to_string()))
     }
 
     /// This should be used in tandem with Sr25519::new(vault)
-    pub fn generate_key_print_mnemonic(
-        &self,
-    ) -> Result<sr25519::Public, KeyVaultError> {
+    pub fn generate_key_print_mnemonic(&self,) -> Result<sr25519::Public, KeyVaultError> {
         if self.storing_passwords {
             let mnemonic = Mnemonic::generate(24).unwrap();
             println!("mnemonic: {:?}", mnemonic.to_string());
@@ -173,9 +169,7 @@ impl KeyVault for Sr25519KeyVault {
     type Pair = sr25519::Pair;
 
     /// Generate sr25519 key. Mnemonic will never be revealed to you.
-    fn generate_key(
-        &self,
-    ) -> Result<Self::Public, KeyVaultError> {
+    fn generate_key(&self,) -> Result<Self::Public, KeyVaultError> {
         let secret_mnemonic = SecretString::new(Mnemonic::generate(24).unwrap().to_string().into());
 
         let (pair, seed) = Self::Pair::from_phrase(&secret_mnemonic.expose_secret(), None)
@@ -202,9 +196,7 @@ impl KeyVault for Sr25519KeyVault {
         self.vault.try_read().unwrap().contains(key_name.as_str())
     }
 
-    fn get_public_key(
-        &self,
-    ) -> Result<Self::Public, KeyVaultError> {
+    fn get_public_key(&self,) -> Result<Self::Public, KeyVaultError> {
         if self.storing_passwords {
             // lock vault for writing since the vault state is modified on read
             let seed_bytes = self
@@ -317,9 +309,7 @@ impl IrohKeyVault {
         self.key_name.clone()
     }
 
-    pub fn get_secret_key(
-        &self,
-    ) -> Result<IrohSecretKey, KeyVaultError> {
+    pub fn get_secret_key(&self,) -> Result<IrohSecretKey, KeyVaultError> {
         if self.storing_passwords {
             // let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
             println!("getting secret key for Iroh with stored info");
@@ -368,9 +358,7 @@ impl KeyVault for IrohKeyVault {
     // This is not used, but must be fulfilled for the KeyVault trait
     type Pair = sp_core::ed25519::Pair;
 
-    fn generate_key(
-        &self,
-    ) -> Result<Self::Public, KeyVaultError> {
+    fn generate_key(&self,) -> Result<Self::Public, KeyVaultError> {
         let iroh_sk = IrohSecretKey::generate(&mut rand::rng());
         if self.storing_passwords {
             println!("Generating keys for Iroh with stored info");
@@ -414,9 +402,7 @@ impl KeyVault for IrohKeyVault {
         self.vault.try_read().unwrap().contains(key_name.as_str())
     }
 
-    fn get_public_key(
-        &self,
-    ) -> Result<Self::Public, KeyVaultError> {
+    fn get_public_key(&self,) -> Result<Self::Public, KeyVaultError> {
         if self.storing_passwords {
             println!("getting public key for Iroh with stored info");
             let mut vault_password =
@@ -568,9 +554,9 @@ impl<E: Pairing> SteKeyVault<E> {
             let sk = SecretKey::<E>::new(&mut ark_std::rand::thread_rng(), self.index);
             let mut sk_bytes = Vec::new();
             sk.serialize_compressed(&mut sk_bytes).unwrap();
-            let mut entry_password =
+            let mut file_password =
                 SecretString::new(self.key_password.clone().unwrap().into_boxed_str());
-            let mut master_password =
+            let mut vault_password =
                 SecretString::new(self.vault_password.clone().unwrap().into_boxed_str());
             self.vault
                 .write()
@@ -578,8 +564,8 @@ impl<E: Pairing> SteKeyVault<E> {
                 .store_bytes(
                     self.key_name.clone().as_str(),
                     &mut sk_bytes.clone(),
-                    &mut master_password,
-                    &mut entry_password,
+                    &mut vault_password,
+                    &mut file_password,
                 )
                 .unwrap();
             Ok(())
@@ -587,18 +573,16 @@ impl<E: Pairing> SteKeyVault<E> {
             let sk = SecretKey::<E>::new(&mut ark_std::rand::thread_rng(), self.index);
             let mut sk_bytes = Vec::new();
             sk.serialize_compressed(&mut sk_bytes).unwrap();
-            let mut entry_password =
-                SecretString::new(String::from("secret_password").into_boxed_str());
-            let mut master_password =
-                SecretString::new(String::from("vault_password").into_boxed_str());
+            let mut vault_password = self.get_secure_password(String::from("vault_password")).unwrap();
+            let mut file_password = self.get_secure_password(String::from("file_password")).unwrap();
             self.vault
                 .write()
                 .unwrap()
                 .store_bytes(
                     self.key_name.clone().as_str(),
                     &mut sk_bytes.clone(),
-                    &mut master_password,
-                    &mut entry_password,
+                    &mut vault_password,
+                    &mut file_password,
                 )
                 .unwrap();
             Ok(())
@@ -608,9 +592,9 @@ impl<E: Pairing> SteKeyVault<E> {
     pub fn get_pk(&self, crs: &CRS<E>) -> Result<PublicKey<E>, KeyVaultError> {
         if self.storing_passwords {
             println!("getting public key for STE with stored info");
-            let mut entry_password =
+            let mut file_password =
                 SecretString::new(self.key_password.clone().unwrap().into_boxed_str());
-            let mut master_password =
+            let mut vault_password =
                 SecretString::new(self.vault_password.clone().unwrap().into_boxed_str());
             let sk_bytes = self
                 .vault
@@ -618,25 +602,23 @@ impl<E: Pairing> SteKeyVault<E> {
                 .unwrap()
                 .get(
                     self.key_name.clone().as_str(),
-                    &mut master_password,
-                    &mut entry_password,
+                    &mut vault_password,
+                    &mut file_password,
                 )
                 .unwrap();
             let sk = SecretKey::<E>::deserialize_compressed(sk_bytes.expose_secret()).unwrap();
             Ok(sk.get_pk(crs))
         } else {
-            let mut entry_password =
-                SecretString::new(String::from("secret_password").into_boxed_str());
-            let mut master_password =
-                SecretString::new(String::from("vault_password").into_boxed_str());
+            let mut vault_password = self.get_secure_password(String::from("vault_password")).unwrap();
+            let mut file_password = self.get_secure_password(String::from("file_password")).unwrap();
             let sk_bytes = self
                 .vault
                 .write()
                 .unwrap()
                 .get(
                     self.key_name.clone().as_str(),
-                    &mut master_password,
-                    &mut entry_password,
+                    &mut vault_password,
+                    &mut file_password,
                 )
                 .unwrap();
             let sk = SecretKey::<E>::deserialize_compressed(sk_bytes.expose_secret()).unwrap();
@@ -650,9 +632,9 @@ impl<E: Pairing> SteKeyVault<E> {
     ) -> Result<PartialDecryption<E>, KeyVaultError> {
         if self.storing_passwords {
             println!("generating partial decryption with stored info");
-            let mut entry_password =
+            let mut file_password =
                 SecretString::new(self.key_password.clone().unwrap().into_boxed_str());
-            let mut master_password =
+            let mut vault_password =
                 SecretString::new(self.vault_password.clone().unwrap().into_boxed_str());
             let sk_bytes = self
                 .vault
@@ -660,30 +642,31 @@ impl<E: Pairing> SteKeyVault<E> {
                 .unwrap()
                 .get(
                     self.key_name.clone().as_str(),
-                    &mut master_password,
-                    &mut entry_password,
+                    &mut vault_password,
+                    &mut file_password,
                 )
                 .unwrap();
             let sk = SecretKey::<E>::deserialize_compressed(sk_bytes.expose_secret()).unwrap();
 
             Ok(sk.partial_decryption(&ciphertext))
         } else {
-            let mut entry_password =
-                SecretString::new(String::from("secret_password").into_boxed_str());
-            let mut master_password =
-                SecretString::new(String::from("vault_password").into_boxed_str());
+            let mut vault_password = self.get_secure_password(String::from("vault_password")).unwrap();
+            let mut file_password = self.get_secure_password(String::from("file_password")).unwrap();
             let sk_bytes = self
                 .vault
                 .write()
                 .unwrap()
                 .get(
                     self.key_name.clone().as_str(),
-                    &mut master_password,
-                    &mut entry_password,
+                    &mut vault_password,
+                    &mut file_password,
                 )
                 .unwrap();
             let sk = SecretKey::<E>::deserialize_compressed(sk_bytes.expose_secret()).unwrap();
             Ok(sk.partial_decryption(&ciphertext))
         }
+    }
+    fn get_secure_password(&self, _password_name: String) -> Result<SecretString, KeyVaultError> {
+        Err(KeyVaultError::Keystore(String::from("This function is not yet implemented")))
     }
 }
