@@ -238,9 +238,7 @@ async fn main() -> Result<()> {
             index,
             print_mnemonic,
         }) => {
-            let mut deref_key_password = key_password.to_owned();
             let mut vault_password = SecretString::new(vault_pswd.to_owned().into_boxed_str());
-            SecretString::new(String::from("vault_password").into_boxed_str());
             let vault = Vault::open_or_create(keystore_dir, &mut vault_password).unwrap();
             match store_type {
                 StoreType::Polkadot => {
@@ -307,7 +305,6 @@ async fn main() -> Result<()> {
             index,
             nonce,
         }) => {
-            let mut deref_key_password = key_password.to_owned();
             let mut vault_password = SecretString::new(vault_pswd.to_owned().into_boxed_str());
             let vault = Vault::open(keystore_dir, &mut vault_password).unwrap();
             match store_type {
@@ -315,7 +312,7 @@ async fn main() -> Result<()> {
                     let keyvault = Sr25519KeyVault::new_store_info(vault, vault_password, key_name.clone(), key_password.clone());
                     let message_bytes = nonce.to_le_bytes();
                     let signature = keyvault
-                        .sign(key_name.clone(), &message_bytes, &mut deref_key_password)
+                        .sign(&message_bytes)
                         .unwrap();
                     let sig_hex = to_hex(&signature.as_bytes_ref(), false);
                     println!(
@@ -327,7 +324,7 @@ async fn main() -> Result<()> {
                     let keyvault = IrohKeyVault::new_store_info(vault, vault_password, key_password.clone(), index.unwrap_or(0));
                     let message_bytes = nonce.to_le_bytes();
                     let signature = keyvault
-                        .sign(key_name.clone(), &message_bytes, &mut deref_key_password)
+                        .sign(&message_bytes)
                         .unwrap();
                     let sig_hex = to_hex(&signature.to_bytes(), false);
                     println!(

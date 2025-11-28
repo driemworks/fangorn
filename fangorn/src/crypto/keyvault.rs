@@ -61,9 +61,7 @@ pub trait KeyVault {
     /// Sign a message with the specified public key
     fn sign(
         &self,
-        key_name: String,
         message: &[u8],
-        file_password: &mut SecretString,
     ) -> Result<Self::Signature, KeyVaultError>;
 
     /// Verify a signature (can be static since verification only needs the public key)
@@ -238,9 +236,7 @@ impl KeyVault for Sr25519KeyVault {
 
     fn sign(
         &self,
-        key_name: String,
         message: &[u8],
-        file_password: &mut SecretString,
     ) -> Result<Self::Signature, KeyVaultError> {
         // lock vault for writing since the vault state is modified on read
         if self.storing_passwords {
@@ -257,13 +253,13 @@ impl KeyVault for Sr25519KeyVault {
             let pair = Self::Pair::from_seed_slice(seed_bytes.expose_secret()).unwrap();
             Ok(pair.sign(message))
         } else {
-            let mut vault_password =
-                SecretString::new(String::from("vault_password").into_boxed_str());
+            let mut vault_password = self.get_secure_password(String::from("vault_password")).unwrap();
+            let mut file_password = self.get_secure_password(String::from("file_password")).unwrap();
             let seed_bytes = self
                 .vault
                 .write()
                 .unwrap()
-                .get(&key_name, &mut vault_password, file_password)
+                .get(self.key_name.as_str(), &mut vault_password, &mut file_password)
                 .unwrap();
             let pair = Self::Pair::from_seed_slice(seed_bytes.expose_secret()).unwrap();
             Ok(pair.sign(message))
@@ -466,25 +462,46 @@ impl KeyVault for IrohKeyVault {
 
     fn sign(
         &self,
-        _key_name: String,
         message: &[u8],
-        file_password: &mut SecretString,
     ) -> Result<Self::Signature, KeyVaultError> {
-        let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
-        let secret_key = self
-            .vault
-            .write()
-            .unwrap()
-            .get(
-                self.key_name.clone().as_str(),
-                &mut vault_password,
-                file_password,
-            )
-            .unwrap();
-        let mut secret_bytes = [0u8; 32];
-        secret_key.expose_secret().read(&mut secret_bytes)?;
-        let secret_key = IrohSecretKey::from_bytes(&secret_bytes);
-        Ok(secret_key.sign(message))
+        if self.storing_passwords {
+            let mut vault_password =
+                SecretString::new(self.vault_password.clone().unwrap().into_boxed_str());
+            let mut file_password =
+                SecretString::new(self.key_password.clone().unwrap().into_boxed_str());
+            let secret_key = self
+                .vault
+                .write()
+                .unwrap()
+                .get(
+                    self.key_name.clone().as_str(),
+                    &mut vault_password,
+                    &mut file_password,
+                )
+                .unwrap();
+            let mut secret_bytes = [0u8; 32];
+            secret_key.expose_secret().read(&mut secret_bytes)?;
+            let secret_key = IrohSecretKey::from_bytes(&secret_bytes);
+            Ok(secret_key.sign(message))
+        } else {
+            let mut vault_password = self.get_secure_password(String::from("vault_password")).unwrap();
+            let mut file_password = self.get_secure_password(String::from("file_password")).unwrap();
+            let secret_key = self
+                .vault
+                .write()
+                .unwrap()
+                .get(
+                    self.key_name.clone().as_str(),
+                    &mut vault_password,
+                    &mut file_password,
+                )
+                .unwrap();
+            let mut secret_bytes = [0u8; 32];
+            secret_key.expose_secret().read(&mut secret_bytes)?;
+            let secret_key = IrohSecretKey::from_bytes(&secret_bytes);
+            Ok(secret_key.sign(message))
+        }
+        
     }
 
     fn verify(public: &Self::Public, message: &[u8], signature: &Self::Signature) -> bool {

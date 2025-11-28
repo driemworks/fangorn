@@ -8,7 +8,6 @@ use super::Backend;
 use anyhow::Result;
 use async_trait::async_trait;
 use rust_vault::Vault;
-use secrecy::SecretString;
 use subxt::{
     OnlineClient, PolkadotConfig,
     config::polkadot::AccountId32,
@@ -49,9 +48,7 @@ impl Signer<PolkadotConfig> for PolkadotSigner {
         let signature = self
             .sr25519_vault
             .sign(
-                String::new(),
                 signer_payload,
-                &mut SecretString::new(String::new().into_boxed_str()),
             )
             .unwrap();
         MultiSignature::Sr25519(signature.into())
