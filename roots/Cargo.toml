@@ -1,0 +1,20 @@
+[package]
+name = "roots"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow.workspace = true
+ark-serialize.workspace = true
+clap.workspace = true
+fangorn.workspace = true
+tokio.workspace = true
+sp-core.workspace = true
+secrecy.workspace = true
+iroh.workspace = true
+ark-std.workspace = true
+rust-vault.workspace = true
+ed25519 = "2.2.3"
+flume.workspace = true
+silent-threshold-encryption.workspace = true
+n0-future.workspace = true
