@@ -319,8 +319,6 @@ impl IrohKeyVault {
 
     pub fn get_secret_key(
         &self,
-        _key_name: String,
-        file_password: &mut SecretString,
     ) -> Result<IrohSecretKey, KeyVaultError> {
         if self.storing_passwords {
             // let mut vault_password = SecretString::new(String::from("vault_password").into_boxed_str());
@@ -344,8 +342,8 @@ impl IrohKeyVault {
             let secret_key = IrohSecretKey::from_bytes(&secret_bytes);
             Ok(secret_key)
         } else {
-            let mut vault_password =
-                SecretString::new(String::from("vault_password").into_boxed_str());
+            let mut vault_password = self.get_secure_password(String::from("vault_password")).unwrap();
+            let mut file_password = self.get_secure_password(String::from("file_password")).unwrap();
             let secret_key = self
                 .vault
                 .write()
@@ -353,7 +351,7 @@ impl IrohKeyVault {
                 .get(
                     self.key_name.clone().as_str(),
                     &mut vault_password,
-                    file_password,
+                    &mut file_password,
                 )
                 .unwrap();
             let mut secret_bytes = [0u8; 32];
@@ -521,6 +519,7 @@ pub struct SteKeyVault<E: Pairing> {
     key_password: Option<String>,
     vault_password: Option<String>,
     storing_passwords: bool,
+    index: usize,
 }
 
 impl<E: Pairing> SteKeyVault<E> {
@@ -533,6 +532,8 @@ impl<E: Pairing> SteKeyVault<E> {
             key_password: None,
             vault_password: None,
             storing_passwords: false,
+            index,
+            
         }
     }
 
@@ -553,6 +554,7 @@ impl<E: Pairing> SteKeyVault<E> {
             key_password: Some(key_password_string),
             vault_password: Some(vault_password_string),
             storing_passwords: true,
+            index,
         }
     }
 
@@ -560,10 +562,10 @@ impl<E: Pairing> SteKeyVault<E> {
         self.key_name.clone()
     }
 
-    pub fn generate_key(&self, index: usize) -> Result<(), KeyVaultError> {
+    pub fn generate_key(&self) -> Result<(), KeyVaultError> {
         if self.storing_passwords {
             println!("generating secret key for STE with stored info");
-            let sk = SecretKey::<E>::new(&mut ark_std::rand::thread_rng(), index);
+            let sk = SecretKey::<E>::new(&mut ark_std::rand::thread_rng(), self.index);
             let mut sk_bytes = Vec::new();
             sk.serialize_compressed(&mut sk_bytes).unwrap();
             let mut entry_password =
@@ -582,7 +584,7 @@ impl<E: Pairing> SteKeyVault<E> {
                 .unwrap();
             Ok(())
         } else {
-            let sk = SecretKey::<E>::new(&mut ark_std::rand::thread_rng(), index);
+            let sk = SecretKey::<E>::new(&mut ark_std::rand::thread_rng(), self.index);
             let mut sk_bytes = Vec::new();
             sk.serialize_compressed(&mut sk_bytes).unwrap();
             let mut entry_password =
