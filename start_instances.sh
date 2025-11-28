@@ -3,8 +3,11 @@
 # Create a unique signal file
 SIGNAL_FILE="/tmp/fangorn_signal_$$"
 
-# the ink! smart contract address
-CONTRACT_ADDR="5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7"
+# the ink! smart contract address for registering predicates
+PREDICATE_REGISTRY_CONTRACT_ADDR="5EhyMXxc9TqnYxmKuFkk6sLzCm3CFWN8qfk7TA7T2va1vsGR"
+
+# the ink! contract address to acct as a request + attestation pool
+REQUEST_POOL_CONTRACT_ADDR="5GFcT62FqC5793JT9RCYUmfMBGnCXBhXhr5Dj7yqiA3PyM5i"
 
 # Cleanup function to be called on exit
 cleanup() {
@@ -50,7 +53,7 @@ cleanup() {
     find ./tmp/plaintexts -mindepth 1 -delete 2>/dev/null
     echo "Killing substrate contracts node"
     kill "$SCN_PID"
-	kill "$NPM_PID"
+	# kill "$NPM_PID"
     
     # Don't exit - just return to shell
     echo "Cleanup complete."
@@ -130,22 +133,24 @@ if ! wait_for_rpc; then
     exit 1
 fi
 
-# deploy the contract
+# deploy the contract(s)
 # NOTE: If we modify the contract, then we need to manually update the contract address
 # but normally, it will produce a deterministic contract address 
-cargo contract instantiate ./target/ink/iris/iris.contract --suri //Alice -x -y
+cargo contract instantiate ./target/ink/predicate_registry/predicate_registry.contract --suri //Alice -x -y
 
-echo "Starting the UI on port 3000"
-cd ui
-npm i
-npm run start &
-cd ..
-NPM_PID=$!
-echo "PID of react app $NPM_PID"
+cargo contract instantiate ./target/ink/pool/pool.contract --suri //Alice --args "["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY", "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"]" -x -y
+
+# echo "Starting the UI on port 3000"
+# cd ui
+# npm i
+# npm run start &
+# cd ..
+# NPM_PID=$!
+# echo "PID of react app $NPM_PID"
 
 # Start the first instance in the background of current terminal
-echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --contract-addr "$CONTRACT_ADDR""
-./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --contract-addr "$CONTRACT_ADDR" &
+echo "Starting first instance: ./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" --vault-dir tmp/keystore --vault-pswd vault_password --iroh-key-pswd iroh_password_0 --ste-key-pswd ste_password_0 --substrate-name sr25519_idx_0 --substrate-pswd substrate_password_0"
+./target/debug/fangorn run --bind-port 9933 --rpc-port 30332 --is-bootstrap --index 0 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" --vault-dir tmp/keystore --vault-pswd vault_password --iroh-key-pswd iroh_password_0 --ste-key-pswd ste_password_0 --substrate-name sr25519_idx_0 --substrate-pswd substrate_password_0 &
 FIRST_PID=$!
 echo "PID of first instance: $FIRST_PID"
 
@@ -187,8 +192,8 @@ cleanup_second() {
 
 trap cleanup_second SIGINT
 
-echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "$CONTRACT_ADDR"'
-./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --contract-addr "$CONTRACT_ADDR" &
+echo 'Starting second instance: ./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" --vault-dir tmp/keystore --vault-pswd vault_password --iroh-key-pswd iroh_password_1 --ste-key-pswd ste_password_1 --substrate-name sr25519_idx_1 --substrate-pswd substrate_password_1 '
+./target/debug/fangorn run --bind-port 9945 --rpc-port 30334 --bootstrap-pubkey $PUBKEY --bootstrap-ip 172.31.149.62:9933 --ticket $TICKET_CONTENT --index 1 --predicate-registry-contract-addr "$PREDICATE_REGISTRY_CONTRACT_ADDR" --request-pool-contract-addr "$REQUEST_POOL_CONTRACT_ADDR" --vault-dir tmp/keystore --vault-pswd vault_password --iroh-key-pswd iroh_password_1 --ste-key-pswd ste_password_1 --substrate-name sr25519_idx_1 --substrate-pswd substrate_password_1 &
 SECOND_SERVER_PID=\$!
 echo \"Second server PID: \$SECOND_SERVER_PID\"
 echo \"\$SECOND_SERVER_PID\" > \"$SIGNAL_FILE.second_pid\"

@@ -15,28 +15,30 @@ pub struct CID(pub Vec<u8>);
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 #[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
-pub struct Intent(pub Vec<u8>);
+pub struct Predicate(pub Vec<u8>);
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 #[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 pub struct Entry {
     pub cid: CID,
-    pub intent: Vec<u8>,
+    pub predicate: Vec<u8>,
 }
 
 #[ink::contract]
-pub mod fangorn_registry {
+pub mod predicate_registry {
     use super::*;
     use ink::prelude::vec;
     use ink::storage::Mapping;
 
     #[ink(storage)]
-    pub struct Contract {
+    pub struct PredicateRegistry {
         /// Map filename to entry
-        registry: Mapping<Filename, Entry>,
+        predicate_registry: Mapping<Filename, Entry>,
         /// List of all registered filenames
         filenames: Vec<Filename>,
+        /// A fifo queue of (SCALE encoded) decryption requests
+        decryption_request_pool: Vec<Vec<u8>>,
     }
 
     #[derive(Debug, PartialEq, Eq)]
@@ -47,35 +49,36 @@ pub mod fangorn_registry {
         Unauthorized,
     }
 
-    impl Contract {
+    impl PredicateRegistry {
         #[ink(constructor)]
         pub fn new() -> Self {
             Self {
-                registry: Mapping::default(),
+                predicate_registry: Mapping::default(),
                 filenames: vec![],
+                decryption_request_pool: vec![],
             }
         }
 
-        /// Register an intent
+        /// Register a predicate + file
         ///
-        /// * `filename`: the globally unique filename 
+        /// * `filename`: the globally unique filename
         /// * `cid`: the content identifier
-        /// * `intent`: a generic blob of SCALE encoded data
+        /// * `predicate`: a generic blob of SCALE encoded data
         #[ink(message)]
-        pub fn register(
+        pub fn register_predicate(
             &mut self,
             filename: Filename,
             cid: CID,
-            intent: Vec<u8>,
+            predicate: Vec<u8>,
         ) -> Result<(), Error> {
             // check duplicate filenames
-            if self.registry.contains(&filename) {
+            if self.predicate_registry.contains(&filename) {
                 return Err(Error::FilenameAlreadyExists);
             }
 
-            let entry = Entry { cid, intent };
+            let entry = Entry { cid, predicate };
 
-            self.registry.insert(&filename, &entry);
+            self.predicate_registry.insert(&filename, &entry);
             self.filenames.push(filename);
 
             Ok(())
@@ -84,7 +87,7 @@ pub mod fangorn_registry {
         /// Read entry by filename
         #[ink(message)]
         pub fn read(&self, filename: Filename) -> Option<Entry> {
-            self.registry.get(&filename)
+            self.predicate_registry.get(&filename)
         }
 
         /// List all registered filenames (todo: pagination)
@@ -103,9 +106,9 @@ pub mod fangorn_registry {
 
         /// Remove an entry
         #[ink(message)]
-        pub fn remove(&mut self, filename: Filename) -> Result<Entry, Error> {
+        pub fn remove_predicate(&mut self, filename: Filename) -> Result<Entry, Error> {
             let entry = self
-                .registry
+                .predicate_registry
                 .take(&filename)
                 .ok_or(Error::FilenameNotFound)?;
 

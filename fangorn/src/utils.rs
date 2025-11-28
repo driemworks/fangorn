@@ -15,7 +15,7 @@ pub fn decode_public_key(address: &str) -> [u8; 32] {
 pub fn decode_contract_addr(address: &str) -> [u8; 32] {
     if let Ok(contract_address) = sp_core::sr25519::Public::from_ss58check(address) {
         return *contract_address.as_array_ref();
-    } 
+    }
 
     [0; 32]
 }

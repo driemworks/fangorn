@@ -1,21 +1,12 @@
-use crate::{
-    rpc::server::{PartDecRequest, RpcClient},
-    storage::*,
-    types::*,
-};
+use crate::{node::node::Node, pool::pool::*, storage::*, types::*};
 use anyhow::Result;
 use ark_serialize::CanonicalDeserialize;
 use codec::Encode;
-use silent_threshold_encryption::{
-    aggregate::{AggregateKey, SystemPublicKeys},
-    decryption::agg_dec,
-    setup::PartialDecryption,
-    types::Ciphertext,
-};
+use silent_threshold_encryption::aggregate::SystemPublicKeys;
 use std::fs;
+use std::sync::Arc;
 use thiserror::Error;
-
-const MAX_COMMITTEE_SIZE: usize = 3;
+use tokio::sync::Mutex;
 
 #[derive(Error, Debug)]
 pub enum DecryptionClientError {
@@ -41,25 +32,36 @@ pub enum DecryptionClientError {
     IntentNotFound(String),
     #[error("Ciphertext not found")]
     CiphertextNotFound,
+    #[error("Failed to find data in the docstore: {0}")]
+    LookupError(String),
+    #[error("Failed to map a node index to a known host:port : {0}")]
+    MissingRpcAddress(usize),
 }
 
+// TODO: cleanup
 pub struct DecryptionClient<D: DocStore, I: IntentStore, P: PlaintextStore> {
-    config: Config<E>,
+    pub config: Config<E>,
     // the Fangorn system keys for the given universe
     // at some point we will want to enable 'multiverse' support
     // and will need to revisit this
-    system_keys: SystemPublicKeys<E>,
+    pub system_keys: SystemPublicKeys<E>,
     // the threshold of shares we need to decrypt
-    threshold: u8,
+    pub threshold: u8,
     // the app store
-    app_store: AppStore<D, I, P>,
+    pub app_store: Arc<AppStore<D, I, P>>,
+    // the request pool
+    pool: Arc<Mutex<dyn RequestPool>>,
+    // a node instance
+    node: Node<E>,
 }
 
 impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
     pub fn new(
         config_path: &str,
         system_keys: SystemPublicKeys<E>,
-        app_store: AppStore<D, I, P>,
+        app_store: Arc<AppStore<D, I, P>>,
+        pool: Arc<Mutex<dyn RequestPool>>,
+        node: Node<E>,
     ) -> Result<Self, DecryptionClientError> {
         let config_hex = fs::read_to_string(config_path)
             .map_err(|e| DecryptionClientError::ConfigReadError(e.to_string()))?;
@@ -73,139 +75,48 @@ impl<D: DocStore, I: IntentStore, P: PlaintextStore> DecryptionClient<D, I, P> {
             app_store,
             system_keys,
             threshold: 1, // just hardcoded to 1 for now, easy
+            pool,
+            node,
         })
     }
 
-    pub async fn decrypt(
+    // this is a really a 'request decrypt' now?
+    // partial decryptions are received by the node using the PartialDecryptionHandler
+    pub async fn request_decrypt(
         &self,
         filename: &str,
         witnesses: &[&str],
-        output_filename: &String,
-    ) -> Result<Vec<u8>, DecryptionClientError> {
+    ) -> Result<(), DecryptionClientError> {
         // fetch ciphertext
         // todo: use intents for verification?
-        let (cid, _intents) = self
-            .app_store
-            .intent_store
-            .get_intent(filename.as_bytes())
-            .await
-            .map_err(|e| DecryptionClientError::IntentStoreError(e.to_string()))?
-            .ok_or_else(|| DecryptionClientError::IntentNotFound(filename.to_string()))?;
-
-        let ciphertext_bytes = self
-            .app_store
-            .doc_store
-            .fetch(&cid)
-            .await
-            .map_err(|e| DecryptionClientError::DocstoreError(e.to_string()))?
-            .ok_or(DecryptionClientError::CiphertextNotFound)?;
-
-        let ciphertext = Ciphertext::<E>::deserialize_compressed(&ciphertext_bytes[..])
-            .map_err(|_| DecryptionClientError::DeserializationError)?;
+        // let (cid, _intents) = self
+        //     .app_store
+        //     .intent_store
+        //     .get_intent(filename.as_bytes())
+        //     .await
+        //     .map_err(|e| DecryptionClientError::IntentStoreError(e.to_string()))?
+        //     .ok_or_else(|| DecryptionClientError::IntentNotFound(filename.to_string()))?;
 
         // prepare witnesses
         let witness_hex = self.encode_witnesses(witnesses)?;
 
-        let subset = vec![0, self.threshold as usize];
-        let (ak, _ek) =
-            self.system_keys
-                .get_aggregate_key(&subset, &self.config.crs, &self.config.lag_polys);
+        let location: OpaqueEndpointAddr = self.node.router.endpoint().addr().into();
 
-        // collect partial decryptions
-        let partial_decryptions = self
-            .collect_partial_decryptions(filename, &witness_hex, &ak)
-            .await?;
+        let decryption_request = DecryptionRequest {
+            filename: filename.as_bytes().to_vec(),
+            witness_hex: witness_hex.into(),
+            location,
+        };
 
-        // decrypt
-        let plaintext = self.aggregate_decrypt(&partial_decryptions, &ciphertext, &ak)?;
+        // add decryption requests to the pool
+        let mut locked_pool = self.pool.lock().await;
+        let _ = locked_pool.add(decryption_request).await;
 
-        // write plaintext to store
-        self.app_store
-            .pt_store
-            .write_to_pt_store(output_filename, &plaintext)
-            .await
-            .map_err(|e| DecryptionClientError::PlaintextWriteError(e.to_string()))?;
-
-        Ok(plaintext)
+        Ok(())
     }
 
     fn encode_witnesses(&self, witnesses: &[&str]) -> Result<String, DecryptionClientError> {
         let witness_bytes: Vec<Vec<u8>> = witnesses.iter().map(|w| w.as_bytes().to_vec()).collect();
-
         Ok(hex::encode(witness_bytes.encode()))
-    }
-
-    async fn collect_partial_decryptions(
-        &self,
-        filename: &str,
-        witness_hex: &str,
-        ak: &AggregateKey<E>,
-    ) -> Result<Vec<PartialDecryption<E>>, DecryptionClientError> {
-        let mut partial_decryptions = vec![PartialDecryption::zero(); ak.lag_pks.len()];
-
-        // TODO: make this configurable/dynamic based on threshold
-        for i in 0..self.threshold as usize {
-            let node_id = ak.lag_pks[i].id;
-            let rpc_port = get_rpc_port(node_id)?;
-
-            let mut client = RpcClient::connect(format!("http://127.0.0.1:{}", rpc_port))
-                .await
-                .map_err(|e| DecryptionClientError::RpcError(e.to_string()))?;
-
-            let request = tonic::Request::new(PartDecRequest {
-                filename: filename.to_string(),
-                witness_hex: witness_hex.to_string(),
-            });
-
-            let response = client
-                .partdec(request)
-                .await
-                .map_err(|e| DecryptionClientError::RpcError(e.to_string()))?;
-
-            let part_dec_hex = response.into_inner().hex_serialized_decryption;
-            let part_dec_bytes = hex::decode(&part_dec_hex)
-                .map_err(|e| DecryptionClientError::DecodingError(e.to_string()))?;
-
-            partial_decryptions[i] = PartialDecryption::deserialize_compressed(&part_dec_bytes[..])
-                .map_err(|_| DecryptionClientError::DeserializationError)?;
-        }
-
-        Ok(partial_decryptions)
-    }
-
-    fn aggregate_decrypt(
-        &self,
-        partial_decryptions: &[PartialDecryption<E>],
-        ciphertext: &Ciphertext<E>,
-        ak: &AggregateKey<E>,
-    ) -> Result<Vec<u8>, DecryptionClientError> {
-        let mut selector = vec![false; MAX_COMMITTEE_SIZE];
-        selector[0] = true;
-
-        agg_dec(
-            partial_decryptions,
-            ciphertext,
-            &selector,
-            ak,
-            &self.config.crs,
-        )
-        .map_err(|e| DecryptionClientError::DecryptionError(e.to_string()))
-    }
-}
-
-// todo: This needs to be made dynamic when new nodes join
-// mapping their index to their ip and port
-// in this case we drop ip since everything is runnning locally
-// note: this means we can only support three nodes max right now,
-// due to the poor design...
-fn get_rpc_port(node_id: usize) -> Result<u16, DecryptionClientError> {
-    match node_id {
-        0 => Ok(30332),
-        1 => Ok(30334),
-        2 => Ok(30335),
-        _ => Err(DecryptionClientError::RpcError(format!(
-            "Unknown node ID: {}",
-            node_id
-        ))),
     }
 }

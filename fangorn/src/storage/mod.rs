@@ -6,10 +6,11 @@ use async_trait::async_trait;
 use cid::Cid;
 
 pub mod contract_store;
+pub mod iroh_docstore;
 pub mod local_store;
 
 /// the raw data type for storage
-type Data = Vec<u8>;
+pub type Data = Vec<u8>;
 
 /// The SharedStore manages key-value mappings against some shared storage backend
 #[async_trait]
@@ -20,12 +21,13 @@ pub trait SharedStore<K, V>: Send + Sync {
     /// fetch data by key
     async fn fetch(&self, k: &K) -> Result<Option<V>>;
 
-    /// Remove data associated with a key
-    async fn remove(&self, k: &K) -> Result<()>;
+    // /// Remove data associated with a key
+    // async fn remove(&self, k: &K) -> Result<()>;
 }
 
 /// The docstore is a SharedStore where the key is a cid
 /// and the value is the corresponding message
+// TODO: make the key just a vec instead?
 pub trait DocStore: Send + Sync + SharedStore<Cid, Data> {}
 
 /// shared statement storage to associate CID (data) to intent
@@ -33,17 +35,21 @@ pub trait DocStore: Send + Sync + SharedStore<Cid, Data> {}
 // e.g. the token_supply
 #[async_trait]
 pub trait IntentStore: Send + Sync {
-    async fn register_intent(&self, filename: &[u8], cid: &Cid, intents: Vec<Intent>) -> Result<()>;
+    async fn register_intent(&self, filename: &[u8], cid: &Cid, intents: Vec<Intent>)
+    -> Result<()>;
     async fn get_intent(&self, filename: &[u8]) -> Result<Option<(Cid, Vec<Intent>)>>;
     async fn remove_intent(&self, filename: &[u8]) -> Result<()>;
 }
 
+/// A strorage adapter for reading/writing plaintext files
 #[async_trait]
 pub trait PlaintextStore {
     async fn read_plaintext(&self, message_path: &String) -> Result<Vec<u8>>;
-    async fn write_to_pt_store(&self, filename: &String, data: &Vec<u8>) -> Result<()>;
+    async fn write_plaintext(&self, filename: &String, data: &Vec<u8>) -> Result<()>;
 }
 
+// TODO: we need a more elaborate way to handle multistorage
+/// A compound of a each store type
 pub struct AppStore<D: DocStore, I: IntentStore, P: PlaintextStore> {
     pub doc_store: D,
     pub intent_store: I,

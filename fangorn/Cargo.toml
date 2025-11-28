@@ -11,6 +11,7 @@ thiserror.workspace = true
 
 iroh.workspace = true
 iroh-gossip.workspace = true
+n0-error.workspace = true
 n0-future.workspace = true
 silent-threshold-encryption.workspace = true
 subxt.workspace = true
@@ -52,9 +53,12 @@ iroh-docs.workspace = true
 iroh-blobs.workspace = true
 quic-rpc.workspace = true
 flume.workspace = true
+rust-vault.workspace = true
+secrecy.workspace = true
+ed25519 = "2.2.3"
 
+bincode.workspace = true
 cid.workspace = true
 multihash-codetable.workspace = true
-
-[build-dependencies]
-tonic-build = "0.13.0"
+public-ip.workspace = true
+local-ip-address.workspace = true

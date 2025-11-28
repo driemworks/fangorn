@@ -2,18 +2,16 @@ use std::path::Path;
 
 use fangorn::crypto::cipher::handle_encrypt;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
-use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::widgets::Paragraph;
-
+use ratatui::Frame;
 
 use crate::{App, CurrentScreen};
 
-
 pub async fn handle_input(app: &mut App, key: KeyEvent) {
     match key.code {
-        KeyCode::Esc  => {
+        KeyCode::Esc => {
             cleanup(app);
         }
         KeyCode::Tab => {
@@ -23,13 +21,11 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                     App::activate(&mut app.password_input);
                     App::inactivate(&mut app.contract_address_input);
                     App::inactivate(&mut app.token_count_input);
-                }
-                else if app.encrypt_input_selection == 1 {
+                } else if app.encrypt_input_selection == 1 {
                     App::inactivate(&mut app.password_input);
                     App::activate(&mut app.contract_address_input);
                     App::inactivate(&mut app.token_count_input);
-                }
-                else {
+                } else {
                     App::inactivate(&mut app.password_input);
                     App::inactivate(&mut app.contract_address_input);
                     App::activate(&mut app.token_count_input);
@@ -48,9 +44,8 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
         KeyCode::Enter => {
             // Get the input and handle confirmation logic
             // assuming the input element is already initialized...
-            
-            if app.display_contract_address_input && app.display_password_input {
 
+            if app.display_contract_address_input && app.display_password_input {
                 let password = app.password_input.lines().join("\n");
                 let contract_address = app.contract_address_input.lines().join("\n");
                 let token_count = app.token_count_input.lines().join("\n");
@@ -67,7 +62,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 } else {
                     handle_encrypt_all(app, password, contract_address, token_count).await;
                     cleanup(app);
-                }         
+                }
             } else if app.display_contract_address_input {
                 let contract_address = app.contract_address_input.lines().join("\n");
                 let token_count = app.token_count_input.lines().join("\n");
@@ -97,7 +92,7 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
             // input is active or only the contract info is active
             if app.display_contract_address_input && app.display_password_input {
                 match app.encrypt_input_selection {
-                    0 =>  {
+                    0 => {
                         App::activate(&mut app.password_input);
                         app.password_input.input(key);
                     }
@@ -125,26 +120,21 @@ pub async fn handle_input(app: &mut App, key: KeyEvent) {
                 App::activate(&mut app.password_input);
                 app.password_input.input(key);
             }
-
         }
     }
 }
 
 pub fn render_encryption_inputs(app: &mut App, frame: &mut Frame) {
-    
     let vertical_layout = Layout::vertical([
         Constraint::Max(4),
-        Constraint::Max(10),  // contract info
-        Constraint::Max(10),  // password area
-        Constraint::Length(3)
-
+        Constraint::Max(10), // contract info
+        Constraint::Max(10), // password area
+        Constraint::Length(3),
     ]);
-    let [_, password_area_vert, contract_area_vert, footer_area] = vertical_layout.areas(frame.area());
-    let horizontal_layout = Layout::horizontal([
-        Constraint::Max(5),
-        Constraint::Min(5),
-        Constraint::Max(5)
-    ]);
+    let [_, password_area_vert, contract_area_vert, footer_area] =
+        vertical_layout.areas(frame.area());
+    let horizontal_layout =
+        Layout::horizontal([Constraint::Max(5), Constraint::Min(5), Constraint::Max(5)]);
 
     if app.display_contract_address_input {
         let contract_address_input = &app.contract_address_input;
@@ -153,9 +143,10 @@ pub fn render_encryption_inputs(app: &mut App, frame: &mut Frame) {
             Constraint::Max(5),
             Constraint::Min(10),
             Constraint::Max(30),
-            Constraint::Max(5)
+            Constraint::Max(5),
         ]);
-        let [_, contract_address_area, token_count_area, _] = contract_split.areas(contract_area_vert);
+        let [_, contract_address_area, token_count_area, _] =
+            contract_split.areas(contract_area_vert);
         frame.render_widget(contract_address_input, contract_address_area);
         frame.render_widget(token_count_input, token_count_area);
     }
@@ -237,12 +228,18 @@ fn match_num_chars(app: &mut App, key: KeyEvent) {
         }
         _ => {}
     }
-
 }
 
-async fn handle_encrypt_all(app: &mut App, password: String, contract_address: String, token_count: String) {
-
-    let mut intent_str = String::from(format!("Password({}) && Psp22({}, {})", password, contract_address, token_count));
+async fn handle_encrypt_all(
+    app: &mut App,
+    password: String,
+    contract_address: String,
+    token_count: String,
+) {
+    let mut intent_str = String::from(format!(
+        "Password({}) && Psp22({}, {})",
+        password, contract_address, token_count
+    ));
     let file_path = app.file_path.as_mut().unwrap();
     let filename_raw = Path::new(file_path)
         .file_name()
@@ -254,15 +251,26 @@ async fn handle_encrypt_all(app: &mut App, password: String, contract_address: S
     let intent_store_address = String::from("5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7");
 
     if app.sr25519_intent {
-        intent_str = String::from(format!("Password({}) && Psp22({}, {}) && Sr25519()", password, contract_address, token_count));
+        intent_str = String::from(format!(
+            "Password({}) && Psp22({}, {}) && Sr25519()",
+            password, contract_address, token_count
+        ));
     }
 
-    handle_encrypt(&filename, &filename, &config_path, &keystore_path, &intent_str, &intent_store_address).await;
-
+    handle_encrypt(
+        &filename,
+        &filename,
+        &config_path,
+        &keystore_path,
+        &intent_str,
+        &intent_store_address,
+        app.node.clone(),
+        &app.ticket,
+    )
+    .await;
 }
 
 async fn handle_encrypt_psp22(app: &mut App, contract_address: String, token_count: String) {
-
     let file_path = app.file_path.as_mut().unwrap();
     let filename_raw = Path::new(file_path)
         .file_name()
@@ -276,11 +284,23 @@ async fn handle_encrypt_psp22(app: &mut App, contract_address: String, token_cou
     let mut intent_str = String::from(format!("Psp22({}, {})", contract_address, token_count));
 
     if app.sr25519_intent {
-        intent_str = String::from(format!("Psp22({}, {}) && Sr25519()", contract_address, token_count));
+        intent_str = String::from(format!(
+            "Psp22({}, {}) && Sr25519()",
+            contract_address, token_count
+        ));
     }
 
-    handle_encrypt(&filename, &filename, &config_path, &keystore_path, &intent_str, &intent_store_address).await;
-
+    handle_encrypt(
+        &filename,
+        &filename,
+        &config_path,
+        &keystore_path,
+        &intent_str,
+        &intent_store_address,
+        app.node.clone(),
+        &app.ticket,
+    )
+    .await;
 }
 
 async fn handle_encrypt_password(app: &mut App, password: String) {
@@ -297,6 +317,15 @@ async fn handle_encrypt_password(app: &mut App, password: String) {
         intent_str = String::from(format!("Password({}) && Sr25519()", password));
     }
     let intent_store_address = String::from("5Ccuf8QBBoqZtUPFTxwixMd9mfHLUmXhRvNfBdEU7uL1ApR7");
-    handle_encrypt(&filename, &filename, &config_path, &keystore_path, &intent_str, &intent_store_address).await;
-
+    handle_encrypt(
+        &filename,
+        &filename,
+        &config_path,
+        &keystore_path,
+        &intent_str,
+        &intent_store_address,
+        app.node.clone(),
+        &app.ticket,
+    )
+    .await;
 }

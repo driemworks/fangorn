@@ -1,20 +1,18 @@
-use crate::backend::BlockchainBackend;
+use crate::backend::substrate::ContractBackend;
 use crate::gadget::*;
 use async_trait::async_trait;
 use std::sync::Arc;
-use subxt::ext::codec::Decode;
+use subxt::{config::substrate::AccountId32, ext::codec::Decode};
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct Psp22Gadget {
-    /// The backend 
-    backend: Arc<dyn BlockchainBackend>,
+    /// The backend
+    backend: Arc<dyn ContractBackend>,
 }
 
 impl Psp22Gadget {
-    pub fn new(backend: Arc<dyn BlockchainBackend>) -> Self {
-        Self {
-            backend,
-        }
+    pub fn new(backend: Arc<dyn ContractBackend>) -> Self {
+        Self { backend }
     }
 }
 
@@ -49,25 +47,27 @@ impl Gadget for Psp22Gadget {
         // statement = [32 bytes + 16 bytes]
         let token_contract: [u8; 32] = statement[..32].try_into().unwrap();
 
-        let minimum_balance = u128::from_le_bytes(
-            statement[32..48]
-                .try_into()
-                .map_err(|_| IntentError::VerificationError("The minimum balance must be a valid u128.".into()))?,
-        );
+        let minimum_balance = u128::from_le_bytes(statement[32..48].try_into().map_err(|_| {
+            IntentError::VerificationError("The minimum balance must be a valid u128.".into())
+        })?);
 
         //  PSP22::balance_of(witness)
         let mut call_data = Vec::new();
         call_data.extend(witness); // account_id
 
-        let selector = self.backend.selector("PSP22::balance_of");
+        let selector = "PSP22::balance_of";
 
         let result = self
             .backend
-            .query_contract(token_contract, selector, call_data)
+            .read(
+                &AccountId32(token_contract),
+                &selector.to_string(),
+                Some(call_data),
+            )
             .await
             .map_err(|e| IntentError::VerificationError(format!("Contract query failed: {}", e)))?;
-
-        let mut data = result;
+        // todo
+        let mut data = result.unwrap();
         if !data.is_empty() {
             data.remove(0); // remove status byte
         }
