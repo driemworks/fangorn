@@ -84,10 +84,11 @@ impl<C: Pairing> Node<C> {
         println!("Building the node...");
         let (iroh_vault, ste_vault) = create_vaults::<C>(vault_config.clone(), index).unwrap();
 
-        iroh_vault
-            .generate_key()
-            .unwrap();
+        // Generate new keys on startup. May be fine for Iroh, but may want to have STE keys avaialable
+        // before startup.
+        iroh_vault.generate_key().unwrap();
         ste_vault.generate_key().unwrap();
+
         let endpoint = Endpoint::builder()
             .secret_key(
                 iroh_vault
