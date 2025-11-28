@@ -1,7 +1,9 @@
 use anyhow::Result;
 use clap::Parser;
-use fangorn::client::cli::{FangornNodeCli as Cli, FangornNodeCommands as Commands};
-use fangorn::client::service::{ServiceConfig, build_full_service};
+use fangorn::node::{
+    cli::{FangornNodeCli as Cli, FangornNodeCommands as Commands},
+    service::{build_full_service, ServiceConfig},
+};
 use fangorn::types::*;
 
 // https://hackmd.io/3968Gr5hSSmef-nptg2GRw

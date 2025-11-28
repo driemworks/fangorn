@@ -1,4 +1,4 @@
-use crate::{client::node::Node, pool::pool::*, storage::*, types::*};
+use crate::{node::node::Node, pool::pool::*, storage::*, types::*};
 use anyhow::Result;
 use ark_serialize::CanonicalDeserialize;
 use codec::Encode;

@@ -1,4 +1,4 @@
-use crate::{backend::Backend, client::Node};
+use crate::{backend::Backend, Node};
 use anyhow::Result;
 use ark_ec::pairing::Pairing;
 use async_trait::async_trait;

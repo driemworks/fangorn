@@ -9,7 +9,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use crate::backend::iroh::SharedIrohBackend;
-use crate::client::Node;
+use crate::Node;
 use crate::types::*;
 use iroh_docs::{DocTicket, api::Doc};
 

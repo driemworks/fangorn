@@ -60,6 +60,8 @@ impl<C: Pairing> Config<C> {
     }
 }
 
+
+
 #[derive(Clone)]
 pub struct VaultConfig {
     pub vault_dir: String,

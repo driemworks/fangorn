@@ -20,7 +20,7 @@ use std::{fs::OpenOptions, io::Write, thread, time::Duration};
 use tokio::sync::{Mutex, RwLock};
 
 use crate::backend::{SubstrateBackend, iroh::IrohBackend};
-use crate::client::node::*;
+use crate::node::node::*;
 use crate::gadget::{GadgetRegistry, PasswordGadget, Psp22Gadget, Sr25519Gadget};
 use crate::pool::{contract_pool::*, pool::*, watcher::*};
 use crate::storage::{
@@ -609,7 +609,7 @@ async fn process_decryption_request<C: Pairing>(
                 // try to connect to the recipient
                 let receiver_endpoint_addr: EndpointAddr = req.location.clone().into();
                 if let Ok(conn) = endpoint
-                    .connect(receiver_endpoint_addr, crate::client::node::PD_ALPN)
+                    .connect(receiver_endpoint_addr, crate::node::node::PD_ALPN)
                     .await
                 {
                     let (mut send, mut recv) = conn.open_bi().await.anyerr()?;

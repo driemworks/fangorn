@@ -4,6 +4,7 @@ pub mod backend;
 pub mod client;
 pub mod crypto;
 pub mod gadget;
+pub mod node;
 pub mod pool;
 pub mod storage;
 pub mod types;
@@ -11,4 +12,4 @@ pub mod utils;
 
 pub mod test;
 
-pub use client::node::Node;
+pub use node::node::Node;

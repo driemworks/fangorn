@@ -116,7 +116,7 @@ Note: Index is only required when generating Fangorn keys and print-mnemonic is 
 ./target/debug/quickbeam sign --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD>  --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --signature-hex <SIGNATURE_HEX> --index <INDEX> --nonce <NONCE>
 ```
 
-### Intent-Bound Data with Quickbeam
+### Predicate-Locked Data with Quickbeam
 
 Quickbeam is a basic CLI for interacting with Fangorn. For a more streamlined approach, use [entmoot](#entmoot), a TUI that accomplished much the same as quickbeam.
 
