@@ -17,13 +17,13 @@ This library is built with subxt and requires that you generate the proper metad
 4. Then, from the project root, generate metadata with `subxt metadata --url ws://localhost:9944 > metadata.scale`
 5. Tear down the contracts node, then build the binaries. From the root, run: `cargo build`.
 6. For Fangorn nodes to work, they currently expect for an sr25519 entry to already exist in tmp/keystore. When running your own node, you can control the name of the entry, the password for the entry, and the password for the vault. However, if using the start instances script the nodes expect very specific configurations.
-`./target/debug/quickbeam keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_0 --password substrate_password_0 -p polkadot`
+`./target/debug/roots keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_0 --password substrate_password_0 -p polkadot`
 and
-`./target/debug/quickbeam keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_1 --password substrate_password_1 -p polkadot`.
+`./target/debug/roots keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_1 --password substrate_password_1 -p polkadot`.
 This will set up the keys for the two listening nodes that will verify witnesses and provide partial decryptions. Be sure to create keys
 for the nodes that requesting for encryption and decryption
-`./target/debug/quickbeam keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_2 --password substrate_password_2 -p polkadot`
-`./target/debug/quickbeam keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_3 --password substrate_password_3 -p polkadot`
+`./target/debug/roots keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_2 --password substrate_password_2 -p polkadot`
+`./target/debug/roots keygen-pswd --keystore-dir tmp/keystore --key-name sr25519_idx_3 --password substrate_password_3 -p polkadot`
 Be sure to copy the mnemonic that is printed to the terminal in order to reproduce the keypairs later if needed.
 
 ### Build a Network
@@ -94,26 +94,26 @@ of sr25519, ed25519. (Support can be added for bls12-381 as well.)
 
 ##### Generate a new keypair
 ``` sh
-./target/debug/quickbeam keygen --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD> --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --index <INDEX> --print-mnemonic
+./target/debug/roots keygen --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD> --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --index <INDEX> --print-mnemonic
 ```
 Note: Index is only required when generating Fangorn keys and print-mnemonic is only used for sr25519 keys. Fangorn keys will be overwritten if pointing to the same vault and if they use the same naming scheme used by Fangorn on startup.
 
 #### Inspect keys
 
 ``` sh
-./target/debug/quickbeam inspect --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD>  --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --index <INDEX>
+./target/debug/roots inspect --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD>  --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --index <INDEX>
 ```
 
 #### Sign a Message (nonce)
 
 ``` sh
-./target/debug/quickbeam sign --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD>  --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --index <INDEX> --nonce <NONCE>
+./target/debug/roots sign --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD>  --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --index <INDEX> --nonce <NONCE>
 ```
 
 #### Verify a Signature (nonce)
 
 ``` sh
-./target/debug/quickbeam sign --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD>  --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --signature-hex <SIGNATURE_HEX> --index <INDEX> --nonce <NONCE>
+./target/debug/roots verify --keystore-dir <KEYSTORE_DIRECTORY> --vault-pswd <VAULT_PASSWORD>  --key-name <KEY_NAME> --key-password <KEY_PASSWORD> --signature-hex <SIGNATURE_HEX> --index <INDEX> --nonce <NONCE>
 ```
 
 ### Predicate-Locked Data with Quickbeam

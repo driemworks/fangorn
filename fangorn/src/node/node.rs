@@ -84,27 +84,22 @@ impl<C: Pairing> Node<C> {
         println!("Building the node...");
         let (iroh_vault, ste_vault) = create_vaults::<C>(vault_config.clone(), index).unwrap();
 
-        // TODO: currently key_name is not used and is managed by the vault instance itself. However, this may change in the future.
-        let key_name = String::from("");
-        // TODO: file_password should never be hard coded within an application. Currently, we always pass this in via the command line.
-        // therefore this field is not actually used. See IrohKeyVault::generate_key or SteKeyVault::generate_key
-        let mut file_password = SecretString::new(String::from("").into_boxed_str());
+        // Generate new keys on startup. May be fine for Iroh, but may want to have STE keys avaialable
+        // before startup.
+        iroh_vault.generate_key().unwrap();
+        ste_vault.generate_key().unwrap();
 
-        iroh_vault
-            .generate_key(key_name.clone(), &mut file_password)
-            .unwrap();
-        ste_vault.generate_key(index).unwrap();
         let endpoint = Endpoint::builder()
             .secret_key(
                 iroh_vault
-                    .get_secret_key(key_name.clone(), &mut file_password)
+                    .get_secret_key()
                     .unwrap(),
             )
             .discovery(
                 MdnsDiscovery::builder()
                     .build(
                         iroh_vault
-                            .get_public_key(key_name, &mut file_password)
+                            .get_public_key()
                             .unwrap(),
                     )
                     .unwrap(),

@@ -1,13 +1,10 @@
 # Quickbeam
 
-`quickbeam` is a command-line interface tool built using **Rust** and the **Fangorn** library. It provides utilities for key management, cryptographic signing, and encrypted file handling (encryption and decryption) leveraging the features of the Fangorn framework.
+`quickbeam` is a command-line interface tool built using **Rust** and the **Fangorn** library. It provides encrypted file handling (encryption and decryption) leveraging the features of the Fangorn framework.
 
 -----
 
 ## Features
-
-  * **Key Management:** Generate and inspect SR25519 cryptographic keys stored in a local keystore.
-  * **Cryptographic Signing:** Sign arbitrary data (currently a nonce) using a key from the local keystore.
   * **File Encryption (`Encrypt`):** Encrypt a message file under a specified 'intent' (policy) and register it.
   * **File Decryption (`Decrypt`):** Request and perform decryption of an encrypted file using a cryptographic 'witness' that satisfies the original intent.
 
@@ -15,7 +12,7 @@
 
 ## 🛠️ Usage
 
-The application is structured around several subcommands. Use `--help` on the main command or any subcommand for detailed usage information.
+Use `--help` on the main command or any subcommand for detailed usage information.
 
 ### Installation
 
@@ -29,33 +26,6 @@ git clone <repository-url>
 cd quickbeam
 cargo build --release
 # The executable will be available at target/release/quickbeam
-```
-
-### Key Management Commands
-
-#### Key Generation
-
-Generates a new SR25519 key and saves it to the specified keystore directory.
-
-```bash
-quickbeam keygen --keystore-dir /path/to/keystore
-```
-
-#### Key Inspection
-
-Lists the keys (as SS58 addresses) currently stored in the specified keystore directory.
-
-```bash
-quickbeam inspect --keystore-dir /path/to/keystore
-```
-
-#### Signing
-
-Signs a specified 32-bit nonce using the first key found in the keystore.
-
-```bash
-quickbeam sign --keystore-dir /path/to/keystore --nonce 12345
-```
 
 ### Encryption and Decryption Commands
 

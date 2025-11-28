@@ -9,7 +9,7 @@ edition = "2024"
 [workspace]
 resolver = "2"
 
-members = ["fangorn", "quickbeam", 
+members = ["fangorn", "quickbeam", "roots",
 # "entmoot", 
 "contract/predicate-registry", "contract/pool", "contract/psp22"]
 
