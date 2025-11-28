@@ -72,6 +72,8 @@ pub trait KeyVault {
 
     /// Verify a signature (can be static since verification only needs the public key)
     fn verify(public: &Self::Public, message: &[u8], signature: &Self::Signature) -> bool;
+
+    fn get_secure_password(password_name: String) -> Result<SecretString, KeyVaultError>;
 }
 
 #[derive(Clone, Debug)]
@@ -253,6 +255,9 @@ impl KeyVault for Sr25519KeyVault {
 
     fn verify(public: &Self::Public, message: &[u8], signature: &Self::Signature) -> bool {
         Self::Pair::verify(signature, message, public)
+    }
+    fn get_secure_password(_password_name: String) -> Result<SecretString, KeyVaultError> {
+        Err(KeyVaultError::Keystore(String::from("This function is not yet implemented")))
     }
 }
 #[derive(Clone, Debug)]
@@ -471,6 +476,10 @@ impl KeyVault for IrohKeyVault {
 
     fn verify(public: &Self::Public, message: &[u8], signature: &Self::Signature) -> bool {
         public.verify(message, signature).is_ok()
+    }
+    
+    fn get_secure_password(_password_name: String) -> Result<SecretString, KeyVaultError> {
+        Err(KeyVaultError::Keystore(String::from("This function is not yet implemented")))
     }
 }
 
