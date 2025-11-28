@@ -104,7 +104,7 @@ impl<C: Pairing> Node<C> {
                 MdnsDiscovery::builder()
                     .build(
                         iroh_vault
-                            .get_public_key(key_name, &mut file_password)
+                            .get_public_key()
                             .unwrap(),
                     )
                     .unwrap(),

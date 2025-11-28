@@ -29,10 +29,7 @@ impl PolkadotSigner {
     pub fn new(sr25519_vault: Sr25519KeyVault) -> Self {
         let account_id = AccountId32(
             sr25519_vault
-                .get_public_key(
-                    String::from(""),
-                    &mut SecretString::new(String::from("").into_boxed_str()),
-                )
+                .get_public_key()
                 .unwrap()
                 .into(),
         );

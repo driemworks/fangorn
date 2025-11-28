@@ -244,7 +244,7 @@ async fn main() -> Result<()> {
             let vault = Vault::open_or_create(keystore_dir, &mut vault_password).unwrap();
             match store_type {
                 StoreType::Polkadot => {
-                    let keyvault = Sr25519KeyVault::new(vault);
+                    let keyvault = Sr25519KeyVault::new_store_info(vault, vault_password, key_name.clone(), key_password.clone());
                     // create sr25519 identity
                     if *print_mnemonic {
                         let public_key = keyvault
@@ -263,7 +263,7 @@ async fn main() -> Result<()> {
                 }
                 StoreType::Fangorn => {
                     // create ed25519 identity
-                    let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
+                    let keyvault = IrohKeyVault::new_store_info(vault, vault_password, key_password.clone(), index.unwrap_or(0));
                     let public_key = keyvault
                         .generate_key(key_name.clone(), &mut deref_key_password)
                         .unwrap();
@@ -279,21 +279,20 @@ async fn main() -> Result<()> {
             store_type,
             index,
         }) => {
-            let mut deref_key_password = key_password.to_owned();
             let mut vault_password = SecretString::new(vault_pswd.to_owned().into_boxed_str());
             let vault = Vault::open(keystore_dir, &mut vault_password).unwrap();
             match store_type {
                 StoreType::Polkadot => {
-                    let keyvault = Sr25519KeyVault::new(vault);
+                    let keyvault = Sr25519KeyVault::new_store_info(vault, vault_password, key_name.clone(), key_password.clone());
                     let public_key = keyvault
-                        .get_public_key(key_name.clone(), &mut deref_key_password)
+                        .get_public_key()
                         .unwrap();
                     println!("read keypair. Pubkey: {:?}", public_key)
                 }
                 StoreType::Fangorn => {
-                    let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
+                    let keyvault = IrohKeyVault::new_store_info(vault, vault_password, key_password.clone(), index.unwrap_or(0));
                     let public_key = keyvault
-                        .get_public_key(key_name.clone(), &mut deref_key_password)
+                        .get_public_key()
                         .unwrap();
                     println!("read keypair. Pubkey: {:?}", public_key)
                 }
@@ -313,7 +312,7 @@ async fn main() -> Result<()> {
             let vault = Vault::open(keystore_dir, &mut vault_password).unwrap();
             match store_type {
                 StoreType::Polkadot => {
-                    let keyvault = Sr25519KeyVault::new(vault);
+                    let keyvault = Sr25519KeyVault::new_store_info(vault, vault_password, key_name.clone(), key_password.clone());
                     let message_bytes = nonce.to_le_bytes();
                     let signature = keyvault
                         .sign(key_name.clone(), &message_bytes, &mut deref_key_password)
@@ -325,7 +324,7 @@ async fn main() -> Result<()> {
                     );
                 }
                 StoreType::Fangorn => {
-                    let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
+                    let keyvault = IrohKeyVault::new_store_info(vault, vault_password, key_password.clone(), index.unwrap_or(0));
                     let message_bytes = nonce.to_le_bytes();
                     let signature = keyvault
                         .sign(key_name.clone(), &message_bytes, &mut deref_key_password)
@@ -348,14 +347,13 @@ async fn main() -> Result<()> {
             index,
             nonce,
         }) => {
-            let mut deref_key_password = key_password.to_owned();
             let mut vault_password = SecretString::new(vault_pswd.to_owned().into_boxed_str());
             let vault = Vault::open(keystore_dir, &mut vault_password).unwrap();
             match store_type {
                 StoreType::Polkadot => {
-                    let keyvault = Sr25519KeyVault::new(vault);
+                    let keyvault = Sr25519KeyVault::new_store_info(vault, vault_password, key_name.clone(), key_password.clone());
                     let public_key = keyvault
-                        .get_public_key(key_name.clone(), &mut deref_key_password)
+                        .get_public_key()
                         .unwrap();
                     let message_bytes = nonce.to_le_bytes();
                     let sig_vec = from_hex(&signature_hex).unwrap();
@@ -364,9 +362,9 @@ async fn main() -> Result<()> {
                     println!("Was sig verified: {:?}", result);
                 }
                 StoreType::Fangorn => {
-                    let keyvault = IrohKeyVault::new(vault, index.unwrap_or(0));
+                    let keyvault = IrohKeyVault::new_store_info(vault, vault_password, key_password.clone(), index.unwrap_or(0));
                     let public_key = keyvault
-                        .get_public_key(key_name.clone(), &mut deref_key_password)
+                        .get_public_key()
                         .unwrap();
                     let message_bytes = nonce.to_le_bytes();
                     let sig_vec = from_hex(&signature_hex).unwrap();
